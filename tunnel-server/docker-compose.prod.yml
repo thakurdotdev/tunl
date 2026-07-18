@@ -17,10 +17,10 @@ services:
     volumes:
       - ./nginx-tunnel.conf:/src/tunnel.conf:ro
       - /etc/nginx/sites-enabled:/etc/nginx/sites-enabled
+      - /etc/ssl/tunnel:/etc/ssl/tunnel
       - /run:/run:ro
     command: >-
-      sh -c "cp /src/tunnel.conf /etc/nginx/sites-enabled/tunnel &&
-      kill -HUP $$(cat /run/nginx.pid 2>/dev/null) 2>/dev/null || true"
+      sh -c "cp /src/tunnel.conf /etc/nginx/sites-enabled/tunnel && kill -HUP $$(cat /run/nginx.pid 2>/dev/null) 2>/dev/null || true"
 
 volumes:
   ssh-host-key:
