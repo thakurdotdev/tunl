@@ -12,7 +12,7 @@ import (
 )
 
 type Config struct {
-	// BaseDomain is the root domain tunnels are issued under, e.g. "tunl.dev".
+	// BaseDomain is the root domain tunnels are issued under, e.g. "thakur.dev".
 	BaseDomain string
 
 	// TunnelURLScheme is "https" (default) or "http", used when generating the
@@ -58,7 +58,7 @@ type Config struct {
 
 func Load() (*Config, error) {
 	cfg := &Config{
-		BaseDomain:           getEnv("BASE_DOMAIN", "tunl.dev"),
+		BaseDomain:           getEnv("BASE_DOMAIN", "thakur.dev"),
 		TunnelURLScheme:      getEnv("TUNNEL_URL_SCHEME", "https"),
 		SSHListenAddr:        getEnv("SSH_LISTEN_ADDR", ":2222"),
 		HTTPListenAddr:       getEnv("HTTP_LISTEN_ADDR", ":8080"),

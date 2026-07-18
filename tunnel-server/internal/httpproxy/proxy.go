@@ -17,10 +17,10 @@ import (
 )
 
 type Handler struct {
-	registry   registry.TunnelRegistry
-	baseDomain string
+	registry    registry.TunnelRegistry
+	baseDomain  string
 	dialTimeout time.Duration
-	log        *slog.Logger
+	log         *slog.Logger
 }
 
 type Options struct {
@@ -85,7 +85,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	proxy.ServeHTTP(w, r)
 }
 
-// subdomainFromHost extracts "abc123" from "abc123.tunl.dev[:port]".
+// subdomainFromHost extracts "abc123" from "abc123.thakur.dev[:port]".
 func (h *Handler) subdomainFromHost(host string) string {
 	host = strings.Split(host, ":")[0] // strip port
 	suffix := "." + h.baseDomain

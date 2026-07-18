@@ -21,7 +21,7 @@ Three independently-runnable services, one Postgres database:
      v                        v
 +----------------+   +--------------------+
 |  tunnel-server |   |   public HTTPS      |
-|   :2222 (ssh)  |   |  *.tunl.dev :8443   |
+|   :2222 (ssh)  |   |  *.thakur.dev :8443   |
 +----------------+   +--------------------+
         |                     |
         | POST /internal/*    | (same registry lookup)

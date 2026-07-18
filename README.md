@@ -1,6 +1,6 @@
 # tunnel-saas
 
-Reverse SSH tunnel SaaS — `ssh -R 80:localhost:3000 sub@tunl.dev`, no client
+Reverse SSH tunnel SaaS — `ssh -R 80:localhost:3000 sub@thakur.dev`, no client
 binary. This is a scaffolded skeleton: directory structure, interfaces,
 config, DB schema/migration, and Docker wiring are in place; business logic
 is stubbed with `TODO`s tagged to the plan's section/step numbers. Build
