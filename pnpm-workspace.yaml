@@ -1,3 +1,10 @@
 packages:
   - control-plane
   - dashboard
+
+onlyBuiltDependencies:
+  - cpu-features
+  - esbuild
+  - sharp
+  - ssh2
+  - unrs-resolver

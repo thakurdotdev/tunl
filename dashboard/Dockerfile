@@ -11,6 +11,6 @@ WORKDIR /app
 COPY --from=build /app/.next ./.next
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/public ./public
-COPY package.json next.config.js ./
+COPY package.json next.config.ts ./
 EXPOSE 3000
 CMD ["npm", "start"]

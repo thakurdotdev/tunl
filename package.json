@@ -3,6 +3,9 @@
   "private": true,
   "packageManager": "pnpm@10.27.0",
   "scripts": {
+    "dev": "docker compose -f shared/docker-compose.yml up postgres redis -d && concurrently --kill-others \"pnpm --filter control-plane dev\" \"pnpm --filter dashboard dev\" \"cd tunnel-server && go run ./cmd/tunneld\"",
+    "db:migrate": "pnpm --filter control-plane db:migrate",
+    "db:seed": "pnpm --filter control-plane db:seed",
     "lint": "oxlint control-plane dashboard",
     "lint:fix": "oxlint --fix control-plane dashboard",
     "format": "oxfmt --write control-plane dashboard",
@@ -13,6 +16,7 @@
     "check": "pnpm run format:check && pnpm run lint && pnpm run go:format:check && pnpm run go:check"
   },
   "devDependencies": {
+    "concurrently": "^8.2.2",
     "oxfmt": "^0.59.0",
     "oxlint": "^1.74.0"
   }

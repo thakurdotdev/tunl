@@ -278,11 +278,21 @@ Build last, once both backends have working endpoints to hit.
   api-client.ts                  # typed fetch wrapper against control-plane API
 ```
 
-### 3.2 Task breakdown
-1. Auth pages calling the Express `auth` routes, storing JWT (httpOnly cookie via a Next.js route handler, not localStorage).
-2. Dashboard page: list reserved tunnels, form to reserve a new subdomain, show the exact `ssh -R ...` command the user should run (this is the key "aha" moment of the product — make it copy-pasteable and correct).
-3. Keys page: paste a public key, label it, list existing keys with fingerprints, delete.
-4. No live traffic/status view yet — that needs the usage/websocket pipeline from Phase 3+.
+### 3.2 Task breakdown & Implementation Notes
+1. **Auth Pages**: Calling the Express `auth` routes, managing authentication state. We store the JWT token in `localStorage` inside `api-client.ts`, which is automatically intercepted by Axios for outgoing requests. The authentication state is managed via `AuthContext` (`auth-context.tsx`).
+2. **TanStack Query Setup**:
+   - Queries and mutations are co-located in unified, resource-specific files under `dashboard/hooks/`:
+     - `use-auth.ts`: Houses the `useProfileQuery` and mutations for login, signup, forgot password, reset password, verify email, and resending verification.
+     - `use-tunnels.ts`: Houses the `useTunnelsQuery` for retrieving tunnels, `useCreateTunnelMutation` to reserve a subdomain, and `useDeleteTunnelMutation` to cancel/delete a reservation. Invalidates the `["tunnels"]` query on success to auto-refresh the data.
+     - `use-ssh-keys.ts`: Houses the `useSshKeysQuery` for listing keys, `useCreateSshKeyMutation` for adding a public key, and `useDeleteSshKeyMutation` for deleting keys. Invalidates `["ssh-keys"]` query on success.
+3. **Delete/Irreversible Action Safeguards**:
+   - Both the Tunnels page and the SSH Keys page integrate an `@/components/ui/alert-dialog` trigger before executing any delete action.
+   - The user must explicitly click "Delete" on the verification modal/dialog before the query client sends the corresponding HTTP DELETE request.
+4. **Validation & UX**:
+   - Zod validation schemas are enforced at the form-level using `react-hook-form` and `@hookform/resolvers/zod`.
+   - Subdomain validation matches `^[a-z0-9-]{3,63}$`.
+   - SSH Public Key validation ensures a minimum length of 20 characters and max length of 16384.
+   - User feedback is delivered using clean alerts and Toast notifications via `sonner`.
 
 ---
 

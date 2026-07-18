@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
-import { utils } from "ssh2";
+import ssh2 from "ssh2";
 import { badRequest } from "../platform/errors.js";
+
+const { utils } = ssh2;
 
 export function parsePublicKey(publicKey: string) {
   const key = utils.parseKey(publicKey.trim());
