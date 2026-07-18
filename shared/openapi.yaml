@@ -1,0 +1,91 @@
+openapi: 3.0.3
+info:
+  title: tunnel-saas internal API
+  description: >
+    Internal contract between the Go tunnel server and the NestJS control
+    plane. Secured with a shared-secret header (X-Internal-Token), not user
+    JWTs — see plan section 2.3. Not user-facing.
+  version: 0.1.0
+servers:
+  - url: http://localhost:3001
+
+paths:
+  /internal/validate-key:
+    post:
+      summary: Look up a user by SSH key fingerprint
+      security:
+        - internalToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValidateKeyRequest'
+      responses:
+        '200':
+          description: Key is known
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidateKeyResponse'
+        '404':
+          description: Key not found — caller should treat the connection as anonymous
+
+  /internal/usage:
+    post:
+      summary: Report bytes transferred for a tunnel (stub — log only for now)
+      security:
+        - internalToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UsageEvent'
+      responses:
+        '204':
+          description: Accepted
+
+components:
+  securitySchemes:
+    internalToken:
+      type: apiKey
+      in: header
+      name: X-Internal-Token
+  schemas:
+    ValidateKeyRequest:
+      type: object
+      required: [fingerprint]
+      properties:
+        fingerprint:
+          type: string
+    ValidateKeyResponse:
+      type: object
+      required: [userId, allowedSubdomain, plan]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        allowedSubdomain:
+          type: string
+          description: >
+            The single reserved subdomain this user's default plan allows.
+            See the plan's design note on KeyValidator's single
+            allowedSubdomain field — this contract needs to grow if a future
+            plan allows more than one reserved subdomain per account.
+        plan:
+          type: string
+          description: Plan slug (e.g. "free", "pro") — not a numeric limit.
+    UsageEvent:
+      type: object
+      required: [tunnelId, bytesTransferred, timestamp]
+      properties:
+        tunnelId:
+          type: string
+          format: uuid
+        bytesTransferred:
+          type: integer
+          format: int64
+        timestamp:
+          type: string
+          format: date-time

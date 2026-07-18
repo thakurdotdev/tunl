@@ -1,0 +1,14 @@
+services:
+  tunneld:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "2222:2222"
+      - "8080:8080"
+      - "9090:9090"
+    env_file: .env
+    volumes:
+      - ssh-host-key:/data/ssh
+
+volumes:
+  ssh-host-key:

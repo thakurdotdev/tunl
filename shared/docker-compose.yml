@@ -1,0 +1,70 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: tunnel
+      POSTGRES_PASSWORD: tunnel
+      POSTGRES_DB: tunnel_saas
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ../control-plane/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tunnel"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    # Not used yet — Redis / multi-instance registry is explicitly out of
+    # scope for this phase (plan section 1.4 / 6). Included here so the
+    # compose file doesn't need edits when that work starts.
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  tunnel-server:
+    build:
+      context: ../tunnel-server
+    env_file:
+      - ../tunnel-server/.env.example
+    environment:
+      CONTROL_PLANE_URL: http://control-plane:3001
+    ports:
+      - "2222:2222"
+      - "8080:8080"
+      - "8443:8443"
+      - "9090:9090"
+    depends_on:
+      - control-plane
+
+  control-plane:
+    build:
+      context: ../control-plane
+    env_file:
+      - ../control-plane/.env.example
+    environment:
+      DATABASE_URL: postgres://tunnel:tunnel@postgres:5432/tunnel_saas
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  dashboard:
+    build:
+      context: ../dashboard
+    env_file:
+      - ../dashboard/.env.example
+    environment:
+      NEXT_PUBLIC_CONTROL_PLANE_URL: http://localhost:3001
+    ports:
+      - "3000:3000"
+    depends_on:
+      - control-plane
+
+volumes:
+  postgres-data:
