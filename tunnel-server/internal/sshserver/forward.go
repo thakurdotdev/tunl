@@ -78,6 +78,6 @@ func (s *Server) handleForwardRequest(ctx context.Context, req *ssh.Request, ses
 
 	// The URL is written to the client's terminal via the session channel,
 	// not here — see handleSessionChannel in server.go.
-	sess.tunnelURL = fmt.Sprintf("http://%s.%s", sub, s.baseDomain)
+	sess.tunnelURL = fmt.Sprintf("%s://%s.%s", s.tunnelScheme, sub, s.baseDomain)
 	sess.markReady()
 }

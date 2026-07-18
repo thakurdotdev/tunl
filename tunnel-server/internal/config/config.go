@@ -15,6 +15,11 @@ type Config struct {
 	// BaseDomain is the root domain tunnels are issued under, e.g. "tunl.dev".
 	BaseDomain string
 
+	// TunnelURLScheme is "https" (default) or "http", used when generating the
+	// tunnel URL shown to the user. Use "https" when Cloudflare/reverse-proxy
+	// terminates TLS in front of the tunnel server.
+	TunnelURLScheme string
+
 	// SSHListenAddr is where the tunnel SSH server listens.
 	// NOT port 22 — that's your own admin SSH. See plan's port-choice design note.
 	SSHListenAddr string
@@ -54,6 +59,7 @@ type Config struct {
 func Load() (*Config, error) {
 	cfg := &Config{
 		BaseDomain:           getEnv("BASE_DOMAIN", "tunl.dev"),
+		TunnelURLScheme:      getEnv("TUNNEL_URL_SCHEME", "https"),
 		SSHListenAddr:        getEnv("SSH_LISTEN_ADDR", ":2222"),
 		HTTPListenAddr:       getEnv("HTTP_LISTEN_ADDR", ":8080"),
 		HTTPSListenAddr:      getEnv("HTTPS_LISTEN_ADDR", ":8443"),

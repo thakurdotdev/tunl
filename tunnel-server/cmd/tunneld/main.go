@@ -48,6 +48,7 @@ func main() {
 	sshSrv := sshserver.New(sshserver.Options{
 		ListenAddr:       cfg.SSHListenAddr,
 		BaseDomain:       cfg.BaseDomain,
+		URLScheme:        cfg.TunnelURLScheme,
 		Registry:         reg,
 		SubdomainRetries: cfg.SubdomainRetries,
 		HostKey:          hostKey,

@@ -15,6 +15,7 @@ import (
 type Server struct {
 	listenAddr   string
 	baseDomain   string
+	tunnelScheme string
 	registry     registry.TunnelRegistry
 	keyValidator KeyValidator
 	subdomainMax int
@@ -25,6 +26,7 @@ type Server struct {
 type Options struct {
 	ListenAddr       string
 	BaseDomain       string
+	URLScheme        string
 	Registry         registry.TunnelRegistry
 	KeyValidator     KeyValidator
 	SubdomainRetries int
@@ -43,9 +45,15 @@ func New(opts Options) *Server {
 		kv = anonymousKeyValidator{}
 	}
 
+	scheme := opts.URLScheme
+	if scheme == "" {
+		scheme = "https"
+	}
+
 	return &Server{
 		listenAddr:   opts.ListenAddr,
 		baseDomain:   opts.BaseDomain,
+		tunnelScheme: scheme,
 		registry:     opts.Registry,
 		keyValidator: kv,
 		subdomainMax: opts.SubdomainRetries,
@@ -156,15 +164,8 @@ func (s *Server) handleSessionChannel(newCh ssh.NewChannel, sess *sshSession, lo
 
 	go func() {
 		for req := range reqs {
-			switch req.Type {
-			case "pty-req", "shell":
-				if req.WantReply {
-					req.Reply(true, nil)
-				}
-			default:
-				if req.WantReply {
-					req.Reply(false, nil)
-				}
+			if req.WantReply {
+				req.Reply(true, nil)
 			}
 		}
 	}()
