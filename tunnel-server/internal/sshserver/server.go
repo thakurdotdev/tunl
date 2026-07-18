@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 
@@ -170,9 +171,13 @@ func (s *Server) handleSessionChannel(newCh ssh.NewChannel, sess *sshSession, lo
 		}
 	}()
 
-	// Block until the tunnel URL is set by handleForwardRequest.
-	// Both the tcpip-forward request and the session channel open happen
-	// concurrently — the client may open the session channel first.
+	// Drain stdin so the client doesn't block when typing (e.g. Ctrl+C).
+	// When the client disconnects, this returns and we close the session.
+	go func() {
+		io.Copy(io.Discard, ch)
+		sess.Close()
+	}()
+
 	<-sess.tunnelReady()
 	if sess.tunnelURL != "" {
 		fmt.Fprintf(ch, "\r\nTunnel active: %s\r\n", sess.tunnelURL)
@@ -180,7 +185,6 @@ func (s *Server) handleSessionChannel(newCh ssh.NewChannel, sess *sshSession, lo
 		fmt.Fprintf(ch, "Press Ctrl+C to close the tunnel.\r\n\r\n")
 	}
 
-	// Keep the channel open until the SSH connection dies.
 	<-sess.Done()
 }
 
