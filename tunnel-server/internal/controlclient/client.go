@@ -41,7 +41,7 @@ func New(opts Options) *Client {
 
 type validateKeyResponse struct {
 	UserID           string `json:"userId"`
-	AllowedSubdomain string `json:"allowedSubdomain"`
+	AllowedSubdomain *string `json:"allowedSubdomain"`
 	Plan             string `json:"plan"`
 }
 
@@ -53,7 +53,7 @@ type validateKeyResponse struct {
 func (c *Client) ValidateKey(ctx context.Context, fingerprint string) (userID, allowedSubdomain, plan string, ok bool) {
 	if v, hit := c.cache.get(fingerprint); hit {
 		r := v.(validateKeyResponse)
-		return r.UserID, r.AllowedSubdomain, r.Plan, true
+		return r.UserID, optionalSubdomain(r.AllowedSubdomain), r.Plan, true
 	}
 
 	body, _ := json.Marshal(map[string]string{"fingerprint": fingerprint})
@@ -83,7 +83,14 @@ func (c *Client) ValidateKey(ctx context.Context, fingerprint string) (userID, a
 		return "", "", "", false
 	}
 	c.cache.set(fingerprint, r)
-	return r.UserID, r.AllowedSubdomain, r.Plan, true
+	return r.UserID, optionalSubdomain(r.AllowedSubdomain), r.Plan, true
+}
+
+func optionalSubdomain(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
 }
 
 type usageEvent struct {

@@ -7,8 +7,9 @@ Three independently-runnable services, one Postgres database:
   through the SSH connection to the user's local app. No persistent state of
   its own beyond an in-memory registry; calls the control plane's internal
   API to validate SSH keys and report usage.
-- **`control-plane`** (NestJS) — owns Postgres: users, plans, SSH keys,
-  reserved subdomains. Exposes a user-facing REST API (auth, keys, tunnels)
+- **`control-plane`** (Express + Drizzle) — owns Postgres: users, plans, SSH keys,
+  reserved subdomains. It uses Redis for distributed authentication rate limits;
+  every Redis key is namespaced under `tunl:control-plane:`. Exposes a user-facing REST API (auth, keys, tunnels)
   and a separate shared-secret-guarded internal API that only `tunnel-server`
   calls.
 - **`dashboard`** (Next.js) — talks only to `control-plane`'s public API.

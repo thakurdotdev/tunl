@@ -4,7 +4,7 @@
 
 **Scale target for now:** single instance per service, no horizontal scaling, no multi-region. Optimize for clean modular code and testability, not throughput. Assume dozens of concurrent tunnels, not thousands.
 
-**Stack:** Go (tunnel core) · NestJS + TypeScript + Postgres (control plane) · Next.js + TypeScript (dashboard)
+**Stack:** Go (tunnel core) · Express 5 + TypeScript + Drizzle ORM + PostgreSQL (control plane) · Next.js + TypeScript (dashboard)
 
 ---
 
@@ -15,10 +15,10 @@ Monorepo, three top-level services plus shared contracts:
 ```
 /tunnel-saas
   /tunnel-server        (Go)
-  /control-plane         (NestJS)
+  /control-plane         (Express + TypeScript + Drizzle)
   /dashboard             (Next.js)
   /shared
-    openapi.yaml          # contract between Go <-> Nest internal API
+    openapi.yaml          # contract between Go <-> control-plane internal API
     docker-compose.yml     # postgres, redis, all 3 services for local dev
   /docs
     architecture.md
@@ -30,7 +30,7 @@ Each service is independently runnable. `docker-compose up` should bring up Post
 
 ## 1. Module: Go tunnel server (`/tunnel-server`)
 
-This is the highest-risk, least-familiar module — build and test it first, in isolation, before wiring in NestJS.
+This is the highest-risk, least-familiar module — build and test it first, in isolation, before wiring in the control plane.
 
 ### 1.1 Package layout
 
@@ -50,7 +50,7 @@ This is the highest-risk, least-familiar module — build and test it first, in 
     proxy.go                    # net/http + httputil.ReverseProxy, Host header routing
     websocket.go                 # Upgrade detection + Hijack-based splice for WS
     tls.go                      # cert loading (single wildcard cert file; ACME later)
-  /internal/controlclient      # thin HTTP client to call NestJS internal API, with built-in TTL cache
+  /internal/controlclient      # thin HTTP client to call the control-plane internal API, with built-in TTL cache
     client.go                   # ValidateKey(ctx, fingerprint) (*User, error), ReportUsage(ctx, ...)
     cache.go                     # TTL cache wrapping ValidateKey — implementation detail, not its own package
   /internal/config
@@ -122,11 +122,11 @@ Defining these as interfaces up front means the Go agent (Claude Code / Codex) c
 1. **`internal/config`** — env-based config struct (SSH listen port — distinct from the host's admin SSH port — HTTP/HTTPS listen ports, wildcard cert paths, control-plane URL, internal shared secret, cache TTL). Load this before anything else in `main.go`.
 2. **`internal/logging`** — set up `log/slog` with a standard field set (`session_id`, `subdomain`, `user_id`, `remote_ip`, `request_id`) initialized right after config, so every other package can assume a logger already exists.
 3. **`internal/registry`** — in-memory `Tunnel` registry with `Register`/`Lookup`/`UpdateActivity`/`Unregister`/`MarkDisconnected`, plus `ActiveCount`/`AnonymousCount`/`ReservedCount` for the metrics endpoint to read directly (no separate counters to keep in sync). Thread-safe. Unit tests: duplicate registration fails, lookup after unregister returns false, `MarkDisconnected` + reconnect within the grace window cancels removal, counts stay correct under concurrent register/unregister/lookup via `go test -race`.
-4. **`internal/sshserver`** — stand up an `ssh.ServerConfig` that accepts anonymous connections only for now (permissive `PublicKeyCallback`/`NoClientAuth` — real key validation comes in step 8/section 4). Handle the `tcpip-forward` global request: generate a short random subdomain (`crypto/rand` → base32, 6-8 chars, e.g. `x7k8m2.tunl.dev`), register it in the `TunnelRegistry`, **retrying generation a small fixed number of times (e.g. 5) on a `Register` collision before giving up** — collisions are rare at this length but the retry is one line and removes a class of intermittent connection failures. Reply success, print the assigned URL back to the SSH client's terminal. Implement `session.go`'s `sshSession` type against the `TunnelConnection` interface.
-5. **`internal/sshserver/channel.go`** — implement opening a forwarded channel back to the client when a public request arrives (`Dial(ctx, ...)`), per the `x/crypto/ssh` server-side port forwarding pattern (`channelOpenForwardMsg`). On session close, call `MarkDisconnected` rather than `Unregister` directly.
-6. **`internal/httpproxy`** — build this on `net/http` + `httputil.ReverseProxy`, **not** raw TCP splicing. Parse the `Host` header normally, look up the `Tunnel` in the registry, and give the `ReverseProxy` a custom `Transport` whose `DialContext` calls `Tunnel.Conn.Dial(ctx, ...)` instead of a real TCP dial — apply a per-request timeout on that `ctx`. This gets proper HTTP semantics (keep-alive, chunked encoding, header rewriting, per-request logging) for free. Add `internal/httpproxy/websocket.go` as a separate path: detect the `Upgrade: websocket` header before handing off to the reverse proxy, and for those requests `Hijack()` the connection and splice raw bytes over a dialed connection instead.
+4. **`internal/sshserver`** — set `NoClientAuth` to false and use `PublicKeyCallback` for every connection: a known fingerprint receives permissions; an unknown but well-formed public key is accepted as anonymous. This is the required SSH-protocol trade-off: anonymous users must still offer a public key (the normal OpenSSH default), because accepting `none` authentication causes the client never to offer its key. Handle one `tcpip-forward` request per session; only accept the documented tunnel port (or port `0` if dynamic allocation is later supported), reject a second request, and on failure leave no registry entry behind. Generate a short random subdomain (`crypto/rand` → base32, 6-8 chars, e.g. `x7k8m2.tunl.dev`), register it in the `TunnelRegistry`, **retrying generation a small fixed number of times (e.g. 5) on a `Register` collision before giving up**. Protect all mutable `sshSession` fields with a mutex or confine them to one goroutine; add race tests that exercise forwarding, cancellation, and proxy dials concurrently. Reply success, print the assigned URL back to the SSH client's terminal. Implement `session.go`'s `sshSession` type against the `TunnelConnection` interface.
+5. **`internal/sshserver/channel.go`** — implement opening a forwarded channel back to the client when a public request arrives (`Dial(ctx, ...)`), per the `x/crypto/ssh` server-side port forwarding pattern (`channelOpenForwardMsg`). On session close, call `MarkDisconnected` rather than `Unregister` directly. A reconnect must explicitly reclaim the same authorized reserved subdomain and call `UpdateActivity`; anonymous tunnels receive a new name rather than pretending the grace window supports reconnects.
+6. **`internal/httpproxy`** — build this on `net/http` + `httputil.ReverseProxy`, **not** raw TCP splicing. Normalize and safely parse the `Host` header, look up the `Tunnel` in the registry, reject a disconnected connection with `503`, and give the `ReverseProxy` a custom `Transport` whose `DialContext` calls `Tunnel.Conn.Dial(ctx, ...)` instead of a real TCP dial — apply a per-request timeout on that `ctx`. `httputil.ReverseProxy` already supports HTTP upgrades, including WebSockets; keep this as the single path rather than maintaining a custom `Hijack` splice implementation.
 7. **`internal/tls.go`** — load a single wildcard cert/key pair from disk (env var paths) for `*.tunl.dev`. ACME automation is explicitly out of scope for now.
-8. **`internal/controlclient`** — `client.go` with `ValidateKey(ctx, fingerprint)` and `ReportUsage(ctx, ...)` calling the NestJS internal API; `cache.go` wraps `ValidateKey` with a TTL map (TTL from config, default 5 minutes) so `sshserver/auth.go` isn't hitting NestJS on every connection. One package — the cache is an implementation detail, not a separate module.
+8. **`internal/controlclient`** — `client.go` with `ValidateKey(ctx, fingerprint)` and `ReportUsage(ctx, ...)` calling the Express internal API; `cache.go` wraps `ValidateKey` with a TTL map (TTL from config, default 5 minutes) so `sshserver/auth.go` isn't hitting the control plane on every connection. One package — the cache is an implementation detail, not a separate module.
 9. **`internal/health`** — `/health` (liveness), `/ready` (readiness), `/metrics` (Prometheus via `client_golang`, reading `ActiveCount`/`AnonymousCount`/`ReservedCount` from the registry plus connection/byte counters).
 10. **Wire `cmd/tunneld/main.go`** — config → logging → registry → sshserver/httpproxy/controlclient/health, in that order. Graceful shutdown on SIGTERM cancels the root `context.Context`, which propagates to in-flight `Dial` calls and control-plane requests.
 11. **Manual end-to-end test**: run a local HTTP server on `:3000`, `ssh -R 80:localhost:3000 -p 2222 localhost`, hit the assigned subdomain, confirm response comes through, including a WebSocket echo test if the local app supports it.
@@ -136,32 +136,33 @@ Defining these as interfaces up front means the Go agent (Claude Code / Codex) c
 - ACME automation
 - TCP (non-HTTP) tunnel support — the `TunnelConnection` abstraction leaves room for this later without a registry/httpproxy rewrite, but don't build it now
 - Authenticated tier / key validation against real accounts (stub `KeyValidator` to always return anonymous for now — section 4's step 8 wires the real call in behind the cache built here)
-- Usage metering to NestJS (log locally for now)
+- Usage metering to the control plane (log locally for now)
 - Per-IP / global anonymous-connection rate limiting (see section 6 — worth doing before any public launch, but not blocking initial development)
 
 ---
 
-## 2. Module: NestJS control plane (`/control-plane`)
+## 2. Module: Express control plane (`/control-plane`)
 
 Don't start this until the Go server's anonymous flow works end-to-end. Build it in this module order:
 
-### 2.1 Module layout
+### 2.1 Application layout
 
 ```
-/control-plane/src
-  /auth            # signup/login, JWT, session
-  /users           # user profile
-  /ssh-keys        # add/remove/list public keys, fingerprint lookup
-  /tunnels         # reserved subdomain requests
-  /billing         # Stripe integration (Phase 3, stub for now)
-  /usage           # ingest usage events (Phase 3, stub for now)
-  /internal        # endpoints only the Go server calls (not user-facing)
-    internal.controller.ts   # POST /internal/validate-key, POST /internal/usage
-  app.module.ts
-  main.ts
+/control-plane
+  /src
+    index.ts                 # Express app composition, middleware, listener
+    /db
+      client.ts              # postgres.js client + Drizzle database factory
+      schema.ts              # Drizzle tables, enums, indexes, constraints
+    /middleware              # auth and internal-token middleware
+    /routes                  # Express routers: auth, users, ssh-keys, tunnels, internal
+    /services                # business logic; routers remain thin
+    /lib                     # JWT, password, SSH-key parsing helpers
+  /drizzle                   # generated SQL migrations and migration metadata
+  drizzle.config.ts
 ```
 
-Standard Nest conventions: each folder is a Nest module with its own `*.module.ts`, `*.controller.ts`, `*.service.ts`, and a `*.entity.ts` or Prisma/TypeORM model. Use whichever ORM you're already comfortable with (TypeORM given your existing stack) — keep entities thin, business logic in services, controllers thin.
+Use Express routers for HTTP boundaries, service functions for business rules, and Drizzle queries in the service/repository layer. Keep `schema.ts` as the source of truth; create and review SQL with `pnpm db:generate`, then apply it with `pnpm db:migrate`. Do not use schema push or runtime auto-migration.
 
 ### 2.2 Postgres schema (v1)
 
@@ -222,7 +223,7 @@ CREATE INDEX tunnels_user_id_idx ON tunnels (user_id);
 What changed from a first-pass version of this schema, and why:
 - **`users.plan_id`** was missing entirely — `plans.max_reserved_subdomains` had nothing linking a user to a plan, so "check plan limits" (section 2.4) had no plan to check against. Every user now gets a `plan_id`, defaulted at signup via `plans.is_default`.
 - **`plans.is_default`** plus the partial unique index gives signup a deterministic way to find the default plan without hardcoding a UUID or name string in application code.
-- **`updated_at`** added to `users` and `tunnels` (the two tables whose rows actually get mutated after creation — `ssh_keys` and `plans` rows are effectively immutable once created, so left without one). Have the ORM (TypeORM's `@UpdateDateColumn`) manage it rather than a Postgres trigger, to keep logic in the app layer.
+- **`updated_at`** added to `users` and `tunnels` (the two tables whose rows actually get mutated after creation — `ssh_keys` and `plans` rows are effectively immutable once created, so left without one). Drizzle does not create auto-update triggers: each update query must explicitly set `updatedAt: new Date()`.
 - **`CHECK` constraints** replace the free-text-with-a-comment approach for `tunnels.status` (was just a comment saying "reserved | active | inactive" with nothing enforcing it) and added one for `subdomain` format, since the Go server's generated subdomains and user-chosen ones both need to satisfy the same shape.
 - **Explicit indexes on foreign keys** (`ssh_keys.user_id`, `tunnels.user_id`) — Postgres does not automatically index foreign key columns the way it does `UNIQUE` columns, so without these, "list my tunnels" and the cascade delete on user removal both do a sequential scan as the tables grow.
 - **Case-insensitive email uniqueness** via a functional index on `lower(email)`, so `Alice@x.com` and `alice@x.com` can't both sign up.
@@ -230,7 +231,7 @@ What changed from a first-pass version of this schema, and why:
 - **`ssh_keys.label`** changed from nullable to `NOT NULL DEFAULT ''` — a nullable label just pushes a "handle null" check into the dashboard for no benefit.
 - Explicitly deferred, not included here: `usage_records`, `subscriptions` (Phase 3 / billing).
 
-### 2.3 Internal API (Go -> Nest contract)
+### 2.3 Internal API (Go -> Express contract)
 
 Define this in `/shared/openapi.yaml` so both sides can generate types from it, or just hand-write matching DTOs on each side for v1 given the small surface:
 
@@ -239,16 +240,16 @@ Define this in `/shared/openapi.yaml` so both sides can generate types from it, 
 
 Secure this internal API with a shared secret header (`X-Internal-Token`), not user JWTs — the Go server is a trusted service, not an end user.
 
-**Design note on `plan` vs. numeric limits:** `validate-key` returns the plan **slug** (`"free"`, `"pro"`, etc.), not `maxReservedSubdomains` or any other numeric limit. The only place a reservation limit gets enforced is Nest's `POST /tunnels` handler (section 2.4, task 4) — that's where the plan's `max_reserved_subdomains` is checked against the caller's current tunnel count. The Go server has no code path today that needs to make a limit-based decision, so it doesn't get limit data; giving it the slug instead keeps the door open for future plan-based behavior in Go (e.g. per-tier idle timeouts) without duplicating enforcement logic in two languages. This response is also cached for up to `cacheTTL` (controlclient/cache.go) — fine for a subdomain or a plan slug that changes rarely, but a reason never to route real-time limit enforcement through this endpoint.
+**Design note on `plan` vs. numeric limits:** `validate-key` returns the plan **slug** (`"free"`, `"pro"`, etc.), not `maxReservedSubdomains` or any other numeric limit. The only place a reservation limit gets enforced is Express's `POST /tunnels` handler (section 2.4, task 4) — that's where the plan's `max_reserved_subdomains` is checked against the caller's current tunnel count. The Go server has no code path today that needs to make a limit-based decision, so it doesn't get limit data; giving it the slug instead keeps the door open for future plan-based behavior in Go (e.g. per-tier idle timeouts) without duplicating enforcement logic in two languages. This response is also cached for up to `cacheTTL` (controlclient/cache.go) — fine for a subdomain or a plan slug that changes rarely, but a reason never to route real-time limit enforcement through this endpoint.
 
 ### 2.4 Task breakdown
 
-1. **Auth module** — email/password signup + login, JWT issuance, standard Nest guard setup. Signup assigns `plan_id` by looking up the plan where `is_default = true`. Tests: signup creates user with the default plan, login returns valid JWT, protected route rejects missing/invalid token.
-2. **Users module** — `GET /me` returns profile including plan name and `max_reserved_subdomains`.
-3. **SSH keys module** — `POST /ssh-keys` (validate it's a well-formed public key, compute fingerprint server-side, store), `GET /ssh-keys`, `DELETE /ssh-keys/:id`. Tests: duplicate fingerprint rejected, malformed key rejected, fingerprint computed correctly against a known test vector.
-4. **Tunnels module** — `POST /tunnels` (reserve a subdomain, check the caller's plan's `max_reserved_subdomains` against their current tunnel count before inserting), `GET /tunnels`, `DELETE /tunnels/:id`.
-5. **Internal module** — the two endpoints above, guarded by shared-secret header, calling into `ssh-keys` and `usage` services.
-6. **Wire config** — `.env` for DB connection, JWT secret, internal shared secret, seed migration that inserts the one default plan row.
+1. **Database and Redis first** — define the v1 schema in `src/db/schema.ts`, generate the reviewed initial SQL migration with `pnpm db:generate`, and add a seed script/migration for exactly one default plan. `.env` supplies `DATABASE_URL`, `REDIS_URL`, JWT secret, and internal shared secret. Keep all Redis key construction in one module under the `tunl:control-plane:` namespace; use it for distributed auth rate limits, not persistent system-of-record data.
+2. **Auth router/service** — signup creates an unverified account and sends a Resend verification email containing a random, hashed, single-use token that expires in 24 hours. Login is blocked until verification succeeds. Add generic-response resend-verification, forgot-password, and reset-password endpoints; reset tokens follow the same hashed/expiry/single-use model. Hash passwords with Argon2id, issue one-hour JWTs only after verified login, rate-limit every unauthenticated auth route, and use Helmet plus a stable error envelope. `requireAuth` validates bearer tokens. Signup assigns `plan_id` by querying the one plan where `is_default = true`. `.env` also supplies `RESEND_API_KEY`, a verified `EMAIL_FROM`, and `DASHBOARD_URL` for links. Tests: token single use/expiry, default-plan assignment, valid login token, protected route rejects missing/invalid token, and rate-limit behavior.
+3. **Users router/service** — `GET /me` returns profile including plan name and `max_reserved_subdomains` via a Drizzle join.
+4. **SSH keys router/service** — `POST /ssh-keys` validates and parses an OpenSSH public key, computes its SHA256 fingerprint server-side, then stores it; `GET /ssh-keys`; `DELETE /ssh-keys/:id`. Tests: duplicate fingerprint rejected, malformed key rejected, known key fingerprint matches OpenSSH.
+5. **Tunnels router/service** — `POST /tunnels` reserves a subdomain inside a transaction: read the caller's plan limit, count active reservations, then insert; `GET /tunnels`; `DELETE /tunnels/:id`. Map unique-constraint violations to `409`. Tests include plan-limit enforcement and concurrent reservation attempts.
+6. **Internal router** — `POST /internal/validate-key` and `POST /internal/usage`, protected by constant-time comparison of `X-Internal-Token`; the validator joins `ssh_keys`, `users`, `plans`, and the user's reserved tunnel.
 
 ### 2.5 What to explicitly defer
 - Billing module — build the folder and a no-op service now so the shape exists, implement Stripe in Phase 3
@@ -278,7 +279,7 @@ Build last, once both backends have working endpoints to hit.
 ```
 
 ### 3.2 Task breakdown
-1. Auth pages calling the NestJS `auth` module, storing JWT (httpOnly cookie via a Next.js route handler, not localStorage).
+1. Auth pages calling the Express `auth` routes, storing JWT (httpOnly cookie via a Next.js route handler, not localStorage).
 2. Dashboard page: list reserved tunnels, form to reserve a new subdomain, show the exact `ssh -R ...` command the user should run (this is the key "aha" moment of the product — make it copy-pasteable and correct).
 3. Keys page: paste a public key, label it, list existing keys with fingerprints, delete.
 4. No live traffic/status view yet — that needs the usage/websocket pipeline from Phase 3+.
@@ -297,10 +298,10 @@ Work through these as separate sessions/PRs, each with its own tests passing bef
 6. Go: `controlclient` (with built-in cache) — stub `KeyValidator` to always return anonymous for now
 7. Go: `health` — `/health`, `/ready`, `/metrics` reading from the registry
 8. Go: `cmd/tunneld/main.go` — wire config → logging → registry → sshserver/httpproxy/controlclient/health, graceful shutdown
-9. Nest: `auth` + `users` modules + tests (including default-plan assignment)
-10. Nest: `ssh-keys` module + tests
-11. Nest: `tunnels` module + tests (including plan-limit enforcement)
-12. Nest: `internal` endpoints + shared-secret guard
+9. Express + Drizzle: schema, initial migration, seed/default plan, and database test setup
+10. Express: `auth` + `users` routers/services + tests (including default-plan assignment)
+11. Express: `ssh-keys` and `tunnels` routers/services + tests (including plan-limit enforcement)
+12. Express: `internal` router + shared-secret middleware
 13. Go: wire `controlclient.ValidateKey` to actually call `POST /internal/validate-key` instead of the anonymous stub; gate reserved subdomains behind a real lookup
 14. Dashboard: auth pages
 15. Dashboard: keys page
@@ -309,7 +310,7 @@ Work through these as separate sessions/PRs, each with its own tests passing bef
 
 ## 5. Testing conventions to hand the agent
 - Go: table-driven tests, `go test -race` for anything touching the registry or shared connection state, no live network calls in unit tests — fake the `TunnelConnection` interface
-- Nest: standard `@nestjs/testing` module tests per service, mock the repository layer, at least one e2e test per module hitting a real test Postgres (via `docker-compose` test profile or testcontainers)
+- Control plane: route/service tests with dependency-injected database fakes where useful, plus integration tests against a real PostgreSQL database with generated Drizzle migrations (via a Compose test profile or Testcontainers)
 - Dashboard: skip heavy test infra for v1, rely on manual QA — add Playwright later if it becomes worth it
 
 ## 6. Explicitly out of scope for this phase

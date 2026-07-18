@@ -1,0 +1,1 @@
+ALTER TABLE "tunnels" ADD CONSTRAINT "tunnels_subdomain_format_check" CHECK ("tunnels"."subdomain" ~ '^[a-z0-9-]{3,63}$');

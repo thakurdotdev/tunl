@@ -1,0 +1,15 @@
+{
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/.next/**",
+    "**/coverage/**",
+    "**/drizzle/**"
+  ],
+  "tabWidth": 2,
+  "sortTailwindcss": true,
+  "useTabs": false,
+  "semi": true,
+  "singleQuote": false,
+  "trailingComma": "all"
+}
