@@ -1,21 +1,22 @@
 # syntax=docker/dockerfile:1
 FROM node:22-alpine AS build
 WORKDIR /app
-RUN corepack enable && corepack prepare pnpm@latest --activate
-COPY package.json pnpm-lock.yaml* ./
-RUN pnpm approve-builds --all || true
-RUN pnpm install
-COPY . .
-RUN pnpm run build
+RUN corepack enable
+
+# cache-friendly: only manifests first
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY control-plane/package.json control-plane/package.json
+COPY dashboard/package.json dashboard/package.json
+RUN pnpm install --frozen-lockfile --filter control-plane...
+
+COPY control-plane control-plane
+RUN pnpm --filter control-plane run build
+RUN pnpm --filter control-plane --prod deploy --legacy /prod/control-plane
 
 FROM node:22-alpine
 WORKDIR /app
 ENV NODE_ENV=production
-RUN corepack enable && corepack prepare pnpm@latest --activate
-COPY --from=build /app/dist ./dist
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/drizzle ./drizzle
-COPY --from=build /app/drizzle.config.ts ./drizzle.config.ts
-COPY package.json ./
+RUN npm install -g pnpm@11.15.0
+COPY --from=build /prod/control-plane .
 EXPOSE 3001
 CMD ["pnpm", "start"]

@@ -28,7 +28,8 @@ services:
 
   control-plane:
     build:
-      context: ../control-plane
+      context: ..
+      dockerfile: control-plane/Dockerfile
     restart: unless-stopped
     ports:
       - "127.0.0.1:${CONTROL_PLANE_PORT:-3091}:3001"
@@ -48,7 +49,8 @@ services:
 
   dashboard:
     build:
-      context: ../dashboard
+      context: ..
+      dockerfile: dashboard/Dockerfile
       args:
         NEXT_PUBLIC_CONTROL_PLANE_URL: /api
     restart: unless-stopped
