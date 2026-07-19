@@ -1,9 +1,9 @@
-import { createHash, randomBytes } from "node:crypto";
 import { and, eq, gt, isNull } from "drizzle-orm";
+import { createHash, randomBytes } from "node:crypto";
 import type { Database } from "../../db/client.js";
 import { accountTokens, plans, users } from "../../db/schema.js";
-import { badRequest, notFound, unauthorized, forbidden } from "../../platform/errors.js";
 import { hashPassword, verifyPassword } from "../../lib/password.js";
+import { AppError, badRequest, conflict, notFound, unauthorized } from "../../platform/errors.js";
 
 export type PublicUser = {
   id: string;
@@ -77,10 +77,7 @@ export async function signup(
 ): Promise<{ verificationToken?: string }> {
   const normalized = normalizeEmail(email);
   const existing = await getUserByEmail(db, normalized);
-  if (existing)
-    return existing.emailVerifiedAt
-      ? {}
-      : { verificationToken: await issueToken(db, existing.id, "email_verification") };
+  if (existing) throw conflict("An account with this email already exists");
   const [defaultPlan] = await db.select().from(plans).where(eq(plans.isDefault, true)).limit(1);
   if (!defaultPlan) throw new Error("default plan is not seeded");
   try {
@@ -94,7 +91,7 @@ export async function signup(
       .returning({ id: users.id });
     return { verificationToken: await issueToken(db, user.id, "email_verification") };
   } catch (error) {
-    if (isUniqueViolation(error)) return {};
+    if (isUniqueViolation(error)) throw conflict("An account with this email already exists");
     throw error;
   }
 }
@@ -103,7 +100,8 @@ export async function login(db: Database, email: string, password: string): Prom
   const row = await getUserByEmail(db, email);
   if (!row?.passwordHash || !(await verifyPassword(row.passwordHash, password)))
     throw unauthorized();
-  if (!row.emailVerifiedAt) throw forbidden("email verification is required before login");
+  if (!row.emailVerifiedAt)
+    throw new AppError(403, "email_not_verified", "Your email address is not verified. Please check your inbox or request a new verification link.");
   return publicUser(row);
 }
 

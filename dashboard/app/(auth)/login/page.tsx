@@ -1,18 +1,19 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
+import { useResendVerificationMutation } from "@/hooks/use-auth";
 import { ApiClientError } from "@/lib/api-client";
+import { useAuth } from "@/lib/auth-context";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import * as z from "zod";
 
 const loginSchema = z.object({
   email: z.email("Please enter a valid email address").max(320),
@@ -26,6 +27,9 @@ export default function LoginPage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
+
+  const resendMutation = useResendVerificationMutation();
 
   const {
     register,
@@ -41,19 +45,44 @@ export default function LoginPage() {
 
   const onSubmit = async (values: LoginFormValues) => {
     setIsSubmitting(true);
+    setUnverifiedEmail(null);
     try {
       await login(values.email, values.password);
       toast.success("Welcome back!");
       router.push("/dashboard");
     } catch (err) {
       if (err instanceof ApiClientError) {
-        toast.error(err.message);
+        if (
+          err.code === "email_not_verified" ||
+          (err.status === 403 && err.message.toLowerCase().includes("verification"))
+        ) {
+          setUnverifiedEmail(values.email);
+          toast.error("Email verification is required before signing in.");
+        } else {
+          toast.error(err.message);
+        }
       } else {
         toast.error("Failed to sign in. Please try again.");
       }
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleResend = () => {
+    if (!unverifiedEmail) return;
+    resendMutation.mutate(unverifiedEmail, {
+      onSuccess: () => {
+        toast.success("Verification link sent! Please check your inbox.");
+      },
+      onError: (err) => {
+        if (err instanceof ApiClientError) {
+          toast.error(err.message);
+        } else {
+          toast.error("Failed to resend verification email.");
+        }
+      },
+    });
   };
 
   return (
@@ -64,6 +93,25 @@ export default function LoginPage() {
           Enter your email and password to access your dashboard.
         </p>
       </div>
+
+      {unverifiedEmail && (
+        <div className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm dark:border-amber-900/50 dark:bg-amber-950/30">
+          <p className="text-amber-900 dark:text-amber-200">
+            Your email address (<strong>{unverifiedEmail}</strong>) is not verified. Please check
+            your inbox or resend the verification link.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleResend}
+            disabled={resendMutation.isPending}
+            className="w-full border-amber-300 bg-white text-amber-900 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-900/50 dark:text-amber-100 dark:hover:bg-amber-900"
+          >
+            {resendMutation.isPending ? "Sending link..." : "Resend verification email"}
+          </Button>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
@@ -80,15 +128,7 @@ export default function LoginPage() {
         </div>
 
         <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="password">Password</Label>
-            <Link
-              href="/forgot-password"
-              className="text-muted-foreground hover:text-foreground text-xs transition-colors"
-            >
-              Forgot password?
-            </Link>
-          </div>
+          <Label htmlFor="password">Password</Label>
           <div className="relative flex items-center">
             <Input
               id="password"
@@ -108,7 +148,19 @@ export default function LoginPage() {
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
-          {errors.password && <p className="text-destructive text-xs">{errors.password.message}</p>}
+          <div className="flex items-center justify-between">
+            {errors.password ? (
+              <p className="text-destructive text-xs">{errors.password.message}</p>
+            ) : (
+              <span />
+            )}
+            <Link
+              href="/forgot-password"
+              className="text-muted-foreground hover:text-foreground ml-auto text-xs transition-colors"
+            >
+              Forgot password?
+            </Link>
+          </div>
         </div>
 
         <Button type="submit" disabled={isSubmitting} className="mt-2 w-full">
