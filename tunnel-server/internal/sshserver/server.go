@@ -4,14 +4,36 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
-	"io"
 	"log/slog"
 	"net"
 	"sync"
+	"time"
 
 	"github.com/yourorg/tunnel-saas/tunnel-server/internal/logging"
 	"github.com/yourorg/tunnel-saas/tunnel-server/internal/registry"
 	"golang.org/x/crypto/ssh"
+)
+
+const (
+	// defaultMaxConnsPerIP is used when Options.MaxConnsPerIP is unset/invalid.
+	defaultMaxConnsPerIP = 10
+
+	// keepaliveInterval controls how often we ping the client and how often
+	// we expect TCP-level keepalive probes to fire.
+	keepaliveInterval = 15 * time.Second
+
+	// keepaliveSendTimeout bounds how long a single keepalive SendRequest is
+	// allowed to block on a half-dead connection before we give up on it.
+	keepaliveSendTimeout = 10 * time.Second
+
+	// acceptErrorBackoff is a small pause before retrying Accept() after a
+	// non-fatal error, to avoid a tight CPU-spinning loop under sustained
+	// accept failures (e.g. fd exhaustion).
+	acceptErrorBackoff = 100 * time.Millisecond
+
+	// sessionReadBufSize is the buffer size used when scanning session
+	// channel input for control characters (Ctrl+C / Ctrl+D).
+	sessionReadBufSize = 128
 )
 
 type connLimiter struct {
@@ -53,6 +75,13 @@ type Server struct {
 	sshConfig    *ssh.ServerConfig
 	limiter      *connLimiter
 	log          *slog.Logger
+
+	// sessMu/sessions track every live sshSession so that ListenAndServe
+	// can force-close them when ctx is cancelled. Without this, existing
+	// tunnels stayed open indefinitely after a shutdown signal, since
+	// cancelling ctx previously only stopped Accept()ing new connections.
+	sessMu   sync.Mutex
+	sessions map[string]*sshSession
 }
 
 type Options struct {
@@ -74,7 +103,7 @@ func New(opts Options) *Server {
 	}
 
 	cfg := &ssh.ServerConfig{
-		NoClientAuth:   false,
+		NoClientAuth:      false,
 		PublicKeyCallback: buildAuthCallback(kv),
 	}
 	cfg.AddHostKey(opts.HostKey)
@@ -86,7 +115,14 @@ func New(opts Options) *Server {
 
 	maxPerIP := opts.MaxConnsPerIP
 	if maxPerIP <= 0 {
-		maxPerIP = 10
+		maxPerIP = defaultMaxConnsPerIP
+	}
+
+	log := opts.Logger
+	if log == nil {
+		// Avoid nil-pointer panics if the caller forgot to supply a logger;
+		// *slog.Logger method calls on a nil receiver panic.
+		log = slog.Default()
 	}
 
 	return &Server{
@@ -98,7 +134,8 @@ func New(opts Options) *Server {
 		subdomainMax: opts.SubdomainRetries,
 		sshConfig:    cfg,
 		limiter:      newConnLimiter(maxPerIP),
-		log:          opts.Logger,
+		log:          log,
+		sessions:     make(map[string]*sshSession),
 	}
 }
 
@@ -112,6 +149,11 @@ func (s *Server) ListenAndServe(ctx context.Context) error {
 	go func() {
 		<-ctx.Done()
 		ln.Close()
+		// Stop accepting first, then force-close whatever tunnels are
+		// still live so shutdown actually terminates active sessions
+		// instead of leaving them running until each client disconnects
+		// on its own.
+		s.closeAllSessions()
 	}()
 
 	s.log.Info("ssh server listening", "addr", s.listenAddr)
@@ -124,10 +166,40 @@ func (s *Server) ListenAndServe(ctx context.Context) error {
 				return nil
 			default:
 				s.log.Error("accept failed", "error", err)
+				// Brief backoff to avoid a tight spin loop if Accept
+				// starts failing continuously (e.g. fd exhaustion).
+				time.Sleep(acceptErrorBackoff)
 				continue
 			}
 		}
 		go s.handleConn(ctx, conn)
+	}
+}
+
+// trackSession registers a session so it can be force-closed on shutdown.
+func (s *Server) trackSession(sess *sshSession) {
+	s.sessMu.Lock()
+	defer s.sessMu.Unlock()
+	s.sessions[sess.ID()] = sess
+}
+
+// untrackSession removes a session once its connection has ended, whether
+// that was a normal client disconnect or a shutdown-triggered close.
+func (s *Server) untrackSession(sess *sshSession) {
+	s.sessMu.Lock()
+	defer s.sessMu.Unlock()
+	delete(s.sessions, sess.ID())
+}
+
+// closeAllSessions force-closes every currently tracked session. Safe to
+// call concurrently with trackSession/untrackSession; sshSession.Close
+// itself is idempotent, so double-closing a session that's already
+// disconnecting on its own is harmless.
+func (s *Server) closeAllSessions() {
+	s.sessMu.Lock()
+	defer s.sessMu.Unlock()
+	for _, sess := range s.sessions {
+		sess.Close()
 	}
 }
 
@@ -140,6 +212,11 @@ func (s *Server) handleConn(ctx context.Context, conn net.Conn) {
 	}
 	defer s.limiter.release(remoteIP)
 
+	if tcpConn, ok := conn.(*net.TCPConn); ok {
+		_ = tcpConn.SetKeepAlive(true)
+		_ = tcpConn.SetKeepAlivePeriod(keepaliveInterval)
+	}
+
 	sshConn, chans, reqs, err := ssh.NewServerConn(conn, s.sshConfig)
 	if err != nil {
 		s.log.Warn("ssh handshake failed", "remote", conn.RemoteAddr(), "error", err)
@@ -149,6 +226,8 @@ func (s *Server) handleConn(ctx context.Context, conn net.Conn) {
 
 	userID, allowedSubdomain := extractPermissions(sshConn.Permissions)
 	sess := newSSHSession(sessionID(), userID, allowedSubdomain, sshConn)
+
+	s.trackSession(sess)
 
 	connLog := s.log.With(
 		logging.FieldSessionID, sess.ID(),
@@ -160,11 +239,41 @@ func (s *Server) handleConn(ctx context.Context, conn net.Conn) {
 	connLog.Info("ssh connection established", "authenticated", userID != "")
 
 	defer func() {
+		sess.Close()
+		s.untrackSession(sess)
 		if sub := sess.Subdomain(); sub != "" {
 			s.registry.MarkDisconnected(sub)
 			connLog.Info("tunnel disconnected", logging.FieldSubdomain, sub)
 		}
 		sshConn.Close()
+	}()
+
+	keepaliveCtx, cancelKeepalive := context.WithCancel(ctx)
+	defer cancelKeepalive()
+
+	go func() {
+		ticker := time.NewTicker(keepaliveInterval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-keepaliveCtx.Done():
+				return
+			case <-sess.Done():
+				return
+			case <-ticker.C:
+				// Bound how long a keepalive can block on a half-dead
+				// socket so a silently-dropped connection doesn't sit
+				// undetected past this interval.
+				_ = conn.SetWriteDeadline(time.Now().Add(keepaliveSendTimeout))
+				_, _, err := sshConn.SendRequest("keepalive@openssh.com", true, nil)
+				_ = conn.SetWriteDeadline(time.Time{})
+				if err != nil {
+					connLog.Debug("ssh keepalive failed, closing session", "error", err)
+					sess.Close()
+					return
+				}
+			}
+		}
 	}()
 
 	go s.handleGlobalRequests(ctx, reqs, sess, connLog)
@@ -233,6 +342,11 @@ func (s *Server) handleSessionChannel(newCh ssh.NewChannel, sess *sshSession, lo
 	go func() {
 		for req := range reqs {
 			switch req.Type {
+			case "signal":
+				sess.Close()
+				if req.WantReply {
+					req.Reply(true, nil)
+				}
 			case "pty-req", "shell", "exec", "env", "window-change":
 				if req.WantReply {
 					req.Reply(true, nil)
@@ -245,16 +359,39 @@ func (s *Server) handleSessionChannel(newCh ssh.NewChannel, sess *sshSession, lo
 		}
 	}()
 
+	// Watch the client's input for Ctrl+C / Ctrl+D so the tunnel can be
+	// closed interactively. This is intentionally restricted to these two
+	// control bytes only: earlier revisions also matched 'q'/'Q', which
+	// meant typing the letter q anywhere would tear down the tunnel by
+	// accident. Plain OpenSSH clients rarely send an SSH "signal" request
+	// for a synthetic session like this one, so without this scan Ctrl+C
+	// would otherwise do nothing and leave the terminal hanging.
 	go func() {
-		io.Copy(io.Discard, ch)
-		sess.Close()
+		defer sess.Close()
+		buf := make([]byte, sessionReadBufSize)
+		for {
+			n, err := ch.Read(buf)
+			if err != nil {
+				return
+			}
+			for i := 0; i < n; i++ {
+				// 0x03 is Ctrl+C (ETX), 0x04 is Ctrl+D (EOT)
+				if buf[i] == 0x03 || buf[i] == 0x04 {
+					return
+				}
+			}
+		}
 	}()
 
-	<-sess.tunnelReady()
-	if url := sess.TunnelURL(); url != "" {
-		fmt.Fprintf(ch, "\r\nTunnel active: %s\r\n", url)
-		fmt.Fprintf(ch, "Connections on this subdomain are forwarded to your local server.\r\n")
-		fmt.Fprintf(ch, "Press Ctrl+C to close the tunnel.\r\n\r\n")
+	select {
+	case <-sess.tunnelReady():
+		if url := sess.TunnelURL(); url != "" {
+			fmt.Fprintf(ch, "\r\nTunnel active: %s\r\n", url)
+			fmt.Fprintf(ch, "Connections on this subdomain are forwarded to your local server.\r\n")
+			fmt.Fprintf(ch, "Press Ctrl+C to close the tunnel.\r\n\r\n")
+		}
+	case <-sess.Done():
+		return
 	}
 
 	<-sess.Done()

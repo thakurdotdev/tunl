@@ -17,6 +17,9 @@ type sshSession struct {
 	sshConn          *ssh.ServerConn
 	done             chan struct{}
 
+	closeOnce sync.Once
+	closeErr  error
+
 	readyOnce sync.Once
 	ready     chan struct{}
 
@@ -39,10 +42,10 @@ func newSSHSession(id, userID, allowedSubdomain string, conn *ssh.ServerConn) *s
 	}
 }
 
-func (s *sshSession) ID() string              { return s.id }
-func (s *sshSession) UserID() string           { return s.userID }
-func (s *sshSession) AllowedSubdomain() string { return s.allowedSubdomain }
-func (s *sshSession) Done() <-chan struct{}     { return s.done }
+func (s *sshSession) ID() string                   { return s.id }
+func (s *sshSession) UserID() string               { return s.userID }
+func (s *sshSession) AllowedSubdomain() string     { return s.allowedSubdomain }
+func (s *sshSession) Done() <-chan struct{}        { return s.done }
 func (s *sshSession) tunnelReady() <-chan struct{} { return s.ready }
 
 func (s *sshSession) markReady() {
@@ -92,13 +95,21 @@ func (s *sshSession) markForwarded() bool {
 	return true
 }
 
+// Close is safe to call concurrently, any number of times, from any number
+// of goroutines — only the first call actually closes anything, and every
+// caller (concurrent or later) observes the same result. This matters here
+// specifically because up to four different goroutines per connection can
+// call Close() around the same time: the Ctrl+C/Ctrl+D scanner, the
+// "signal" request handler, the keepalive-failure path, and handleConn's
+// own deferred cleanup. The previous select-based "check then close"
+// pattern was not safe under that concurrency — two goroutines could both
+// observe s.done as open and both call close(s.done), panicking.
 func (s *sshSession) Close() error {
-	select {
-	case <-s.done:
-	default:
+	s.closeOnce.Do(func() {
 		close(s.done)
-	}
-	return s.sshConn.Close()
+		s.closeErr = s.sshConn.Close()
+	})
+	return s.closeErr
 }
 
 // Dial opens a "forwarded-tcpip" channel back to the connected SSH client.
