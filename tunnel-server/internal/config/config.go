@@ -51,6 +51,8 @@ type Config struct {
 	// reserved before being freed (plan's grace-window design note).
 	ReconnectGraceWindow time.Duration
 
+	MaxConnsPerIP int
+
 	// ReservedSubdomains are existing subdomains that must never be assigned
 	// to tunnels (e.g. "blog,api,www" to protect blog.thakur.dev, etc.).
 	ReservedSubdomains map[string]struct{}
@@ -70,6 +72,7 @@ func Load() (*Config, error) {
 		ControlPlaneURL:      getEnv("CONTROL_PLANE_URL", "http://localhost:3001"),
 		InternalSharedSecret: getEnv("INTERNAL_SHARED_SECRET", ""),
 		SubdomainRetries:     getEnvInt("SUBDOMAIN_RETRIES", 5),
+		MaxConnsPerIP:        getEnvInt("MAX_CONNS_PER_IP", 10),
 	}
 
 	cacheTTLSeconds := getEnvInt("CACHE_TTL_SECONDS", 300) // 5 min default

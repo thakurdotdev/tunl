@@ -8,7 +8,6 @@ import (
 	"time"
 )
 
-// fakeConn is a minimal TunnelConnection for tests — no real network I/O.
 type fakeConn struct {
 	id     string
 	userID string
@@ -21,14 +20,14 @@ func newFakeConn(id, userID string) *fakeConn {
 
 func (f *fakeConn) ID() string                { return f.id }
 func (f *fakeConn) UserID() string            { return f.userID }
-func (f *fakeConn) Done() <-chan struct{}     { return f.done }
+func (f *fakeConn) Done() <-chan struct{}      { return f.done }
 func (f *fakeConn) Close() error              { close(f.done); return nil }
 func (f *fakeConn) Dial(ctx context.Context, addr string, port uint32) (io.ReadWriteCloser, error) {
 	return nil, nil
 }
 
 func TestRegister_DuplicateSubdomainFails(t *testing.T) {
-	r := New(50 * time.Millisecond, nil)
+	r := New(50*time.Millisecond, nil)
 	t1 := &Tunnel{Subdomain: "abc123", Conn: newFakeConn("1", "")}
 	t2 := &Tunnel{Subdomain: "abc123", Conn: newFakeConn("2", "")}
 
@@ -41,7 +40,7 @@ func TestRegister_DuplicateSubdomainFails(t *testing.T) {
 }
 
 func TestLookup_AfterUnregisterReturnsFalse(t *testing.T) {
-	r := New(50 * time.Millisecond, nil)
+	r := New(50*time.Millisecond, nil)
 	tn := &Tunnel{Subdomain: "gone", Conn: newFakeConn("1", "")}
 	_ = r.Register(tn)
 	r.Unregister("gone")
@@ -59,9 +58,9 @@ func TestMarkDisconnected_ReconnectWithinGraceWindowCancelsRemoval(t *testing.T)
 
 	r.MarkDisconnected("sticky")
 	time.Sleep(grace / 2)
-	r.UpdateActivity("sticky") // reconnect before the timer fires
+	r.UpdateActivity("sticky")
 
-	time.Sleep(grace) // long enough that the original timer would've fired
+	time.Sleep(grace)
 	if _, ok := r.Lookup("sticky"); !ok {
 		t.Fatalf("expected tunnel to survive reconnect within grace window")
 	}
@@ -81,8 +80,65 @@ func TestMarkDisconnected_NoReconnectRemovesAfterGraceWindow(t *testing.T) {
 	}
 }
 
+func TestIsDisconnected(t *testing.T) {
+	r := New(200*time.Millisecond, nil)
+	_ = r.Register(&Tunnel{Subdomain: "live", Conn: newFakeConn("1", "")})
+
+	if r.IsDisconnected("live") {
+		t.Fatal("expected live tunnel to not be disconnected")
+	}
+	if r.IsDisconnected("nonexistent") {
+		t.Fatal("expected nonexistent to not be disconnected")
+	}
+
+	r.MarkDisconnected("live")
+	if !r.IsDisconnected("live") {
+		t.Fatal("expected disconnected tunnel to report as disconnected")
+	}
+}
+
+func TestReclaim_ReplacesConnOnDisconnectedEntry(t *testing.T) {
+	grace := 200 * time.Millisecond
+	r := New(grace, nil)
+	oldConn := newFakeConn("old", "u1")
+	_ = r.Register(&Tunnel{Subdomain: "reserved", UserID: "u1", Reserved: true, BindAddr: "0.0.0.0", BindPort: 80, Conn: oldConn})
+
+	r.MarkDisconnected("reserved")
+	if !r.IsDisconnected("reserved") {
+		t.Fatal("expected disconnected after MarkDisconnected")
+	}
+
+	newConn := newFakeConn("new", "u1")
+	if err := r.Reclaim("reserved", newConn, "0.0.0.0", 3000); err != nil {
+		t.Fatalf("Reclaim should succeed on disconnected entry, got %v", err)
+	}
+
+	if r.IsDisconnected("reserved") {
+		t.Fatal("expected tunnel to not be disconnected after Reclaim")
+	}
+	tun, ok := r.Lookup("reserved")
+	if !ok {
+		t.Fatal("expected Lookup to succeed after Reclaim")
+	}
+	if tun.Conn.ID() != "new" {
+		t.Fatalf("expected new conn, got %s", tun.Conn.ID())
+	}
+	if tun.BindPort != 3000 {
+		t.Fatalf("expected updated BindPort 3000, got %d", tun.BindPort)
+	}
+}
+
+func TestReclaim_FailsOnActiveEntry(t *testing.T) {
+	r := New(200*time.Millisecond, nil)
+	_ = r.Register(&Tunnel{Subdomain: "active", Conn: newFakeConn("1", "")})
+
+	if err := r.Reclaim("active", newFakeConn("2", ""), "0.0.0.0", 80); err != ErrSubdomainTaken {
+		t.Fatalf("expected ErrSubdomainTaken on active entry, got %v", err)
+	}
+}
+
 func TestCounts_AnonymousAndReserved(t *testing.T) {
-	r := New(50 * time.Millisecond, nil)
+	r := New(50*time.Millisecond, nil)
 	_ = r.Register(&Tunnel{Subdomain: "anon1", Reserved: false, Conn: newFakeConn("1", "")})
 	_ = r.Register(&Tunnel{Subdomain: "anon2", Reserved: false, Conn: newFakeConn("2", "")})
 	_ = r.Register(&Tunnel{Subdomain: "res1", Reserved: true, UserID: "u1", Conn: newFakeConn("3", "u1")})
@@ -98,10 +154,8 @@ func TestCounts_AnonymousAndReserved(t *testing.T) {
 	}
 }
 
-// Run with `go test -race ./...` — this is the test the plan calls out
-// explicitly (section 1.3 step 3 / section 5).
 func TestConcurrentRegisterLookupUnregister_Race(t *testing.T) {
-	r := New(20 * time.Millisecond, nil)
+	r := New(20*time.Millisecond, nil)
 	var wg sync.WaitGroup
 
 	for i := 0; i < 50; i++ {
@@ -123,7 +177,6 @@ func TestConcurrentRegisterLookupUnregister_Race(t *testing.T) {
 	}
 	wg.Wait()
 
-	// No assertion beyond "didn't race" — that's what -race is for.
 	_ = r.ActiveCount()
 }
 

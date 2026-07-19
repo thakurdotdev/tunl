@@ -33,13 +33,14 @@ type Tunnel struct {
 }
 
 type TunnelRegistry interface {
-	Register(t *Tunnel) error // error if subdomain taken
+	Register(t *Tunnel) error
+	Reclaim(subdomain string, conn TunnelConnection, bindAddr string, bindPort uint32) error
 	Lookup(subdomain string) (*Tunnel, bool)
-	UpdateActivity(subdomain string) // bumps LastSeen; cancels a pending grace-window removal if in progress
+	IsDisconnected(subdomain string) bool
+	UpdateActivity(subdomain string)
 	Unregister(subdomain string)
-	MarkDisconnected(subdomain string) // starts grace window instead of immediate unregister
+	MarkDisconnected(subdomain string)
 
-	// Metrics read these directly instead of maintaining separate counters.
 	ActiveCount() int
 	AnonymousCount() int
 	ReservedCount() int
@@ -48,9 +49,9 @@ type TunnelRegistry interface {
 var ErrSubdomainTaken = fmt.Errorf("subdomain already registered")
 
 type entry struct {
-	tunnel        *Tunnel
-	disconnected  bool
-	graceTimer    *time.Timer
+	tunnel       *Tunnel
+	disconnected bool
+	graceTimer   *time.Timer
 }
 
 // InMemoryRegistry is the only TunnelRegistry implementation for now —
@@ -100,6 +101,39 @@ func (r *InMemoryRegistry) Lookup(subdomain string) (*Tunnel, bool) {
 		return nil, false
 	}
 	return e.tunnel, true
+}
+
+func (r *InMemoryRegistry) IsDisconnected(subdomain string) bool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	e, ok := r.entries[subdomain]
+	return ok && e.disconnected
+}
+
+// Reclaim replaces the connection on a disconnected entry, cancelling its
+// grace timer. Used when an authenticated user reconnects with their
+// reserved subdomain before the grace window expires.
+func (r *InMemoryRegistry) Reclaim(subdomain string, conn TunnelConnection, bindAddr string, bindPort uint32) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	e, ok := r.entries[subdomain]
+	if !ok {
+		return fmt.Errorf("subdomain not in registry")
+	}
+	if !e.disconnected {
+		return ErrSubdomainTaken
+	}
+	if e.graceTimer != nil {
+		e.graceTimer.Stop()
+		e.graceTimer = nil
+	}
+	e.disconnected = false
+	e.tunnel.Conn = conn
+	e.tunnel.BindAddr = bindAddr
+	e.tunnel.BindPort = bindPort
+	e.tunnel.LastSeen = time.Now()
+	return nil
 }
 
 func (r *InMemoryRegistry) UpdateActivity(subdomain string) {

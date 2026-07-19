@@ -12,7 +12,7 @@ import (
 )
 
 func generateSubdomain() (string, error) {
-	buf := make([]byte, 5) // 5 bytes → 8 base32 chars
+	buf := make([]byte, 5)
 	if _, err := rand.Read(buf); err != nil {
 		return "", err
 	}
@@ -20,7 +20,7 @@ func generateSubdomain() (string, error) {
 	return strings.ToLower(enc[:8]), nil
 }
 
-func registerWithRetry(ctx context.Context, reg registry.TunnelRegistry, sess *sshSession, maxRetries int) (string, error) {
+func registerAnonymous(reg registry.TunnelRegistry, sess *sshSession, bindAddr string, bindPort uint32, maxRetries int) (string, error) {
 	var lastErr error
 	for i := 0; i < maxRetries; i++ {
 		sub, err := generateSubdomain()
@@ -31,12 +31,11 @@ func registerWithRetry(ctx context.Context, reg registry.TunnelRegistry, sess *s
 			Subdomain: sub,
 			UserID:    sess.UserID(),
 			Reserved:  false,
-			BindAddr:  sess.bindAddr,
-			BindPort:  sess.bindPort,
+			BindAddr:  bindAddr,
+			BindPort:  bindPort,
 			Conn:      sess,
 		}
 		if err := reg.Register(t); err == nil {
-			sess.subdomain = sub
 			return sub, nil
 		} else {
 			lastErr = err
@@ -45,11 +44,35 @@ func registerWithRetry(ctx context.Context, reg registry.TunnelRegistry, sess *s
 	return "", lastErr
 }
 
-// handleForwardRequest processes a "tcpip-forward" global request: parses
-// the bind address/port, registers a random subdomain, and replies with the
-// assigned port. The bind port is stored on the session so Dial can echo
-// it back in forwarded-tcpip channel opens.
+// registerReserved tries to register (or reclaim during grace window) the
+// authenticated user's reserved subdomain from the control plane.
+func registerReserved(reg registry.TunnelRegistry, sess *sshSession, bindAddr string, bindPort uint32) (string, error) {
+	sub := sess.AllowedSubdomain()
+	t := &registry.Tunnel{
+		Subdomain: sub,
+		UserID:    sess.UserID(),
+		Reserved:  true,
+		BindAddr:  bindAddr,
+		BindPort:  bindPort,
+		Conn:      sess,
+	}
+	if err := reg.Register(t); err == nil {
+		return sub, nil
+	}
+	// Entry exists — try to reclaim if it's disconnected (grace window reconnect).
+	if err := reg.Reclaim(sub, sess, bindAddr, bindPort); err == nil {
+		return sub, nil
+	}
+	return "", registry.ErrSubdomainTaken
+}
+
 func (s *Server) handleForwardRequest(ctx context.Context, req *ssh.Request, sess *sshSession) {
+	if !sess.markForwarded() {
+		s.log.Warn("duplicate tcpip-forward rejected", "session_id", sess.ID())
+		req.Reply(false, nil)
+		return
+	}
+
 	var fwd tcpipForwardRequest
 	if err := ssh.Unmarshal(req.Payload, &fwd); err != nil {
 		s.log.Warn("malformed tcpip-forward payload", "error", err)
@@ -57,27 +80,32 @@ func (s *Server) handleForwardRequest(ctx context.Context, req *ssh.Request, ses
 		return
 	}
 
-	sess.bindAddr = fwd.BindAddr
-	sess.bindPort = fwd.BindPort
+	sess.setBindInfo(fwd.BindAddr, fwd.BindPort)
 
-	sub, err := registerWithRetry(ctx, s.registry, sess, s.subdomainMax)
+	var sub string
+	var err error
+	if sess.AllowedSubdomain() != "" {
+		sub, err = registerReserved(s.registry, sess, fwd.BindAddr, fwd.BindPort)
+	} else {
+		sub, err = registerAnonymous(s.registry, sess, fwd.BindAddr, fwd.BindPort, s.subdomainMax)
+	}
 	if err != nil {
 		s.log.Error("subdomain registration failed", "error", err)
 		req.Reply(false, nil)
 		return
 	}
 
+	url := fmt.Sprintf("%s://%s.%s", s.tunnelScheme, sub, s.baseDomain)
+	sess.setTunnelInfo(sub, url)
+
 	s.log.Info("tunnel registered",
 		"subdomain", sub,
 		"bind_port", fwd.BindPort,
 		"session_id", sess.ID(),
+		"reserved", sess.AllowedSubdomain() != "",
 	)
 
 	reply := tcpipForwardReply{BoundPort: fwd.BindPort}
 	req.Reply(true, ssh.Marshal(&reply))
-
-	// The URL is written to the client's terminal via the session channel,
-	// not here — see handleSessionChannel in server.go.
-	sess.tunnelURL = fmt.Sprintf("%s://%s.%s", s.tunnelScheme, sub, s.baseDomain)
 	sess.markReady()
 }

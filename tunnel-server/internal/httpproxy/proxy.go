@@ -53,6 +53,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if h.registry.IsDisconnected(subdomain) {
+		http.Error(w, "tunnel temporarily unavailable", http.StatusServiceUnavailable)
+		return
+	}
+
 	if IsWebSocketUpgrade(r) {
 		HandleWebSocket(w, r, tunnel, h.dialTimeout)
 		return

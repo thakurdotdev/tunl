@@ -22,6 +22,17 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+// keyValidatorAdapter bridges controlclient.Client (context-aware) to the
+// sshserver.KeyValidator interface (context-free, since SSH's PublicKeyCallback
+// doesn't carry a context). The HTTP client's own timeout prevents hangs.
+type keyValidatorAdapter struct {
+	client *controlclient.Client
+}
+
+func (a *keyValidatorAdapter) ValidateKey(fingerprint string) (string, string, string, bool) {
+	return a.client.ValidateKey(context.Background(), fingerprint)
+}
+
 func main() {
 	cfg, err := config.Load()
 	if err != nil {
@@ -37,7 +48,6 @@ func main() {
 		SharedSecret: cfg.InternalSharedSecret,
 		CacheTTL:     cfg.CacheTTL,
 	})
-	_ = ccClient // TODO(step 13): wrap as sshserver.KeyValidator
 
 	hostKey, err := loadOrGenerateHostKey()
 	if err != nil {
@@ -50,7 +60,9 @@ func main() {
 		BaseDomain:       cfg.BaseDomain,
 		URLScheme:        cfg.TunnelURLScheme,
 		Registry:         reg,
+		KeyValidator:     &keyValidatorAdapter{client: ccClient},
 		SubdomainRetries: cfg.SubdomainRetries,
+		MaxConnsPerIP:    cfg.MaxConnsPerIP,
 		HostKey:          hostKey,
 		Logger:           logger,
 	})
@@ -122,7 +134,6 @@ func loadOrGenerateHostKey() (ssh.Signer, error) {
 		}
 		return ssh.ParsePrivateKey(keyBytes)
 	}
-	// Ephemeral key for local dev — changes every restart.
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		return nil, err

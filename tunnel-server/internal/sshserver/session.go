@@ -11,40 +11,85 @@ import (
 )
 
 type sshSession struct {
-	id        string
-	userID    string
-	subdomain string
-	bindAddr  string // must match exactly what the client sent
-	bindPort  uint32
-	tunnelURL string
-	sshConn   *ssh.ServerConn
-	done      chan struct{}
+	id               string
+	userID           string
+	allowedSubdomain string
+	sshConn          *ssh.ServerConn
+	done             chan struct{}
 
 	readyOnce sync.Once
-	ready     chan struct{} // closed when tunnelURL is set
+	ready     chan struct{}
+
+	mu        sync.Mutex
+	subdomain string
+	bindAddr  string
+	bindPort  uint32
+	tunnelURL string
+	forwarded bool
 }
 
-func newSSHSession(id, userID string, conn *ssh.ServerConn) *sshSession {
+func newSSHSession(id, userID, allowedSubdomain string, conn *ssh.ServerConn) *sshSession {
 	return &sshSession{
-		id:      id,
-		userID:  userID,
-		sshConn: conn,
-		done:    make(chan struct{}),
-		ready:   make(chan struct{}),
+		id:               id,
+		userID:           userID,
+		allowedSubdomain: allowedSubdomain,
+		sshConn:          conn,
+		done:             make(chan struct{}),
+		ready:            make(chan struct{}),
 	}
 }
 
-func (s *sshSession) ID() string            { return s.id }
-func (s *sshSession) UserID() string        { return s.userID }
-func (s *sshSession) Done() <-chan struct{} { return s.done }
-
-// tunnelReady returns a channel that's closed once the tunnel URL has been
-// assigned by handleForwardRequest. The session channel handler blocks on
-// this before writing the URL to the client's terminal.
+func (s *sshSession) ID() string              { return s.id }
+func (s *sshSession) UserID() string           { return s.userID }
+func (s *sshSession) AllowedSubdomain() string { return s.allowedSubdomain }
+func (s *sshSession) Done() <-chan struct{}     { return s.done }
 func (s *sshSession) tunnelReady() <-chan struct{} { return s.ready }
 
 func (s *sshSession) markReady() {
 	s.readyOnce.Do(func() { close(s.ready) })
+}
+
+func (s *sshSession) Subdomain() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.subdomain
+}
+
+func (s *sshSession) setSubdomain(sub string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.subdomain = sub
+}
+
+func (s *sshSession) TunnelURL() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.tunnelURL
+}
+
+func (s *sshSession) setTunnelInfo(sub, url string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.subdomain = sub
+	s.tunnelURL = url
+}
+
+func (s *sshSession) setBindInfo(addr string, port uint32) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.bindAddr = addr
+	s.bindPort = port
+}
+
+// markForwarded returns true on the first call (one tcpip-forward per session).
+func (s *sshSession) markForwarded() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.forwarded {
+		return false
+	}
+	s.forwarded = true
+	return true
 }
 
 func (s *sshSession) Close() error {
@@ -57,9 +102,6 @@ func (s *sshSession) Close() error {
 }
 
 // Dial opens a "forwarded-tcpip" channel back to the connected SSH client.
-// The channel-open message carries (remoteAddr, remotePort) which the
-// client matches against its tcpip-forward table to route data to the
-// correct local listener.
 func (s *sshSession) Dial(ctx context.Context, remoteAddr string, remotePort uint32) (io.ReadWriteCloser, error) {
 	msg := channelOpenForwardMsg{
 		ConnectedAddr: remoteAddr,
