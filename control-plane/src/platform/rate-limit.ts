@@ -38,7 +38,7 @@ export function rateLimit(
       .then(({ count, retryAfterSeconds }) => {
         if (count > limit) {
           res.setHeader("Retry-After", retryAfterSeconds);
-          next(new AppError(429, "rate_limited", "too many requests; try again later"));
+          next(new AppError(429, "rate_limited", "Too many requests. Please try again later."));
           return;
         }
         next();

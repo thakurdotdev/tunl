@@ -6,7 +6,14 @@ import { plans, tunnels, users } from "../../db/schema.js";
 import { conflict, forbidden, notFound } from "../../platform/errors.js";
 import { asyncRoute } from "../../platform/http.js";
 
-const createTunnel = z.object({ subdomain: z.string().regex(/^[a-z0-9-]{3,63}$/) });
+const createTunnel = z.object({
+  subdomain: z
+    .string()
+    .regex(
+      /^[a-z0-9-]{3,63}$/,
+      "Subdomain must be 3-63 lowercase alphanumeric characters or hyphens",
+    ),
+});
 const output = {
   id: tunnels.id,
   subdomain: tunnels.subdomain,

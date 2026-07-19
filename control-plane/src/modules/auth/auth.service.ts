@@ -3,7 +3,7 @@ import { createHash, randomBytes } from "node:crypto";
 import type { Database } from "../../db/client.js";
 import { accountTokens, plans, users } from "../../db/schema.js";
 import { hashPassword, verifyPassword } from "../../lib/password.js";
-import { AppError, badRequest, conflict, notFound, unauthorized } from "../../platform/errors.js";
+import { AppError, badRequest, conflict, notFound } from "../../platform/errors.js";
 
 export type PublicUser = {
   id: string;
@@ -99,9 +99,13 @@ export async function signup(
 export async function login(db: Database, email: string, password: string): Promise<PublicUser> {
   const row = await getUserByEmail(db, email);
   if (!row?.passwordHash || !(await verifyPassword(row.passwordHash, password)))
-    throw unauthorized();
+    throw badRequest("Invalid email or password");
   if (!row.emailVerifiedAt)
-    throw new AppError(403, "email_not_verified", "Your email address is not verified. Please check your inbox or request a new verification link.");
+    throw new AppError(
+      403,
+      "email_not_verified",
+      "Your email address is not verified. Please check your inbox or request a new verification link.",
+    );
   return publicUser(row);
 }
 

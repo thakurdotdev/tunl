@@ -8,8 +8,11 @@ import { conflict, notFound } from "../../platform/errors.js";
 import { asyncRoute } from "../../platform/http.js";
 
 const createKey = z.object({
-  publicKey: z.string().min(20).max(16_384),
-  label: z.string().max(100).default(""),
+  publicKey: z
+    .string()
+    .min(20, "Public key must be at least 20 characters")
+    .max(16_384, "Public key is too long"),
+  label: z.string().max(100, "Label must be at most 100 characters").default(""),
 });
 const output = {
   id: sshKeys.id,

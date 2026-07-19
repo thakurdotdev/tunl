@@ -15,16 +15,22 @@ export const asyncRoute =
     Promise.resolve(handler(req, res, next)).catch(next);
 export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
   const requestId = res.locals.requestId ?? "unknown";
-  if (error instanceof ZodError)
+  if (error instanceof ZodError) {
+    const firstMessage = error.issues[0]?.message || "Request validation failed";
     return void res.status(400).json({
-      error: { code: "validation_error", message: "request validation failed", requestId },
+      error: { code: "validation_error", message: firstMessage, requestId },
     });
+  }
   if (error instanceof AppError)
     return void res
       .status(error.status)
       .json({ error: { code: error.code, message: error.message, requestId } });
   console.error({ requestId, error }, "unhandled request error");
-  res
-    .status(500)
-    .json({ error: { code: "internal_error", message: "internal server error", requestId } });
+  res.status(500).json({
+    error: {
+      code: "internal_error",
+      message: "An unexpected error occurred. Please try again.",
+      requestId,
+    },
+  });
 };
