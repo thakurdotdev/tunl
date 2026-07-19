@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 const forgotPasswordSchema = z.object({
-  email: z.string().trim().email("Please enter a valid email address").max(320),
+  email: z.email("Please enter a valid email address").max(320),
 });
 
 type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;

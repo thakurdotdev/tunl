@@ -13,6 +13,19 @@ export function useProfileQuery(enabled = true) {
   });
 }
 
+export function useVerifyTokenQuery(token: string | null, type: "email_verification" | "password_reset") {
+  return useQuery({
+    queryKey: ["verify-token", token, type],
+    queryFn: async () => {
+      if (!token) throw new Error("No token provided");
+      const { data } = await client.post<{ valid: boolean }>("/v1/auth/verify-token", { token, type });
+      return data;
+    },
+    enabled: !!token,
+    retry: false,
+  });
+}
+
 export function useSignupMutation() {
   return useMutation({
     mutationFn: async ({ email, password }: { email: string; password: string }) => {

@@ -11,16 +11,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { ApiClientError } from "@/lib/api-client";
+import { Eye, EyeOff } from "lucide-react";
 
 const signupSchema = z.object({
   email: z.email("Please enter a valid email address").max(320),
   password: z
     .string()
     .min(8, "Password must be at least 8 characters")
-    .max(20)
+    .max(20, "Password cannot exceed 20 characters")
     .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
     .regex(/[a-z]/, "Password must contain at least one lowercase letter")
-    .regex(/[0-9]/, "Password must contain at least one number"),
+    .regex(/[0-9]/, "Password must contain at least one number")
+    .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character"),
 });
 
 type SignupFormValues = z.infer<typeof signupSchema>;
@@ -28,6 +30,7 @@ type SignupFormValues = z.infer<typeof signupSchema>;
 export default function SignupPage() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [registeredEmail, setRegisteredEmail] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const signupMutation = useSignupMutation();
   const resendMutation = useResendVerificationMutation();
@@ -135,14 +138,25 @@ export default function SignupPage() {
 
         <div className="flex flex-col gap-2">
           <Label htmlFor="password">Password</Label>
-          <Input
-            id="password"
-            type="password"
-            placeholder="••••••••••••"
-            disabled={isSubmitting}
-            {...register("password")}
-            aria-invalid={!!errors.password}
-          />
+          <div className="relative flex items-center">
+            <Input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              placeholder="••••••••••••"
+              disabled={isSubmitting}
+              className="pr-10"
+              {...register("password")}
+              aria-invalid={!!errors.password}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 text-muted-foreground hover:text-foreground transition-colors focus:outline-none"
+              tabIndex={-1}
+            >
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
           {errors.password && (
             <p className="text-xs text-destructive">{errors.password.message}</p>
           )}

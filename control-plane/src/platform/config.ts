@@ -11,7 +11,7 @@ const envSchema = z.object({
   JWT_AUDIENCE: z.string().default("tunl-dashboard"),
   RESEND_API_KEY: z.string().startsWith("re_"),
   EMAIL_FROM: z.string().min(3).max(320),
-  DASHBOARD_URL: z.string().url(),
+  DASHBOARD_URL: z.url(),
 });
 
 export type Config = z.infer<typeof envSchema>;

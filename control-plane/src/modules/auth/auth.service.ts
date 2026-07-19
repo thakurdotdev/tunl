@@ -2,7 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { and, eq, gt, isNull } from "drizzle-orm";
 import type { Database } from "../../db/client.js";
 import { accountTokens, plans, users } from "../../db/schema.js";
-import { notFound, unauthorized, forbidden } from "../../platform/errors.js";
+import { badRequest, notFound, unauthorized, forbidden } from "../../platform/errors.js";
 import { hashPassword, verifyPassword } from "../../lib/password.js";
 
 export type PublicUser = {
@@ -19,10 +19,15 @@ type AuthRow = {
   planName: string;
   maxReservedSubdomains: number;
 };
-const TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
+export const TOKEN_TTL_MINUTES = 15;
+const TOKEN_TTL_MS = TOKEN_TTL_MINUTES * 60 * 1000;
+
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
+
 const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
+
 const newToken = () => randomBytes(32).toString("base64url");
+
 const publicUser = (row: AuthRow): PublicUser => ({
   id: row.id,
   email: row.email,
@@ -134,6 +139,28 @@ export async function requestPasswordReset(db: Database, email: string) {
     : undefined;
 }
 
+export async function validateToken(
+  db: Database,
+  token: string,
+  type: "email_verification" | "password_reset",
+) {
+  const tokenHash = hashToken(token);
+  const [record] = await db
+    .select()
+    .from(accountTokens)
+    .where(
+      and(
+        eq(accountTokens.tokenHash, tokenHash),
+        eq(accountTokens.type, type),
+        isNull(accountTokens.usedAt),
+        gt(accountTokens.expiresAt, new Date()),
+      ),
+    )
+    .limit(1);
+  if (!record) throw badRequest("This link is invalid or has expired");
+  return true;
+}
+
 export async function verifyEmail(db: Database, token: string) {
   const tokenHash = hashToken(token);
   const [record] = await db
@@ -148,14 +175,11 @@ export async function verifyEmail(db: Database, token: string) {
       ),
     )
     .limit(1);
-  if (!record) throw unauthorized();
+  if (!record) throw badRequest("This link is invalid or has expired");
   await db.transaction(async (tx) => {
-    const used = await tx
-      .update(accountTokens)
-      .set({ usedAt: new Date() })
-      .where(and(eq(accountTokens.id, record.id), isNull(accountTokens.usedAt)))
-      .returning({ id: accountTokens.id });
-    if (!used.length) throw unauthorized();
+    await tx
+      .delete(accountTokens)
+      .where(and(eq(accountTokens.userId, record.userId), eq(accountTokens.type, "email_verification")));
     await tx
       .update(users)
       .set({ emailVerifiedAt: new Date(), updatedAt: new Date() })
@@ -177,15 +201,12 @@ export async function resetPassword(db: Database, token: string, password: strin
       ),
     )
     .limit(1);
-  if (!record) throw unauthorized();
+  if (!record) throw badRequest("This link is invalid or has expired");
   const passwordHash = await hashPassword(password);
   await db.transaction(async (tx) => {
-    const used = await tx
-      .update(accountTokens)
-      .set({ usedAt: new Date() })
-      .where(and(eq(accountTokens.id, record.id), isNull(accountTokens.usedAt)))
-      .returning({ id: accountTokens.id });
-    if (!used.length) throw unauthorized();
+    await tx
+      .delete(accountTokens)
+      .where(and(eq(accountTokens.userId, record.userId), eq(accountTokens.type, "password_reset")));
     await tx
       .update(users)
       .set({ passwordHash, updatedAt: new Date() })

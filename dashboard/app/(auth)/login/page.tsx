@@ -12,10 +12,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { ApiClientError } from "@/lib/api-client";
+import { Eye, EyeOff } from "lucide-react";
 
 const loginSchema = z.object({
-  email: z.string().trim().email("Please enter a valid email address").max(320),
-  password: z.string().min(8, "Password must be at least 8 characters").max(20),
+  email: z.email("Please enter a valid email address").max(320),
+  password: z.string().min(1, "Password is required"),
 });
 
 type LoginFormValues = z.infer<typeof loginSchema>;
@@ -24,6 +25,7 @@ export default function LoginPage() {
   const { login } = useAuth();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
@@ -91,14 +93,25 @@ export default function LoginPage() {
               Forgot password?
             </Link>
           </div>
-          <Input
-            id="password"
-            type="password"
-            placeholder="••••••••••••"
-            disabled={isSubmitting}
-            {...register("password")}
-            aria-invalid={!!errors.password}
-          />
+          <div className="relative flex items-center">
+            <Input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              placeholder="••••••••••••"
+              disabled={isSubmitting}
+              className="pr-10"
+              {...register("password")}
+              aria-invalid={!!errors.password}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 text-muted-foreground hover:text-foreground transition-colors focus:outline-none"
+              tabIndex={-1}
+            >
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
           {errors.password && (
             <p className="text-xs text-destructive">{errors.password.message}</p>
           )}

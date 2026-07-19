@@ -10,18 +10,36 @@ import {
   requestVerification,
   resetPassword,
   signup,
+  validateToken,
   verifyEmail,
 } from "./auth.service.js";
 import type { AuthMailer } from "./mailer.js";
 import { issueAccessToken } from "./token.js";
 
+const passwordSchema = z
+  .string()
+  .min(8, "Password must be at least 8 characters")
+  .max(20, "Password cannot exceed 20 characters")
+  .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+  .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+  .regex(/[0-9]/, "Password must contain at least one number")
+  .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character");
+
 const credentials = z.object({
-  email: z.string().trim().email().max(320),
-  password: z.string().min(12).max(128),
+  email: z.email().max(320),
+  password: passwordSchema,
 });
-const emailInput = z.object({ email: z.string().trim().email().max(320) });
+const loginCredentials = z.object({
+  email: z.email().max(320),
+  password: z.string().min(1, "Password is required"),
+});
+const emailInput = z.object({ email: z.email().max(320) });
 const tokenInput = z.object({ token: z.string().min(32).max(256) });
-const resetInput = tokenInput.extend({ password: z.string().min(12).max(128) });
+const verifyTokenInput = z.object({
+  token: z.string().min(32).max(256),
+  type: z.enum(["email_verification", "password_reset"]),
+});
+const resetInput = tokenInput.extend({ password: passwordSchema });
 const genericMessage = { message: "If the account is eligible, an email will arrive shortly." };
 
 export function authRouter(
@@ -46,9 +64,18 @@ export function authRouter(
     "/login",
     rateLimit(rateLimitStore, "login", 10, 15 * 60 * 1000),
     asyncRoute(async (req, res) => {
-      const input = credentials.parse(req.body);
+      const input = loginCredentials.parse(req.body);
       const user = await login(db, input.email, input.password);
       res.json({ accessToken: await issueAccessToken(config, user.id), user });
+    }),
+  );
+  router.post(
+    "/verify-token",
+    rateLimit(rateLimitStore, "verify-token", 20, 15 * 60 * 1000),
+    asyncRoute(async (req, res) => {
+      const input = verifyTokenInput.parse(req.body);
+      await validateToken(db, input.token, input.type);
+      res.json({ valid: true });
     }),
   );
   router.post(
