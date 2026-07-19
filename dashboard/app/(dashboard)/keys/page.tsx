@@ -29,7 +29,7 @@ import { Key, Trash2, Calendar } from "lucide-react";
 import { format } from "date-fns";
 
 const sshKeySchema = z.object({
-  label: z.string().max(100, "Label must be at most 100 characters").default(""),
+  label: z.string().max(100, "Label must be at most 100 characters"),
   publicKey: z
     .string()
     .min(20, "Public key must be at least 20 characters")
