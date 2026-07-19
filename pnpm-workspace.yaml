@@ -1,10 +1,10 @@
 packages:
   - control-plane
   - dashboard
-
 allowBuilds:
   cpu-features: true
   esbuild: true
   sharp: true
   ssh2: true
   unrs-resolver: true
+deployAllFiles: true
