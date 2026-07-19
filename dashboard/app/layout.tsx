@@ -31,7 +31,7 @@ export default function RootLayout({
       lang="en"
       className={cn("h-full antialiased", geistSans.variable, jetbrainsMono.variable)}
     >
-      <body className="min-h-full flex flex-col font-sans">
+      <body className="flex min-h-full flex-col font-sans">
         <Providers>
           {children}
           <Toaster position="bottom-right" />

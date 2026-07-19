@@ -23,17 +23,21 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             <pre className="auth-terminal-body">
               <code>
                 <span className="auth-terminal-prompt">$</span>{" "}
-                <span className="auth-terminal-cmd">ssh</span> -R 80:localhost:3000 myapp@thakur.dev{"\n"}
-                <span className="auth-terminal-output">→ https://myapp.thakur.dev</span>{"\n"}
-                <span className="auth-terminal-muted">Forwarding HTTP traffic to localhost:3000</span>
+                <span className="auth-terminal-cmd">ssh</span> -R 80:localhost:3000 myapp@thakur.dev
+                {"\n"}
+                <span className="auth-terminal-output">→ https://myapp.thakur.dev</span>
+                {"\n"}
+                <span className="auth-terminal-muted">
+                  Forwarding HTTP traffic to localhost:3000
+                </span>
               </code>
             </pre>
           </div>
           <div className="auth-brand-text">
             <h2>Expose localhost in one command</h2>
             <p>
-              No binaries, no configuration. Run a single SSH command and your local
-              server is live on the internet with a public URL.
+              No binaries, no configuration. Run a single SSH command and your local server is live
+              on the internet with a public URL.
             </p>
           </div>
         </div>

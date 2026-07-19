@@ -3,7 +3,11 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useSshKeysQuery, useCreateSshKeyMutation, useDeleteSshKeyMutation } from "@/hooks/use-ssh-keys";
+import {
+  useSshKeysQuery,
+  useCreateSshKeyMutation,
+  useDeleteSshKeyMutation,
+} from "@/hooks/use-ssh-keys";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -69,7 +73,7 @@ export default function SshKeysPage() {
             toast.error("Failed to add SSH key. Please verify the format.");
           }
         },
-      }
+      },
     );
   };
 
@@ -95,12 +99,12 @@ export default function SshKeysPage() {
     <div className="flex flex-col gap-8">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">SSH Keys</h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           Manage the public keys authorized to establish tunnels.
         </p>
       </div>
 
-      <div className="border border-border bg-card p-6 rounded-2xl flex flex-col gap-4">
+      <div className="border-border bg-card flex flex-col gap-4 rounded-2xl border p-6">
         <h2 className="text-lg font-medium">Add SSH Key</h2>
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
@@ -112,9 +116,7 @@ export default function SshKeysPage() {
               {...register("label")}
               aria-invalid={!!errors.label}
             />
-            {errors.label && (
-              <p className="text-xs text-destructive">{errors.label.message}</p>
-            )}
+            {errors.label && <p className="text-destructive text-xs">{errors.label.message}</p>}
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="publicKey">Public Key</Label>
@@ -127,56 +129,55 @@ export default function SshKeysPage() {
               aria-invalid={!!errors.publicKey}
             />
             {errors.publicKey && (
-              <p className="text-xs text-destructive">{errors.publicKey.message}</p>
+              <p className="text-destructive text-xs">{errors.publicKey.message}</p>
             )}
           </div>
-          <Button
-            type="submit"
-            disabled={createMutation.isPending}
-            className="self-start h-8"
-          >
+          <Button type="submit" disabled={createMutation.isPending} className="h-8 self-start">
             {createMutation.isPending ? "Adding Key..." : "Add SSH Key"}
           </Button>
         </form>
       </div>
 
-      <div className="border border-border bg-card rounded-2xl overflow-hidden">
+      <div className="border-border bg-card overflow-hidden rounded-2xl border">
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-12 gap-2">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-foreground/20 border-t-foreground" />
-            <p className="text-sm text-muted-foreground">Loading keys...</p>
+          <div className="flex flex-col items-center justify-center gap-2 py-12">
+            <div className="border-foreground/20 border-t-foreground h-5 w-5 animate-spin rounded-full border-2" />
+            <p className="text-muted-foreground text-sm">Loading keys...</p>
           </div>
         ) : keys.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 px-4 text-center gap-3">
-            <Key className="h-10 w-10 text-muted-foreground/50" />
+          <div className="flex flex-col items-center justify-center gap-3 px-4 py-16 text-center">
+            <Key className="text-muted-foreground/50 h-10 w-10" />
             <div className="flex flex-col gap-1">
-              <h3 className="font-medium text-base">No SSH keys registered</h3>
-              <p className="text-sm text-muted-foreground max-w-sm">
+              <h3 className="text-base font-medium">No SSH keys registered</h3>
+              <p className="text-muted-foreground max-w-sm text-sm">
                 Add an SSH public key above to authorize your client to run tunnels.
               </p>
             </div>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left border-collapse">
+            <table className="w-full border-collapse text-left text-sm">
               <thead>
-                <tr className="border-b border-border bg-muted/30">
-                  <th className="p-4 font-medium text-muted-foreground">Label</th>
-                  <th className="p-4 font-medium text-muted-foreground">Fingerprint</th>
-                  <th className="p-4 font-medium text-muted-foreground">Added</th>
-                  <th className="p-4 font-medium text-muted-foreground text-right">Actions</th>
+                <tr className="border-border bg-muted/30 border-b">
+                  <th className="text-muted-foreground p-4 font-medium">Label</th>
+                  <th className="text-muted-foreground p-4 font-medium">Fingerprint</th>
+                  <th className="text-muted-foreground p-4 font-medium">Added</th>
+                  <th className="text-muted-foreground p-4 text-right font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {keys.map((key) => (
-                  <tr key={key.id} className="border-b border-border last:border-0 hover:bg-muted/10 transition-colors">
-                    <td className="p-4 font-medium text-foreground">
+                  <tr
+                    key={key.id}
+                    className="border-border hover:bg-muted/10 border-b transition-colors last:border-0"
+                  >
+                    <td className="text-foreground p-4 font-medium">
                       {key.label || "Untitled Key"}
                     </td>
-                    <td className="p-4 font-mono text-xs text-muted-foreground">
+                    <td className="text-muted-foreground p-4 font-mono text-xs">
                       {key.fingerprint}
                     </td>
-                    <td className="p-4 text-muted-foreground whitespace-nowrap">
+                    <td className="text-muted-foreground p-4 whitespace-nowrap">
                       <span className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
                         {format(new Date(key.createdAt), "MMM d, yyyy")}
@@ -204,8 +205,8 @@ export default function SshKeysPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete SSH Key</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to remove this key? Any tunnels established using this key
-              will be terminated and you will not be able to authenticate with it anymore.
+              Are you sure you want to remove this key? Any tunnels established using this key will
+              be terminated and you will not be able to authenticate with it anymore.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

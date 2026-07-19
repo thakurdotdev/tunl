@@ -59,10 +59,8 @@ export default function LoginPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight font-sans">
-          Sign in to your account
-        </h1>
-        <p className="text-sm text-muted-foreground">
+        <h1 className="font-sans text-2xl font-semibold tracking-tight">Sign in to your account</h1>
+        <p className="text-muted-foreground text-sm">
           Enter your email and password to access your dashboard.
         </p>
       </div>
@@ -78,9 +76,7 @@ export default function LoginPage() {
             {...register("email")}
             aria-invalid={!!errors.email}
           />
-          {errors.email && (
-            <p className="text-xs text-destructive">{errors.email.message}</p>
-          )}
+          {errors.email && <p className="text-destructive text-xs">{errors.email.message}</p>}
         </div>
 
         <div className="flex flex-col gap-2">
@@ -88,7 +84,7 @@ export default function LoginPage() {
             <Label htmlFor="password">Password</Label>
             <Link
               href="/forgot-password"
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              className="text-muted-foreground hover:text-foreground text-xs transition-colors"
             >
               Forgot password?
             </Link>
@@ -106,27 +102,25 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 text-muted-foreground hover:text-foreground transition-colors focus:outline-none"
+              className="text-muted-foreground hover:text-foreground absolute right-3 transition-colors focus:outline-none"
               tabIndex={-1}
             >
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
-          {errors.password && (
-            <p className="text-xs text-destructive">{errors.password.message}</p>
-          )}
+          {errors.password && <p className="text-destructive text-xs">{errors.password.message}</p>}
         </div>
 
-        <Button type="submit" disabled={isSubmitting} className="w-full mt-2">
+        <Button type="submit" disabled={isSubmitting} className="mt-2 w-full">
           {isSubmitting ? "Signing in..." : "Sign in"}
         </Button>
       </form>
 
-      <div className="text-center text-sm text-muted-foreground mt-4">
+      <div className="text-muted-foreground mt-4 text-center text-sm">
         Don&apos;t have an account?{" "}
         <Link
           href="/signup"
-          className="font-medium text-foreground hover:underline underline-offset-4"
+          className="text-foreground font-medium underline-offset-4 hover:underline"
         >
           Sign up
         </Link>

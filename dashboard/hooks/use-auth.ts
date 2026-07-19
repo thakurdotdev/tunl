@@ -13,12 +13,18 @@ export function useProfileQuery(enabled = true) {
   });
 }
 
-export function useVerifyTokenQuery(token: string | null, type: "email_verification" | "password_reset") {
+export function useVerifyTokenQuery(
+  token: string | null,
+  type: "email_verification" | "password_reset",
+) {
   return useQuery({
     queryKey: ["verify-token", token, type],
     queryFn: async () => {
       if (!token) throw new Error("No token provided");
-      const { data } = await client.post<{ valid: boolean }>("/v1/auth/verify-token", { token, type });
+      const { data } = await client.post<{ valid: boolean }>("/v1/auth/verify-token", {
+        token,
+        type,
+      });
       return data;
     },
     enabled: !!token,
@@ -29,7 +35,10 @@ export function useVerifyTokenQuery(token: string | null, type: "email_verificat
 export function useSignupMutation() {
   return useMutation({
     mutationFn: async ({ email, password }: { email: string; password: string }) => {
-      const { data } = await client.post<{ message: string }>("/v1/auth/signup", { email, password });
+      const { data } = await client.post<{ message: string }>("/v1/auth/signup", {
+        email,
+        password,
+      });
       return data;
     },
   });

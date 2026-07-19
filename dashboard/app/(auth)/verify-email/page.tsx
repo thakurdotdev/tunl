@@ -41,8 +41,8 @@ function VerifyEmailContent() {
   if (status === "loading") {
     return (
       <div className="flex flex-col items-center gap-4 py-8">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-foreground/20 border-t-foreground" />
-        <p className="text-sm text-muted-foreground">Verifying your email address...</p>
+        <div className="border-foreground/20 border-t-foreground h-6 w-6 animate-spin rounded-full border-2" />
+        <p className="text-muted-foreground text-sm">Verifying your email address...</p>
       </div>
     );
   }
@@ -51,10 +51,8 @@ function VerifyEmailContent() {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
-          <h1 className="text-2xl font-semibold tracking-tight font-sans">
-            Email verified
-          </h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="font-sans text-2xl font-semibold tracking-tight">Email verified</h1>
+          <p className="text-muted-foreground text-sm">
             Your email has been successfully verified. You can now sign in to your dashboard.
           </p>
         </div>
@@ -68,10 +66,10 @@ function VerifyEmailContent() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight font-sans text-destructive">
+        <h1 className="text-destructive font-sans text-2xl font-semibold tracking-tight">
           Verification failed
         </h1>
-        <p className="text-sm text-muted-foreground">{errorMessage}</p>
+        <p className="text-muted-foreground text-sm">{errorMessage}</p>
       </div>
       <div className="flex flex-col gap-3">
         <Link href="/signup" className="w-full">
@@ -92,8 +90,8 @@ export default function VerifyEmailPage() {
     <Suspense
       fallback={
         <div className="flex flex-col items-center gap-4 py-8">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-foreground/20 border-t-foreground" />
-          <p className="text-sm text-muted-foreground">Loading...</p>
+          <div className="border-foreground/20 border-t-foreground h-6 w-6 animate-spin rounded-full border-2" />
+          <p className="text-muted-foreground text-sm">Loading...</p>
         </div>
       }
     >

@@ -9,9 +9,8 @@ const db = createDatabase(config.DATABASE_URL);
 await runMigrationsAndSeed(db);
 
 const redis = await connectRedis(config.REDIS_URL);
-const server = createApp(db, redis, config).listen(
-  config.PORT,
-  () => console.log(`control-plane listening on :${config.PORT}`),
+const server = createApp(db, redis, config).listen(config.PORT, () =>
+  console.log(`control-plane listening on :${config.PORT}`),
 );
 
 for (const signal of ["SIGINT", "SIGTERM"] as const) {

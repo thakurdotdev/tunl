@@ -40,7 +40,7 @@ client.interceptors.response.use(
       requestId: "",
     };
     return Promise.reject(new ApiClientError(status, errorData.code, errorData.message));
-  }
+  },
 );
 
 export function getToken(): string | null {

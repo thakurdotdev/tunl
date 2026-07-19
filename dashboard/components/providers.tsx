@@ -14,7 +14,7 @@ export function Providers({ children }: { children: ReactNode }) {
             retry: false,
           },
         },
-      })
+      }),
   );
 
   return (

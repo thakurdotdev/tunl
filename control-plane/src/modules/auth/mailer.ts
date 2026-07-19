@@ -22,7 +22,8 @@ export class ResendAuthMailer implements AuthMailer {
       path: "/verify-email",
       token,
       title: "Verify your email address",
-      description: "Click the button below to verify your email address and activate your Tunl account.",
+      description:
+        "Click the button below to verify your email address and activate your Tunl account.",
       actionLabel: "Verify Email",
       expiryMinutes,
     });
@@ -35,7 +36,8 @@ export class ResendAuthMailer implements AuthMailer {
       path: "/reset-password",
       token,
       title: "Reset your password",
-      description: "We received a request to reset your password. Click the button below to choose a new password.",
+      description:
+        "We received a request to reset your password. Click the button below to choose a new password.",
       actionLabel: "Reset Password",
       expiryMinutes,
     });

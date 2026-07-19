@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  useCallback,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 import { client, getToken, setToken, clearToken } from "./api-client";
 import type { User } from "./types";
 
@@ -51,11 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
-  return (
-    <AuthContext value={{ user, isLoading, login, logout }}>
-      {children}
-    </AuthContext>
-  );
+  return <AuthContext value={{ user, isLoading, login, logout }}>{children}</AuthContext>;
 }
 
 export function useAuth() {

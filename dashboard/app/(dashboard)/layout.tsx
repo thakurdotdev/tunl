@@ -14,9 +14,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <RouteGuard>
-      <div className="min-h-screen flex flex-col bg-background">
-        <header className="border-b border-border bg-card">
-          <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
+      <div className="bg-background flex min-h-screen flex-col">
+        <header className="border-border bg-card border-b">
+          <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
             <div className="flex items-center gap-8">
               <Link href="/dashboard">
                 <Logo />
@@ -45,16 +45,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </nav>
             </div>
             <div className="flex items-center gap-4">
-              <span className="text-sm text-muted-foreground hidden sm:inline">
-                {user?.email}
-              </span>
+              <span className="text-muted-foreground hidden text-sm sm:inline">{user?.email}</span>
               <Button variant="outline" size="sm" onClick={logout}>
                 Log out
               </Button>
             </div>
           </div>
         </header>
-        <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-8">{children}</main>
+        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">{children}</main>
       </div>
     </RouteGuard>
   );

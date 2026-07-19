@@ -63,7 +63,7 @@ export default function SignupPage() {
             toast.error("Failed to sign up. Please try again.");
           }
         },
-      }
+      },
     );
   };
 
@@ -88,17 +88,21 @@ export default function SignupPage() {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
-          <h1 className="text-2xl font-semibold tracking-tight font-sans">
-            Verify your email
-          </h1>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            We&apos;ve sent a verification link to <span className="font-medium text-foreground">{registeredEmail}</span>.
-            Please check your inbox and click the link to activate your account.
+          <h1 className="font-sans text-2xl font-semibold tracking-tight">Verify your email</h1>
+          <p className="text-muted-foreground text-sm leading-relaxed">
+            We&apos;ve sent a verification link to{" "}
+            <span className="text-foreground font-medium">{registeredEmail}</span>. Please check
+            your inbox and click the link to activate your account.
           </p>
         </div>
 
         <div className="flex flex-col gap-3">
-          <Button onClick={handleResend} variant="outline" className="w-full" disabled={resendMutation.isPending}>
+          <Button
+            onClick={handleResend}
+            variant="outline"
+            className="w-full"
+            disabled={resendMutation.isPending}
+          >
             {resendMutation.isPending ? "Resending..." : "Resend email"}
           </Button>
           <Link href="/login" className="w-full">
@@ -112,10 +116,8 @@ export default function SignupPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight font-sans">
-          Create an account
-        </h1>
-        <p className="text-sm text-muted-foreground">
+        <h1 className="font-sans text-2xl font-semibold tracking-tight">Create an account</h1>
+        <p className="text-muted-foreground text-sm">
           Enter your email and password to register a new account.
         </p>
       </div>
@@ -131,9 +133,7 @@ export default function SignupPage() {
             {...register("email")}
             aria-invalid={!!errors.email}
           />
-          {errors.email && (
-            <p className="text-xs text-destructive">{errors.email.message}</p>
-          )}
+          {errors.email && <p className="text-destructive text-xs">{errors.email.message}</p>}
         </div>
 
         <div className="flex flex-col gap-2">
@@ -151,27 +151,25 @@ export default function SignupPage() {
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 text-muted-foreground hover:text-foreground transition-colors focus:outline-none"
+              className="text-muted-foreground hover:text-foreground absolute right-3 transition-colors focus:outline-none"
               tabIndex={-1}
             >
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
-          {errors.password && (
-            <p className="text-xs text-destructive">{errors.password.message}</p>
-          )}
+          {errors.password && <p className="text-destructive text-xs">{errors.password.message}</p>}
         </div>
 
-        <Button type="submit" disabled={isSubmitting} className="w-full mt-2">
+        <Button type="submit" disabled={isSubmitting} className="mt-2 w-full">
           {isSubmitting ? "Creating account..." : "Sign up"}
         </Button>
       </form>
 
-      <div className="text-center text-sm text-muted-foreground mt-4">
+      <div className="text-muted-foreground mt-4 text-center text-sm">
         Already have an account?{" "}
         <Link
           href="/login"
-          className="font-medium text-foreground hover:underline underline-offset-4"
+          className="text-foreground font-medium underline-offset-4 hover:underline"
         >
           Sign in
         </Link>

@@ -179,7 +179,9 @@ export async function verifyEmail(db: Database, token: string) {
   await db.transaction(async (tx) => {
     await tx
       .delete(accountTokens)
-      .where(and(eq(accountTokens.userId, record.userId), eq(accountTokens.type, "email_verification")));
+      .where(
+        and(eq(accountTokens.userId, record.userId), eq(accountTokens.type, "email_verification")),
+      );
     await tx
       .update(users)
       .set({ emailVerifiedAt: new Date(), updatedAt: new Date() })
@@ -206,7 +208,9 @@ export async function resetPassword(db: Database, token: string, password: strin
   await db.transaction(async (tx) => {
     await tx
       .delete(accountTokens)
-      .where(and(eq(accountTokens.userId, record.userId), eq(accountTokens.type, "password_reset")));
+      .where(
+        and(eq(accountTokens.userId, record.userId), eq(accountTokens.type, "password_reset")),
+      );
     await tx
       .update(users)
       .set({ passwordHash, updatedAt: new Date() })
