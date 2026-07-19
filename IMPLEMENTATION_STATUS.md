@@ -42,7 +42,7 @@
 #### SSH Session Safety (P1)
 
 - **Mutex on `sshSession` fields** — `subdomain`, `bindAddr`, `bindPort`, `tunnelURL`, `forwarded` all guarded by `sync.Mutex` with getter/setter methods.
-- **Channel request hardening** — `pty-req`, `shell`, `window-change` approved; `exec`, `subsystem`, and everything else rejected.
+- **Channel request hardening** — `pty-req`, `shell`, `exec`, `env`, `window-change` approved; `subsystem` and everything else rejected.
 
 #### HTTP Proxy (P1)
 

@@ -233,7 +233,7 @@ func (s *Server) handleSessionChannel(newCh ssh.NewChannel, sess *sshSession, lo
 	go func() {
 		for req := range reqs {
 			switch req.Type {
-			case "pty-req", "shell", "window-change":
+			case "pty-req", "shell", "exec", "env", "window-change":
 				if req.WantReply {
 					req.Reply(true, nil)
 				}
