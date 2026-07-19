@@ -1,4 +1,6 @@
 /tunneld
+/bin/
 *.pem
 *.key
+ssh_host_*
 .env

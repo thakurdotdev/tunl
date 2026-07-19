@@ -1,50 +1,40 @@
 # tunnel-saas
 
 Reverse SSH tunnel SaaS — `ssh -R 80:localhost:3000 sub@thakur.dev`, no client
-binary. This is a scaffolded skeleton: directory structure, interfaces,
-config, DB schema/migration, and Docker wiring are in place; business logic
-is stubbed with `TODO`s tagged to the plan's section/step numbers. Build
-order and rationale live in the original implementation plan — read that
-alongside this repo, don't treat this README as a replacement for it.
+binary. This repository contains the complete implementation across control plane, dashboard, and tunnel server services.
 
 ## Layout
 
 ```
 /tunnel-server   Go — SSH server + HTTP(S) reverse proxy (the tunnel core)
-/control-plane   NestJS + Postgres — accounts, SSH keys, reserved subdomains
+/control-plane   Express + Postgres — accounts, SSH keys, reserved subdomains
 /dashboard       Next.js — signup/login, manage keys and tunnels
-/shared          openapi.yaml (Go<->Nest contract), docker-compose.yml
-/docs            architecture.md
+/shared          openapi.yaml (Go<->Express contract), nginx.conf
+/ecosystem.config.cjs PM2 process manager configuration
 ```
 
-## Local dev
+## Running & Deployment
 
+### Local Dev
+Run services concurrently (requires local Postgres on 5432 & Redis on 6379):
 ```bash
-cd shared
-docker compose up postgres redis   # bring up just the DB first
-
-# tunnel-server
-cd ../tunnel-server
-cp .env.example .env               # set INTERNAL_SHARED_SECRET to match control-plane's
-go mod tidy
-go test -race ./...
-go run ./cmd/tunneld
-
-# control-plane (separate shell)
-cd ../control-plane
-cp .env.example .env
-npm install
-npm run migration:run              # or: psql < migrations/001_init.sql
-npm run start:dev
-
-# dashboard (separate shell)
-cd ../dashboard
-cp .env.example .env
-npm install
-npm run dev
+pnpm dev
 ```
 
-Or `docker compose up` from `/shared` to bring up everything at once.
+### Production (PM2)
+Build all production assets and manage services via PM2:
+```bash
+pnpm build
+pnpm pm2:start
+```
+
+PM2 control commands:
+```bash
+pnpm pm2:stop
+pnpm pm2:restart
+pnpm pm2:reload
+pnpm pm2:logs
+```
 
 ## Build order (matches the plan's suggested agent build order)
 

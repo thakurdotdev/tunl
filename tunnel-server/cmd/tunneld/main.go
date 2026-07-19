@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"crypto"
+	"crypto/ed25519"
 	"crypto/rand"
-	"crypto/rsa"
+	"encoding/pem"
 	"fmt"
 	"log"
 	"net/http"
@@ -127,16 +129,30 @@ func getEnv(key, fallback string) string {
 }
 
 func loadOrGenerateHostKey() (ssh.Signer, error) {
-	if path := os.Getenv("SSH_HOST_KEY_PATH"); path != "" {
-		keyBytes, err := os.ReadFile(path)
-		if err != nil {
-			return nil, fmt.Errorf("read host key %s: %w", path, err)
-		}
+	path := getEnv("SSH_HOST_KEY_PATH", "ssh_host_ed25519_key")
+
+	keyBytes, err := os.ReadFile(path)
+	if err == nil {
 		return ssh.ParsePrivateKey(keyBytes)
 	}
-	key, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		return nil, err
+	if !os.IsNotExist(err) {
+		return nil, fmt.Errorf("read host key %s: %w", path, err)
 	}
-	return ssh.NewSignerFromKey(key)
+
+	_, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		return nil, fmt.Errorf("generate host key: %w", err)
+	}
+
+	pemBlock, err := ssh.MarshalPrivateKey(crypto.PrivateKey(priv), "")
+	if err != nil {
+		return nil, fmt.Errorf("marshal host key: %w", err)
+	}
+
+	pemBytes := pem.EncodeToMemory(pemBlock)
+	if err := os.WriteFile(path, pemBytes, 0600); err != nil {
+		return nil, fmt.Errorf("save host key to %s: %w", path, err)
+	}
+
+	return ssh.ParsePrivateKey(pemBytes)
 }
