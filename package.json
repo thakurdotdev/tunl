@@ -3,7 +3,11 @@
   "private": true,
   "packageManager": "pnpm@10.27.0",
   "scripts": {
-    "dev": "docker compose -f shared/docker-compose.yml up postgres redis -d && concurrently --kill-others \"pnpm --filter control-plane dev\" \"pnpm --filter dashboard dev\" \"cd tunnel-server && go run ./cmd/tunneld\"",
+    "dev": "docker compose -f shared/docker-compose.yml -f shared/docker-compose.dev.yml up postgres redis -d && concurrently --kill-others \"pnpm --filter control-plane dev\" \"pnpm --filter dashboard dev\" \"cd tunnel-server && go run ./cmd/tunneld\"",
+    "prod:up": "docker compose -f shared/docker-compose.yml up --build -d",
+    "prod:down": "docker compose -f shared/docker-compose.yml down",
+    "prod:logs": "docker compose -f shared/docker-compose.yml logs -f",
+    "prod:restart": "docker compose -f shared/docker-compose.yml restart",
     "db:migrate": "pnpm --filter control-plane db:migrate",
     "db:seed": "pnpm --filter control-plane db:seed",
     "lint": "oxlint control-plane dashboard",
