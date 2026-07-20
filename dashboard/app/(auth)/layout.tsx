@@ -1,5 +1,6 @@
 import { Logo } from "@/components/logo";
 import { GuestGuard } from "@/components/guest-guard";
+import { ModeToggle } from "@/components/mode-toggle";
 import "./auth.css";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
@@ -8,8 +9,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <div className="auth-layout">
         <div className="auth-form-panel">
           <div className="auth-form-container">
-            <div className="auth-logo">
+            <div className="auth-logo flex items-center justify-between">
               <Logo />
+              <ModeToggle />
             </div>
             {children}
           </div>

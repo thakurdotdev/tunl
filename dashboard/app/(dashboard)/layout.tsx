@@ -1,11 +1,12 @@
 "use client";
 
+import { Logo } from "@/components/logo";
+import { ModeToggle } from "@/components/mode-toggle";
+import { RouteGuard } from "@/components/route-guard";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/lib/auth-context";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useAuth } from "@/lib/auth-context";
-import { RouteGuard } from "@/components/route-guard";
-import { Logo } from "@/components/logo";
-import { Button } from "@/components/ui/button";
 import "./dashboard.css";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -54,8 +55,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </Link>
               </nav>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               <span className="text-muted-foreground hidden text-sm sm:inline">{user?.email}</span>
+              <ModeToggle />
               <Button variant="outline" size="sm" onClick={logout}>
                 Log out
               </Button>

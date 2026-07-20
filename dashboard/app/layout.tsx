@@ -30,6 +30,7 @@ export default function RootLayout({
     <html
       lang="en"
       className={cn("h-full antialiased", geistSans.variable, jetbrainsMono.variable)}
+      suppressHydrationWarning
     >
       <body className="flex min-h-full flex-col font-sans">
         <Providers>
