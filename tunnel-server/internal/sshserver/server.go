@@ -103,9 +103,14 @@ func New(opts Options) *Server {
 		kv = anonymousKeyValidator{}
 	}
 
+	log := opts.Logger
+	if log == nil {
+		log = slog.Default()
+	}
+
 	cfg := &ssh.ServerConfig{
 		NoClientAuth:      false,
-		PublicKeyCallback: buildAuthCallback(kv),
+		PublicKeyCallback: buildAuthCallback(kv, log),
 	}
 	cfg.AddHostKey(opts.HostKey)
 
@@ -117,13 +122,6 @@ func New(opts Options) *Server {
 	maxPerIP := opts.MaxConnsPerIP
 	if maxPerIP <= 0 {
 		maxPerIP = defaultMaxConnsPerIP
-	}
-
-	log := opts.Logger
-	if log == nil {
-		// Avoid nil-pointer panics if the caller forgot to supply a logger;
-		// *slog.Logger method calls on a nil receiver panic.
-		log = slog.Default()
 	}
 
 	return &Server{

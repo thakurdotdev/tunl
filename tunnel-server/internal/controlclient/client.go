@@ -68,14 +68,17 @@ func (c *Client) ValidateKey(ctx context.Context, fingerprint string) (userID, e
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
+		fmt.Printf("[controlclient] ValidateKey HTTP request failed: %v\n", err)
 		return "", "", "", "", false
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusNotFound {
+		fmt.Printf("[controlclient] ValidateKey key not found for fingerprint %s\n", fingerprint)
 		return "", "", "", "", false
 	}
 	if resp.StatusCode != http.StatusOK {
+		fmt.Printf("[controlclient] ValidateKey returned unexpected status %d for fingerprint %s\n", resp.StatusCode, fingerprint)
 		return "", "", "", "", false
 	}
 

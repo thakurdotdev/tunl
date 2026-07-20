@@ -4,6 +4,8 @@
 package sshserver
 
 import (
+	"log/slog"
+
 	"golang.org/x/crypto/ssh"
 )
 
@@ -26,10 +28,13 @@ func (anonymousKeyValidator) ValidateKey(fingerprint string) (string, string, st
 // buildAuthCallback returns a PublicKeyCallback that accepts every connection.
 // Known keys get ssh.Permissions with userID/email/allowedSubdomain/plan in Extensions.
 // Unknown keys get (nil, nil) — accepted as anonymous.
-func buildAuthCallback(kv KeyValidator) func(ssh.ConnMetadata, ssh.PublicKey) (*ssh.Permissions, error) {
+func buildAuthCallback(kv KeyValidator, log *slog.Logger) func(ssh.ConnMetadata, ssh.PublicKey) (*ssh.Permissions, error) {
 	return func(meta ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
 		fingerprint := ssh.FingerprintSHA256(key)
 		userID, email, allowedSubdomain, plan, ok := kv.ValidateKey(fingerprint)
+		if log != nil {
+			log.Info("ssh key validation check", "fingerprint", fingerprint, "valid", ok, "user_id", userID, "email", email)
+		}
 		if !ok {
 			return nil, nil
 		}
