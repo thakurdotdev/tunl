@@ -382,6 +382,10 @@ func (s *Server) handleSessionChannel(newCh ssh.NewChannel, sess *sshSession, lo
 	select {
 	case <-sess.tunnelReady():
 		renderTerminalBanner(ch, s, sess)
+	case <-sess.errorReady():
+		renderTerminalError(ch, s, sess.RegisterError())
+		sess.Close()
+		return
 	case <-sess.Done():
 		if errMsg := sess.RegisterError(); errMsg != "" {
 			renderTerminalError(ch, s, errMsg)
@@ -412,29 +416,30 @@ func renderTerminalBanner(ch io.Writer, s *Server, sess *sshSession) {
 	}
 
 	fmt.Fprintf(ch, "\r\n")
-	fmt.Fprintf(ch, "  \033[90m╭──\033[0m \033[1;36m⚡ TUNL\033[0m \033[90m────────────────────────────────────────────────────────╮\033[0m\r\n")
-	fmt.Fprintf(ch, "  \033[90m│\033[0m                                                                  \033[90m│\033[0m\r\n")
-	fmt.Fprintf(ch, "  \033[90m│\033[0m  \033[90mStatus\033[0m     \033[42;30;1m ONLINE \033[0m                                          \033[90m│\033[0m\r\n")
-	fmt.Fprintf(ch, "  \033[90m│\033[0m  \033[90mAccount\033[0m    %s\r\n", accountStr)
-	fmt.Fprintf(ch, "  \033[90m│\033[0m  \033[90mForwarding\033[0m \033[1;33m%s\033[0m ➜ \033[1;4;36m%s\033[0m\r\n", forwardTarget, url)
+	fmt.Fprintf(ch, "  \033[1;36m⚡ TUNL\033[0m  \033[90m•\033[0m  \033[1;32m● Online\033[0m\r\n")
+	fmt.Fprintf(ch, "  \033[90m──────────────────────────────────────────────────────────\033[0m\r\n")
+	fmt.Fprintf(ch, "  \033[90mAccount\033[0m     %s\r\n", accountStr)
+	fmt.Fprintf(ch, "  \033[90mForwarding\033[0m  \033[1;33m%s\033[0m\r\n", forwardTarget)
+	fmt.Fprintf(ch, "  \033[90mPublic URL\033[0m  \033[1;4;36m%s\033[0m\r\n", url)
+
 	if sess.UserID() != "" && sess.AllowedSubdomain() == "" {
-		fmt.Fprintf(ch, "  \033[90m│\033[0m  \033[33m💡 Tip:\033[0m     Reserve a custom domain at \033[4;34m%s\033[0m\r\n", homeURL)
+		fmt.Fprintf(ch, "\r\n  \033[33m💡 Tip:\033[0m Reserve a custom domain at \033[4;34m%s\033[0m\r\n", homeURL)
 	} else if sess.UserID() == "" {
-		fmt.Fprintf(ch, "  \033[90m│\033[0m  \033[33m💡 Tip:\033[0m     Log in to reserve a domain at \033[4;34m%s\033[0m\r\n", homeURL)
+		fmt.Fprintf(ch, "\r\n  \033[33m💡 Tip:\033[0m Log in to reserve a domain at \033[4;34m%s\033[0m\r\n", homeURL)
 	}
-	fmt.Fprintf(ch, "  \033[90m│\033[0m                                                                  \033[90m│\033[0m\r\n")
-	fmt.Fprintf(ch, "  \033[90m╰── Press \033[1;37mCtrl+C\033[0;90m or \033[1;37mCtrl+D\033[0;90m to stop ─────────────────────────────────╯\033[0m\r\n\r\n")
+
+	fmt.Fprintf(ch, "  \033[90m──────────────────────────────────────────────────────────\033[0m\r\n")
+	fmt.Fprintf(ch, "  \033[90mPress \033[1;37mCtrl+C\033[0;90m or \033[1;37mCtrl+D\033[0;90m to stop the tunnel\033[0m\r\n\r\n")
 }
 
 func renderTerminalError(ch io.Writer, s *Server, errMsg string) {
 	homeURL := fmt.Sprintf("%s://tunl.%s", s.tunnelScheme, s.baseDomain)
 	fmt.Fprintf(ch, "\r\n")
-	fmt.Fprintf(ch, "  \033[90m╭──\033[0m \033[1;31m✖ TUNL ERROR\033[0m \033[90m───────────────────────────────────────────────────╮\033[0m\r\n")
-	fmt.Fprintf(ch, "  \033[90m│\033[0m                                                                  \033[90m│\033[0m\r\n")
-	fmt.Fprintf(ch, "  \033[90m│\033[0m  \033[1;31mReason\033[0m     %s\r\n", errMsg)
-	fmt.Fprintf(ch, "  \033[90m│\033[0m  \033[90mDashboard\033[0m  \033[4;34m%s\033[0m\r\n", homeURL)
-	fmt.Fprintf(ch, "  \033[90m│\033[0m                                                                  \033[90m│\033[0m\r\n")
-	fmt.Fprintf(ch, "  \033[90m╰──────────────────────────────────────────────────────────────────╯\033[0m\r\n\r\n")
+	fmt.Fprintf(ch, "  \033[1;31m✖ Tunnel Error\033[0m\r\n")
+	fmt.Fprintf(ch, "  \033[90m──────────────────────────────────────────────────────────\033[0m\r\n")
+	fmt.Fprintf(ch, "  \033[90mReason\033[0m     %s\r\n", errMsg)
+	fmt.Fprintf(ch, "  \033[90mDashboard\033[0m  \033[4;34m%s\033[0m\r\n", homeURL)
+	fmt.Fprintf(ch, "  \033[90m──────────────────────────────────────────────────────────\033[0m\r\n\r\n")
 }
 
 func sessionID() string {

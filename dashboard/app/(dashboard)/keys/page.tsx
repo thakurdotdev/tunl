@@ -1,17 +1,5 @@
 "use client";
 
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import {
-  useSshKeysQuery,
-  useCreateSshKeyMutation,
-  useDeleteSshKeyMutation,
-} from "@/hooks/use-ssh-keys";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,11 +10,23 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { toast } from "sonner";
-import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  useCreateSshKeyMutation,
+  useDeleteSshKeyMutation,
+  useSshKeysQuery,
+} from "@/hooks/use-ssh-keys";
 import { ApiClientError } from "@/lib/api-client";
-import { Key, Trash2, Calendar } from "lucide-react";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
+import { Calendar, Copy, Key, Terminal, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import * as z from "zod";
 
 const sshKeySchema = z.object({
   label: z.string().max(100, "Label must be at most 100 characters"),
@@ -95,6 +95,31 @@ export default function SshKeysPage() {
     });
   };
 
+  const [activeOs, setActiveOs] = useState<"mac" | "linux" | "windows">("mac");
+
+  const osCommands = {
+    mac: {
+      generate: 'ssh-keygen -t ed25519 -C "your_email@example.com"',
+      copy: "pbcopy < ~/.ssh/id_ed25519.pub",
+      view: "cat ~/.ssh/id_ed25519.pub",
+    },
+    linux: {
+      generate: 'ssh-keygen -t ed25519 -C "your_email@example.com"',
+      copy: "xclip -selection clipboard < ~/.ssh/id_ed25519.pub",
+      view: "cat ~/.ssh/id_ed25519.pub",
+    },
+    windows: {
+      generate: 'ssh-keygen -t ed25519 -C "your_email@example.com"',
+      copy: "Get-Content ~/.ssh/id_ed25519.pub | Set-Clipboard",
+      view: "type ~/.ssh/id_ed25519.pub",
+    },
+  };
+
+  const copyCommand = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success(`Copied ${label} command!`);
+  };
+
   return (
     <div className="flex flex-col gap-8">
       <div>
@@ -102,6 +127,98 @@ export default function SshKeysPage() {
         <p className="text-muted-foreground text-sm">
           Manage the public keys authorized to establish tunnels.
         </p>
+      </div>
+
+      {/* Guide Card */}
+      <div className="border-border bg-card flex flex-col gap-4 rounded-2xl border p-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Terminal className="text-foreground h-5 w-5" />
+            <h2 className="text-lg font-medium">How to Generate & Copy Your SSH Key</h2>
+          </div>
+          <div className="bg-muted flex rounded-lg p-1 text-xs">
+            <button
+              type="button"
+              onClick={() => setActiveOs("mac")}
+              className={`rounded-md px-2.5 py-1 font-medium transition-colors ${
+                activeOs === "mac"
+                  ? "bg-background text-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              macOS
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveOs("linux")}
+              className={`rounded-md px-2.5 py-1 font-medium transition-colors ${
+                activeOs === "linux"
+                  ? "bg-background text-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Linux
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveOs("windows")}
+              className={`rounded-md px-2.5 py-1 font-medium transition-colors ${
+                activeOs === "windows"
+                  ? "bg-background text-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Windows
+            </button>
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="border-border bg-muted/20 flex flex-col gap-2 rounded-xl border p-4">
+            <span className="text-xs font-semibold text-amber-600 dark:text-amber-500">
+              Step 1: Generate Key
+            </span>
+            <p className="text-muted-foreground text-xs">
+              Open your terminal and run this command (press Enter to accept default path):
+            </p>
+            <div className="flex items-center gap-2">
+              <code className="bg-muted block flex-1 truncate rounded-lg p-2 font-mono text-xs select-all">
+                {osCommands[activeOs].generate}
+              </code>
+              <Button
+                variant="outline"
+                size="icon-sm"
+                onClick={() => copyCommand(osCommands[activeOs].generate, "Generate")}
+              >
+                <Copy className="h-3 w-3" />
+              </Button>
+            </div>
+          </div>
+
+          <div className="border-border bg-muted/20 flex flex-col gap-2 rounded-xl border p-4">
+            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-500">
+              Step 2: Copy Public Key
+            </span>
+            <p className="text-muted-foreground text-xs">
+              Copy your generated public key directly to your clipboard:
+            </p>
+            <div className="flex items-center gap-2">
+              <code className="bg-muted block flex-1 truncate rounded-lg p-2 font-mono text-xs select-all">
+                {osCommands[activeOs].copy}
+              </code>
+              <Button
+                variant="outline"
+                size="icon-sm"
+                onClick={() => copyCommand(osCommands[activeOs].copy, "Copy")}
+              >
+                <Copy className="h-3 w-3" />
+              </Button>
+            </div>
+            <p className="text-muted-foreground text-[11px]">
+              Or view in terminal: <code className="font-mono">{osCommands[activeOs].view}</code>
+            </p>
+          </div>
+        </div>
       </div>
 
       <div className="border-border bg-card flex flex-col gap-4 rounded-2xl border p-6">
@@ -123,7 +240,7 @@ export default function SshKeysPage() {
             <Textarea
               id="publicKey"
               rows={4}
-              placeholder="ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQD..."
+              placeholder="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... your_email@example.com"
               disabled={createMutation.isPending}
               {...register("publicKey")}
               aria-invalid={!!errors.publicKey}

@@ -26,6 +26,9 @@ type sshSession struct {
 	readyOnce sync.Once
 	ready     chan struct{}
 
+	errOnce  sync.Once
+	errReady chan struct{}
+
 	mu        sync.Mutex
 	subdomain string
 	bindAddr  string
@@ -46,6 +49,7 @@ func newSSHSession(id, userID, email, allowedSubdomain, plan, remoteIP string, c
 		sshConn:          conn,
 		done:             make(chan struct{}),
 		ready:            make(chan struct{}),
+		errReady:         make(chan struct{}),
 	}
 }
 
@@ -57,6 +61,7 @@ func (s *sshSession) AllowedSubdomain() string     { return s.allowedSubdomain }
 func (s *sshSession) RemoteIP() string             { return s.remoteIP }
 func (s *sshSession) Done() <-chan struct{}        { return s.done }
 func (s *sshSession) tunnelReady() <-chan struct{} { return s.ready }
+func (s *sshSession) errorReady() <-chan struct{}  { return s.errReady }
 
 func (s *sshSession) RegisterError() string {
 	s.mu.Lock()
@@ -66,8 +71,9 @@ func (s *sshSession) RegisterError() string {
 
 func (s *sshSession) setRegisterError(err string) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.regErr = err
+	s.mu.Unlock()
+	s.errOnce.Do(func() { close(s.errReady) })
 }
 
 func (s *sshSession) markReady() {

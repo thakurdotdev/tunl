@@ -6,6 +6,7 @@ import (
 	"encoding/base32"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/yourorg/tunnel-saas/tunnel-server/internal/registry"
 	"golang.org/x/crypto/ssh"
@@ -73,7 +74,7 @@ func (s *Server) handleForwardRequest(ctx context.Context, req *ssh.Request, ses
 		s.log.Warn("duplicate tcpip-forward rejected", "session_id", sess.ID())
 		sess.setRegisterError("Only one port forwarding request is allowed per SSH session.")
 		req.Reply(false, nil)
-		sess.Close()
+		closeGracefully(sess)
 		return
 	}
 
@@ -82,7 +83,7 @@ func (s *Server) handleForwardRequest(ctx context.Context, req *ssh.Request, ses
 		s.log.Warn("malformed tcpip-forward payload", "error", err)
 		sess.setRegisterError("Malformed port forwarding request payload.")
 		req.Reply(false, nil)
-		sess.Close()
+		closeGracefully(sess)
 		return
 	}
 
@@ -108,7 +109,7 @@ func (s *Server) handleForwardRequest(ctx context.Context, req *ssh.Request, ses
 			sess.setRegisterError(fmt.Sprintf("Failed to register tunnel subdomain: %v", err))
 		}
 		req.Reply(false, nil)
-		sess.Close()
+		closeGracefully(sess)
 		return
 	}
 
@@ -125,4 +126,11 @@ func (s *Server) handleForwardRequest(ctx context.Context, req *ssh.Request, ses
 	reply := tcpipForwardReply{BoundPort: fwd.BindPort}
 	req.Reply(true, ssh.Marshal(&reply))
 	sess.markReady()
+}
+
+func closeGracefully(sess *sshSession) {
+	go func() {
+		time.Sleep(1 * time.Second)
+		sess.Close()
+	}()
 }

@@ -42,6 +42,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 >
                   SSH Keys
                 </Link>
+                <Link
+                  href="/docs"
+                  className={`text-sm transition-colors ${
+                    pathname === "/docs"
+                      ? "text-foreground font-medium"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Docs
+                </Link>
               </nav>
             </div>
             <div className="flex items-center gap-4">
