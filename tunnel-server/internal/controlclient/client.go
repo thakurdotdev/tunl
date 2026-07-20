@@ -52,11 +52,6 @@ type validateKeyResponse struct {
 // window after the change lands in Postgres — deliberate tradeoff, see
 // plan's cache-staleness design note.
 func (c *Client) ValidateKey(ctx context.Context, fingerprint string) (userID, email, allowedSubdomain, plan string, ok bool) {
-	if v, hit := c.cache.get(fingerprint); hit {
-		r := v.(validateKeyResponse)
-		return r.UserID, r.Email, optionalSubdomain(r.AllowedSubdomain), r.Plan, true
-	}
-
 	body, _ := json.Marshal(map[string]string{"fingerprint": fingerprint})
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
 		c.baseURL+"/internal/validate-key", bytes.NewReader(body))
@@ -86,7 +81,6 @@ func (c *Client) ValidateKey(ctx context.Context, fingerprint string) (userID, e
 	if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
 		return "", "", "", "", false
 	}
-	c.cache.set(fingerprint, r)
 	return r.UserID, r.Email, optionalSubdomain(r.AllowedSubdomain), r.Plan, true
 }
 
