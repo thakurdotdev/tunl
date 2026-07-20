@@ -31,7 +31,7 @@ type keyValidatorAdapter struct {
 	client *controlclient.Client
 }
 
-func (a *keyValidatorAdapter) ValidateKey(fingerprint string) (string, string, string, bool) {
+func (a *keyValidatorAdapter) ValidateKey(fingerprint string) (string, string, string, string, bool) {
 	return a.client.ValidateKey(context.Background(), fingerprint)
 }
 
@@ -43,7 +43,7 @@ func main() {
 
 	logger := logging.Init(getEnv("LOG_LEVEL", "info"))
 
-	reg := registry.New(cfg.ReconnectGraceWindow, cfg.ReservedSubdomains)
+	reg := registry.New(cfg.ReconnectGraceWindow, cfg.ReservedSubdomains, cfg.MaxAnonymousTunnelsPerIP)
 
 	ccClient := controlclient.New(controlclient.Options{
 		BaseURL:      cfg.ControlPlaneURL,

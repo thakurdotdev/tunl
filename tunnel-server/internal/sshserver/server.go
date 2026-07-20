@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"sync"
@@ -224,8 +225,8 @@ func (s *Server) handleConn(ctx context.Context, conn net.Conn) {
 		return
 	}
 
-	userID, allowedSubdomain := extractPermissions(sshConn.Permissions)
-	sess := newSSHSession(sessionID(), userID, allowedSubdomain, sshConn)
+	userID, email, allowedSubdomain, plan := extractPermissions(sshConn.Permissions)
+	sess := newSSHSession(sessionID(), userID, email, allowedSubdomain, plan, remoteIP, sshConn)
 
 	s.trackSession(sess)
 
@@ -280,11 +281,11 @@ func (s *Server) handleConn(ctx context.Context, conn net.Conn) {
 	s.handleChannels(chans, sess, connLog)
 }
 
-func extractPermissions(perms *ssh.Permissions) (userID, allowedSubdomain string) {
+func extractPermissions(perms *ssh.Permissions) (userID, email, allowedSubdomain, plan string) {
 	if perms == nil || perms.Extensions == nil {
-		return "", ""
+		return "", "", "", ""
 	}
-	return perms.Extensions["user_id"], perms.Extensions["allowed_subdomain"]
+	return perms.Extensions["user_id"], perms.Extensions["email"], perms.Extensions["allowed_subdomain"], perms.Extensions["plan"]
 }
 
 func extractIP(addr net.Addr) string {
@@ -360,12 +361,7 @@ func (s *Server) handleSessionChannel(newCh ssh.NewChannel, sess *sshSession, lo
 	}()
 
 	// Watch the client's input for Ctrl+C / Ctrl+D so the tunnel can be
-	// closed interactively. This is intentionally restricted to these two
-	// control bytes only: earlier revisions also matched 'q'/'Q', which
-	// meant typing the letter q anywhere would tear down the tunnel by
-	// accident. Plain OpenSSH clients rarely send an SSH "signal" request
-	// for a synthetic session like this one, so without this scan Ctrl+C
-	// would otherwise do nothing and leave the terminal hanging.
+	// closed interactively.
 	go func() {
 		defer sess.Close()
 		buf := make([]byte, sessionReadBufSize)
@@ -385,16 +381,59 @@ func (s *Server) handleSessionChannel(newCh ssh.NewChannel, sess *sshSession, lo
 
 	select {
 	case <-sess.tunnelReady():
-		if url := sess.TunnelURL(); url != "" {
-			fmt.Fprintf(ch, "\r\nTunnel active: %s\r\n", url)
-			fmt.Fprintf(ch, "Connections on this subdomain are forwarded to your local server.\r\n")
-			fmt.Fprintf(ch, "Press Ctrl+C to close the tunnel.\r\n\r\n")
-		}
+		renderTerminalBanner(ch, s, sess)
 	case <-sess.Done():
+		if errMsg := sess.RegisterError(); errMsg != "" {
+			renderTerminalError(ch, s, errMsg)
+		}
 		return
 	}
 
 	<-sess.Done()
+}
+
+func renderTerminalBanner(ch io.Writer, s *Server, sess *sshSession) {
+	url := sess.TunnelURL()
+	homeURL := fmt.Sprintf("%s://tunl.%s", s.tunnelScheme, s.baseDomain)
+
+	targetHost := sess.BindAddr()
+	if targetHost == "" || targetHost == "0.0.0.0" || targetHost == "127.0.0.1" {
+		targetHost = "localhost"
+	}
+	forwardTarget := fmt.Sprintf("http://%s:%d", targetHost, sess.BindPort())
+
+	fmt.Fprintf(ch, "\r\n")
+	fmt.Fprintf(ch, "\033[1;36m ⚡ Tunl\033[0m — Instant public URLs for localhost\r\n")
+	fmt.Fprintf(ch, "\033[90m 🌐 Homepage:\033[0m   \033[4;34m%s\033[0m\r\n", homeURL)
+
+	if sess.UserID() != "" {
+		planStr := sess.Plan()
+		if planStr == "" {
+			planStr = "standard"
+		}
+		fmt.Fprintf(ch, "\033[90m 👤 Account:\033[0m    \033[1;33m%s\033[0m (\033[36m%s plan\033[0m)\r\n", sess.Email(), planStr)
+	} else {
+		fmt.Fprintf(ch, "\033[90m 👤 Account:\033[0m    Anonymous (\033[90munauthenticated\033[0m)\r\n")
+	}
+
+	fmt.Fprintf(ch, "\033[90m ────────────────────────────────────────────────────────\033[0m\r\n")
+	fmt.Fprintf(ch, " \033[1;32m● Status\033[0m       Online\r\n")
+	fmt.Fprintf(ch, " \033[1m🔗 Public URL\033[0m   \033[1;4;36m%s\033[0m\r\n", url)
+	fmt.Fprintf(ch, " \033[1m🎯 Forwarding\033[0m   %s\r\n", forwardTarget)
+
+	if sess.UserID() != "" && sess.AllowedSubdomain() == "" {
+		fmt.Fprintf(ch, " \033[33m💡 Subdomain\033[0m    Using random subdomain. Reserve yours at \033[4;34m%s/dashboard/tunnels\033[0m\r\n", homeURL)
+	}
+
+	fmt.Fprintf(ch, "\033[90m ────────────────────────────────────────────────────────\033[0m\r\n")
+	fmt.Fprintf(ch, " \033[90mPress Ctrl+C or Ctrl+D to close the tunnel.\033[0m\r\n\r\n")
+}
+
+func renderTerminalError(ch io.Writer, s *Server, errMsg string) {
+	homeURL := fmt.Sprintf("%s://tunl.%s", s.tunnelScheme, s.baseDomain)
+	fmt.Fprintf(ch, "\r\n")
+	fmt.Fprintf(ch, " \033[1;31m❌ Tunnel Error:\033[0m %s\r\n", errMsg)
+	fmt.Fprintf(ch, " \033[90m🌐 Manage your tunnels & plan at:\033[0m \033[4;34m%s/dashboard\033[0m\r\n\r\n", homeURL)
 }
 
 func sessionID() string {

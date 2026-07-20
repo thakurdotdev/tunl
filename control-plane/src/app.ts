@@ -38,9 +38,9 @@ export function createApp(db: Database, redis: RedisClient, config: Config) {
   );
   app.use("/v1", requireAuth(config));
   app.use("/v1", usersRouter(db));
-  app.use("/v1/ssh-keys", sshKeysRouter(db));
-  app.use("/v1/tunnels", tunnelsRouter(db));
-  app.use("/internal", internalRouter(db, config));
+  app.use("/v1/ssh-keys", sshKeysRouter(db, redis));
+  app.use("/v1/tunnels", tunnelsRouter(db, redis));
+  app.use("/internal", internalRouter(db, redis, config));
   app.use(errorHandler);
   return app;
 }

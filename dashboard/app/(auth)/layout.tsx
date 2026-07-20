@@ -25,8 +25,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
               <pre className="auth-terminal-body">
                 <code>
                   <span className="auth-terminal-prompt">$</span>{" "}
-                  <span className="auth-terminal-cmd">ssh</span> -R 80:localhost:3000
-                  myapp@thakur.dev
+                  <span className="auth-terminal-cmd">ssh</span> -R 80:localhost:3000 -p 2222
+                  myapp@t.thakur.dev
                   {"\n"}
                   <span className="auth-terminal-output">→ https://myapp.thakur.dev</span>
                   {"\n"}

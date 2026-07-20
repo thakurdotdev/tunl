@@ -20,7 +20,10 @@ const output = {
   label: sshKeys.label,
   createdAt: sshKeys.createdAt,
 };
-export function sshKeysRouter(db: Database) {
+import type { RedisClient } from "../../redis/client.js";
+import { redisKeys } from "../../redis/keys.js";
+
+export function sshKeysRouter(db: Database, redis: RedisClient) {
   const router = Router();
   router.get(
     "/",
@@ -63,8 +66,9 @@ export function sshKeysRouter(db: Database) {
       const deleted = await db
         .delete(sshKeys)
         .where(and(eq(sshKeys.id, id), eq(sshKeys.userId, req.userId!)))
-        .returning({ id: sshKeys.id });
+        .returning({ id: sshKeys.id, fingerprint: sshKeys.fingerprint });
       if (!deleted.length) throw notFound("SSH key not found");
+      await redis.del(redisKeys.validateKey(deleted[0].fingerprint));
       res.status(204).send();
     }),
   );

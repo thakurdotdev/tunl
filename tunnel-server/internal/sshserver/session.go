@@ -13,7 +13,10 @@ import (
 type sshSession struct {
 	id               string
 	userID           string
+	email            string
 	allowedSubdomain string
+	plan             string
+	remoteIP         string
 	sshConn          *ssh.ServerConn
 	done             chan struct{}
 
@@ -29,13 +32,17 @@ type sshSession struct {
 	bindPort  uint32
 	tunnelURL string
 	forwarded bool
+	regErr    string
 }
 
-func newSSHSession(id, userID, allowedSubdomain string, conn *ssh.ServerConn) *sshSession {
+func newSSHSession(id, userID, email, allowedSubdomain, plan, remoteIP string, conn *ssh.ServerConn) *sshSession {
 	return &sshSession{
 		id:               id,
 		userID:           userID,
+		email:            email,
 		allowedSubdomain: allowedSubdomain,
+		plan:             plan,
+		remoteIP:         remoteIP,
 		sshConn:          conn,
 		done:             make(chan struct{}),
 		ready:            make(chan struct{}),
@@ -44,9 +51,24 @@ func newSSHSession(id, userID, allowedSubdomain string, conn *ssh.ServerConn) *s
 
 func (s *sshSession) ID() string                   { return s.id }
 func (s *sshSession) UserID() string               { return s.userID }
+func (s *sshSession) Email() string                { return s.email }
+func (s *sshSession) Plan() string                 { return s.plan }
 func (s *sshSession) AllowedSubdomain() string     { return s.allowedSubdomain }
+func (s *sshSession) RemoteIP() string             { return s.remoteIP }
 func (s *sshSession) Done() <-chan struct{}        { return s.done }
 func (s *sshSession) tunnelReady() <-chan struct{} { return s.ready }
+
+func (s *sshSession) RegisterError() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.regErr
+}
+
+func (s *sshSession) setRegisterError(err string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.regErr = err
+}
 
 func (s *sshSession) markReady() {
 	s.readyOnce.Do(func() { close(s.ready) })
@@ -82,6 +104,18 @@ func (s *sshSession) setBindInfo(addr string, port uint32) {
 	defer s.mu.Unlock()
 	s.bindAddr = addr
 	s.bindPort = port
+}
+
+func (s *sshSession) BindAddr() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.bindAddr
+}
+
+func (s *sshSession) BindPort() uint32 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.bindPort
 }
 
 // markForwarded returns true on the first call (one tcpip-forward per session).

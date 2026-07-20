@@ -1,7 +1,9 @@
 import { and, count, desc, eq, sql } from "drizzle-orm";
 import type { Database } from "../../db/client.js";
-import { plans, tunnels, users } from "../../db/schema.js";
+import { plans, sshKeys, tunnels, users } from "../../db/schema.js";
 import { conflict, forbidden, notFound } from "../../platform/errors.js";
+import type { RedisClient } from "../../redis/client.js";
+import { redisKeys } from "../../redis/keys.js";
 
 export const tunnelOutputSelect = {
   id: tunnels.id,
@@ -83,4 +85,14 @@ export async function deleteUserTunnel(db: Database, userId: string, tunnelId: s
 
 function isUniqueViolation(error: unknown): boolean {
   return typeof error === "object" && error !== null && "code" in error && error.code === "23505";
+}
+
+export async function invalidateUserKeyCache(db: Database, redis: RedisClient, userId: string) {
+  const keys = await db
+    .select({ fingerprint: sshKeys.fingerprint })
+    .from(sshKeys)
+    .where(eq(sshKeys.userId, userId));
+  for (const k of keys) {
+    await redis.del(redisKeys.validateKey(k.fingerprint));
+  }
 }

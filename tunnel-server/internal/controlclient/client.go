@@ -40,9 +40,10 @@ func New(opts Options) *Client {
 }
 
 type validateKeyResponse struct {
-	UserID           string `json:"userId"`
+	UserID           string  `json:"userId"`
+	Email            string  `json:"email"`
 	AllowedSubdomain *string `json:"allowedSubdomain"`
-	Plan             string `json:"plan"`
+	Plan             string  `json:"plan"`
 }
 
 // ValidateKey checks the cache first; on miss, calls
@@ -50,40 +51,40 @@ type validateKeyResponse struct {
 // NOTE: a revoked key or downgraded plan can stay valid for up to one TTL
 // window after the change lands in Postgres — deliberate tradeoff, see
 // plan's cache-staleness design note.
-func (c *Client) ValidateKey(ctx context.Context, fingerprint string) (userID, allowedSubdomain, plan string, ok bool) {
+func (c *Client) ValidateKey(ctx context.Context, fingerprint string) (userID, email, allowedSubdomain, plan string, ok bool) {
 	if v, hit := c.cache.get(fingerprint); hit {
 		r := v.(validateKeyResponse)
-		return r.UserID, optionalSubdomain(r.AllowedSubdomain), r.Plan, true
+		return r.UserID, r.Email, optionalSubdomain(r.AllowedSubdomain), r.Plan, true
 	}
 
 	body, _ := json.Marshal(map[string]string{"fingerprint": fingerprint})
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
 		c.baseURL+"/internal/validate-key", bytes.NewReader(body))
 	if err != nil {
-		return "", "", "", false
+		return "", "", "", "", false
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Internal-Token", c.sharedSecret)
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return "", "", "", false
+		return "", "", "", "", false
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusNotFound {
-		return "", "", "", false
+		return "", "", "", "", false
 	}
 	if resp.StatusCode != http.StatusOK {
-		return "", "", "", false
+		return "", "", "", "", false
 	}
 
 	var r validateKeyResponse
 	if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
-		return "", "", "", false
+		return "", "", "", "", false
 	}
 	c.cache.set(fingerprint, r)
-	return r.UserID, optionalSubdomain(r.AllowedSubdomain), r.Plan, true
+	return r.UserID, r.Email, optionalSubdomain(r.AllowedSubdomain), r.Plan, true
 }
 
 func optionalSubdomain(value *string) string {

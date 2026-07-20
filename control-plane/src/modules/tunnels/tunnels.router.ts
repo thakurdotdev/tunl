@@ -13,7 +13,10 @@ const createTunnelSchema = z.object({
     ),
 });
 
-export function tunnelsRouter(db: Database) {
+import type { RedisClient } from "../../redis/client.js";
+import { invalidateUserKeyCache } from "./tunnels.service.js";
+
+export function tunnelsRouter(db: Database, redis: RedisClient) {
   const router = Router();
 
   router.get(
@@ -29,6 +32,7 @@ export function tunnelsRouter(db: Database) {
     asyncRoute(async (req, res) => {
       const { subdomain } = createTunnelSchema.parse(req.body);
       const created = await createUserTunnel(db, req.userId!, subdomain);
+      await invalidateUserKeyCache(db, redis, req.userId!);
       res.status(201).json(created);
     }),
   );
@@ -38,6 +42,7 @@ export function tunnelsRouter(db: Database) {
     asyncRoute(async (req, res) => {
       const id = z.uuid().parse(req.params.id);
       await deleteUserTunnel(db, req.userId!, id);
+      await invalidateUserKeyCache(db, redis, req.userId!);
       res.status(204).send();
     }),
   );

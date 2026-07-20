@@ -186,7 +186,7 @@ export default function TunnelsPage() {
               </thead>
               <tbody>
                 {tunnels.map((tunnel) => {
-                  const sshCommand = `ssh -R 80:localhost:3000 ${tunnel.subdomain}@thakur.dev`;
+                  const sshCommand = `ssh -R 80:localhost:3000 -p 2222 ${tunnel.subdomain}@t.thakur.dev`;
                   return (
                     <tr
                       key={tunnel.id}

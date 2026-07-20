@@ -27,6 +27,7 @@ type Tunnel struct {
 	Reserved  bool   // true if tied to a paid/authenticated reservation
 	BindAddr  string // echoed in forwarded-tcpip; must match exactly what the client sent in tcpip-forward
 	BindPort  uint32
+	RemoteIP  string
 	CreatedAt time.Time
 	LastSeen  time.Time
 	Conn      TunnelConnection
@@ -46,7 +47,11 @@ type TunnelRegistry interface {
 	ReservedCount() int
 }
 
-var ErrSubdomainTaken = fmt.Errorf("subdomain already registered")
+var (
+	ErrSubdomainTaken               = fmt.Errorf("subdomain already registered")
+	ErrUserTunnelLimitReached     = fmt.Errorf("active tunnel limit reached for user")
+	ErrAnonymousTunnelLimitReached = fmt.Errorf("active anonymous tunnel limit reached for IP")
+)
 
 type entry struct {
 	tunnel       *Tunnel
@@ -57,26 +62,49 @@ type entry struct {
 // InMemoryRegistry is the only TunnelRegistry implementation for now —
 // Redis / multi-instance is explicitly out of scope (plan section 1.4 / 6).
 type InMemoryRegistry struct {
-	mu          sync.RWMutex
-	entries     map[string]*entry
-	reserved    map[string]struct{}
-	graceWindow time.Duration
+	mu                 sync.RWMutex
+	entries            map[string]*entry
+	reserved           map[string]struct{}
+	graceWindow        time.Duration
+	maxAnonymousPerIP int
 }
 
-func New(graceWindow time.Duration, reserved map[string]struct{}) *InMemoryRegistry {
+func New(graceWindow time.Duration, reserved map[string]struct{}, maxAnonymousPerIP int) *InMemoryRegistry {
 	if reserved == nil {
 		reserved = make(map[string]struct{})
 	}
+	if maxAnonymousPerIP <= 0 {
+		maxAnonymousPerIP = 1
+	}
 	return &InMemoryRegistry{
-		entries:     make(map[string]*entry),
-		reserved:    reserved,
-		graceWindow: graceWindow,
+		entries:            make(map[string]*entry),
+		reserved:           reserved,
+		graceWindow:        graceWindow,
+		maxAnonymousPerIP: maxAnonymousPerIP,
 	}
 }
 
 func (r *InMemoryRegistry) Register(t *Tunnel) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+
+	if t.UserID != "" {
+		for _, e := range r.entries {
+			if !e.disconnected && e.tunnel.UserID == t.UserID {
+				return ErrUserTunnelLimitReached
+			}
+		}
+	} else if t.RemoteIP != "" {
+		anonCount := 0
+		for _, e := range r.entries {
+			if !e.disconnected && !e.tunnel.Reserved && e.tunnel.RemoteIP == t.RemoteIP {
+				anonCount++
+			}
+		}
+		if anonCount >= r.maxAnonymousPerIP {
+			return ErrAnonymousTunnelLimitReached
+		}
+	}
 
 	if _, blocked := r.reserved[t.Subdomain]; blocked {
 		return ErrSubdomainTaken

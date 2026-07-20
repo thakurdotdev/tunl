@@ -33,6 +33,7 @@ func registerAnonymous(reg registry.TunnelRegistry, sess *sshSession, bindAddr s
 			Reserved:  false,
 			BindAddr:  bindAddr,
 			BindPort:  bindPort,
+			RemoteIP:  sess.RemoteIP(),
 			Conn:      sess,
 		}
 		if err := reg.Register(t); err == nil {
@@ -54,6 +55,7 @@ func registerReserved(reg registry.TunnelRegistry, sess *sshSession, bindAddr st
 		Reserved:  true,
 		BindAddr:  bindAddr,
 		BindPort:  bindPort,
+		RemoteIP:  sess.RemoteIP(),
 		Conn:      sess,
 	}
 	if err := reg.Register(t); err == nil {
@@ -91,6 +93,15 @@ func (s *Server) handleForwardRequest(ctx context.Context, req *ssh.Request, ses
 	}
 	if err != nil {
 		s.log.Error("subdomain registration failed", "error", err)
+		if err == registry.ErrUserTunnelLimitReached {
+			sess.setRegisterError("An active tunnel is already running for your account. Limit: 1 active tunnel.")
+		} else if err == registry.ErrAnonymousTunnelLimitReached {
+			sess.setRegisterError("Anonymous tunnel limit reached for your IP (Max 1 free tunnel per IP). Please sign up to create more.")
+		} else if err == registry.ErrSubdomainTaken {
+			sess.setRegisterError(fmt.Sprintf("Reserved subdomain '%s' is already in use by an active session.", sess.AllowedSubdomain()))
+		} else {
+			sess.setRegisterError(fmt.Sprintf("Failed to register tunnel subdomain: %v", err))
+		}
 		req.Reply(false, nil)
 		return
 	}

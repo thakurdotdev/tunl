@@ -51,7 +51,8 @@ type Config struct {
 	// reserved before being freed (plan's grace-window design note).
 	ReconnectGraceWindow time.Duration
 
-	MaxConnsPerIP int
+	MaxConnsPerIP            int
+	MaxAnonymousTunnelsPerIP int
 
 	// ReservedSubdomains are existing subdomains that must never be assigned
 	// to tunnels (e.g. "blog,api,www" to protect blog.thakur.dev, etc.).
@@ -61,18 +62,19 @@ type Config struct {
 func Load() (*Config, error) {
 	loadDotEnv()
 	cfg := &Config{
-		BaseDomain:           getEnv("BASE_DOMAIN", "thakur.dev"),
-		TunnelURLScheme:      getEnv("TUNNEL_URL_SCHEME", "https"),
-		SSHListenAddr:        getEnv("SSH_LISTEN_ADDR", ":2222"),
-		HTTPListenAddr:       getEnv("HTTP_LISTEN_ADDR", ":8080"),
-		HTTPSListenAddr:      getEnv("HTTPS_LISTEN_ADDR", ":8443"),
-		TLSCertPath:          getEnv("TLS_CERT_PATH", ""),
-		TLSKeyPath:           getEnv("TLS_KEY_PATH", ""),
-		HealthListenAddr:     getEnv("HEALTH_LISTEN_ADDR", ":9090"),
-		ControlPlaneURL:      getEnv("CONTROL_PLANE_URL", "http://localhost:3001"),
-		InternalSharedSecret: getEnv("INTERNAL_SHARED_SECRET", ""),
-		SubdomainRetries:     getEnvInt("SUBDOMAIN_RETRIES", 5),
-		MaxConnsPerIP:        getEnvInt("MAX_CONNS_PER_IP", 10),
+		BaseDomain:               getEnv("BASE_DOMAIN", "thakur.dev"),
+		TunnelURLScheme:          getEnv("TUNNEL_URL_SCHEME", "https"),
+		SSHListenAddr:            getEnv("SSH_LISTEN_ADDR", ":2222"),
+		HTTPListenAddr:           getEnv("HTTP_LISTEN_ADDR", ":8080"),
+		HTTPSListenAddr:          getEnv("HTTPS_LISTEN_ADDR", ":8443"),
+		TLSCertPath:              getEnv("TLS_CERT_PATH", ""),
+		TLSKeyPath:               getEnv("TLS_KEY_PATH", ""),
+		HealthListenAddr:         getEnv("HEALTH_LISTEN_ADDR", ":9090"),
+		ControlPlaneURL:          getEnv("CONTROL_PLANE_URL", "http://localhost:3001"),
+		InternalSharedSecret:     getEnv("INTERNAL_SHARED_SECRET", ""),
+		SubdomainRetries:         getEnvInt("SUBDOMAIN_RETRIES", 5),
+		MaxConnsPerIP:            getEnvInt("MAX_CONNS_PER_IP", 10),
+		MaxAnonymousTunnelsPerIP: getEnvInt("MAX_ANONYMOUS_TUNNELS_PER_IP", 1),
 	}
 
 	cacheTTLSeconds := getEnvInt("CACHE_TTL_SECONDS", 300) // 5 min default

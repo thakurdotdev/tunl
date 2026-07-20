@@ -21,7 +21,12 @@ function authorized(token: string | undefined, secret: string) {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-export function internalRouter(db: Database, config: Config) {
+import type { RedisClient } from "../../redis/client.js";
+import { redisKeys } from "../../redis/keys.js";
+
+const VALIDATE_KEY_CACHE_TTL = 300;
+
+export function internalRouter(db: Database, redis: RedisClient, config: Config) {
   const router = Router();
   router.use((req, _res, next) =>
     authorized(req.header("x-internal-token"), config.INTERNAL_SHARED_SECRET)
@@ -32,15 +37,30 @@ export function internalRouter(db: Database, config: Config) {
     "/validate-key",
     asyncRoute(async (req, res) => {
       const { fingerprint } = validateKey.parse(req.body);
+      const cacheKey = redisKeys.validateKey(fingerprint);
+      const cached = await redis.get(cacheKey);
+
+      if (cached) {
+        return res.json(JSON.parse(cached));
+      }
+
       const [row] = await db
-        .select({ userId: users.id, plan: plans.name, allowedSubdomain: tunnels.subdomain })
+        .select({
+          userId: users.id,
+          email: users.email,
+          plan: plans.name,
+          allowedSubdomain: tunnels.subdomain,
+        })
         .from(sshKeys)
         .innerJoin(users, eq(sshKeys.userId, users.id))
         .innerJoin(plans, eq(users.planId, plans.id))
         .leftJoin(tunnels, and(eq(tunnels.userId, users.id), eq(tunnels.status, "reserved")))
         .where(eq(sshKeys.fingerprint, fingerprint))
         .limit(1);
+
       if (!row) throw notFound("SSH key not found");
+
+      await redis.set(cacheKey, JSON.stringify(row), { EX: VALIDATE_KEY_CACHE_TTL });
       res.json(row);
     }),
   );

@@ -8,4 +8,5 @@ const segment = (value: string) =>
 export const redisKeys = {
   authRateLimit: (action: string, ip: string) =>
     `${PREFIX}:auth-rate-limit:${action}:${segment(ip)}`,
+  validateKey: (fingerprint: string) => `${PREFIX}:validate-key:${segment(fingerprint)}`,
 };
