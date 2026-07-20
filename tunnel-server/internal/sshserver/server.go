@@ -402,38 +402,39 @@ func renderTerminalBanner(ch io.Writer, s *Server, sess *sshSession) {
 	}
 	forwardTarget := fmt.Sprintf("http://%s:%d", targetHost, sess.BindPort())
 
-	fmt.Fprintf(ch, "\r\n")
-	fmt.Fprintf(ch, "\033[1;36m ⚡ Tunl\033[0m — Instant public URLs for localhost\r\n")
-	fmt.Fprintf(ch, "\033[90m 🌐 Homepage:\033[0m   \033[4;34m%s\033[0m\r\n", homeURL)
-
+	accountStr := "\033[90mAnonymous\033[0m"
 	if sess.UserID() != "" {
 		planStr := sess.Plan()
 		if planStr == "" {
 			planStr = "standard"
 		}
-		fmt.Fprintf(ch, "\033[90m 👤 Account:\033[0m    \033[1;33m%s\033[0m (\033[36m%s plan\033[0m)\r\n", sess.Email(), planStr)
-	} else {
-		fmt.Fprintf(ch, "\033[90m 👤 Account:\033[0m    Anonymous (\033[90munauthenticated\033[0m)\r\n")
+		accountStr = fmt.Sprintf("\033[1;37m%s\033[0m \033[36m(%s plan)\033[0m", sess.Email(), planStr)
 	}
 
-	fmt.Fprintf(ch, "\033[90m ────────────────────────────────────────────────────────\033[0m\r\n")
-	fmt.Fprintf(ch, " \033[1;32m● Status\033[0m       Online\r\n")
-	fmt.Fprintf(ch, " \033[1m🔗 Public URL\033[0m   \033[1;4;36m%s\033[0m\r\n", url)
-	fmt.Fprintf(ch, " \033[1m🎯 Forwarding\033[0m   %s\r\n", forwardTarget)
-
+	fmt.Fprintf(ch, "\r\n")
+	fmt.Fprintf(ch, "  \033[90m╭──\033[0m \033[1;36m⚡ TUNL\033[0m \033[90m────────────────────────────────────────────────────────╮\033[0m\r\n")
+	fmt.Fprintf(ch, "  \033[90m│\033[0m                                                                  \033[90m│\033[0m\r\n")
+	fmt.Fprintf(ch, "  \033[90m│\033[0m  \033[90mStatus\033[0m     \033[42;30;1m ONLINE \033[0m                                          \033[90m│\033[0m\r\n")
+	fmt.Fprintf(ch, "  \033[90m│\033[0m  \033[90mAccount\033[0m    %s\r\n", accountStr)
+	fmt.Fprintf(ch, "  \033[90m│\033[0m  \033[90mForwarding\033[0m \033[1;33m%s\033[0m ➜ \033[1;4;36m%s\033[0m\r\n", forwardTarget, url)
 	if sess.UserID() != "" && sess.AllowedSubdomain() == "" {
-		fmt.Fprintf(ch, " \033[33m💡 Subdomain\033[0m    Using random subdomain. Reserve yours at \033[4;34m%s/dashboard/tunnels\033[0m\r\n", homeURL)
+		fmt.Fprintf(ch, "  \033[90m│\033[0m  \033[33m💡 Tip:\033[0m     Reserve a custom domain at \033[4;34m%s\033[0m\r\n", homeURL)
+	} else if sess.UserID() == "" {
+		fmt.Fprintf(ch, "  \033[90m│\033[0m  \033[33m💡 Tip:\033[0m     Log in to reserve a domain at \033[4;34m%s\033[0m\r\n", homeURL)
 	}
-
-	fmt.Fprintf(ch, "\033[90m ────────────────────────────────────────────────────────\033[0m\r\n")
-	fmt.Fprintf(ch, " \033[90mPress Ctrl+C or Ctrl+D to close the tunnel.\033[0m\r\n\r\n")
+	fmt.Fprintf(ch, "  \033[90m│\033[0m                                                                  \033[90m│\033[0m\r\n")
+	fmt.Fprintf(ch, "  \033[90m╰── Press \033[1;37mCtrl+C\033[0;90m or \033[1;37mCtrl+D\033[0;90m to stop ─────────────────────────────────╯\033[0m\r\n\r\n")
 }
 
 func renderTerminalError(ch io.Writer, s *Server, errMsg string) {
 	homeURL := fmt.Sprintf("%s://tunl.%s", s.tunnelScheme, s.baseDomain)
 	fmt.Fprintf(ch, "\r\n")
-	fmt.Fprintf(ch, " \033[1;31m❌ Tunnel Error:\033[0m %s\r\n", errMsg)
-	fmt.Fprintf(ch, " \033[90m🌐 Manage your tunnels & plan at:\033[0m \033[4;34m%s/dashboard\033[0m\r\n\r\n", homeURL)
+	fmt.Fprintf(ch, "  \033[90m╭──\033[0m \033[1;31m✖ TUNL ERROR\033[0m \033[90m───────────────────────────────────────────────────╮\033[0m\r\n")
+	fmt.Fprintf(ch, "  \033[90m│\033[0m                                                                  \033[90m│\033[0m\r\n")
+	fmt.Fprintf(ch, "  \033[90m│\033[0m  \033[1;31mReason\033[0m     %s\r\n", errMsg)
+	fmt.Fprintf(ch, "  \033[90m│\033[0m  \033[90mDashboard\033[0m  \033[4;34m%s\033[0m\r\n", homeURL)
+	fmt.Fprintf(ch, "  \033[90m│\033[0m                                                                  \033[90m│\033[0m\r\n")
+	fmt.Fprintf(ch, "  \033[90m╰──────────────────────────────────────────────────────────────────╯\033[0m\r\n\r\n")
 }
 
 func sessionID() string {

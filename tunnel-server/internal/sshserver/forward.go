@@ -71,14 +71,18 @@ func registerReserved(reg registry.TunnelRegistry, sess *sshSession, bindAddr st
 func (s *Server) handleForwardRequest(ctx context.Context, req *ssh.Request, sess *sshSession) {
 	if !sess.markForwarded() {
 		s.log.Warn("duplicate tcpip-forward rejected", "session_id", sess.ID())
+		sess.setRegisterError("Only one port forwarding request is allowed per SSH session.")
 		req.Reply(false, nil)
+		sess.Close()
 		return
 	}
 
 	var fwd tcpipForwardRequest
 	if err := ssh.Unmarshal(req.Payload, &fwd); err != nil {
 		s.log.Warn("malformed tcpip-forward payload", "error", err)
+		sess.setRegisterError("Malformed port forwarding request payload.")
 		req.Reply(false, nil)
+		sess.Close()
 		return
 	}
 
@@ -93,16 +97,18 @@ func (s *Server) handleForwardRequest(ctx context.Context, req *ssh.Request, ses
 	}
 	if err != nil {
 		s.log.Error("subdomain registration failed", "error", err)
-		if err == registry.ErrUserTunnelLimitReached {
+		switch err {
+		case registry.ErrUserTunnelLimitReached:
 			sess.setRegisterError("An active tunnel is already running for your account. Limit: 1 active tunnel.")
-		} else if err == registry.ErrAnonymousTunnelLimitReached {
+		case registry.ErrAnonymousTunnelLimitReached:
 			sess.setRegisterError("Anonymous tunnel limit reached for your IP (Max 1 free tunnel per IP). Please sign up to create more.")
-		} else if err == registry.ErrSubdomainTaken {
+		case registry.ErrSubdomainTaken:
 			sess.setRegisterError(fmt.Sprintf("Reserved subdomain '%s' is already in use by an active session.", sess.AllowedSubdomain()))
-		} else {
+		default:
 			sess.setRegisterError(fmt.Sprintf("Failed to register tunnel subdomain: %v", err))
 		}
 		req.Reply(false, nil)
+		sess.Close()
 		return
 	}
 
