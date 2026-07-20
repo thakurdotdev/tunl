@@ -8,7 +8,7 @@ import type { Config } from "../../platform/config.js";
 import { notFound, unauthorized } from "../../platform/errors.js";
 import { asyncRoute } from "../../platform/http.js";
 
-const validateKey = z.object({ fingerprint: z.string().regex(/^SHA256:[A-Za-z0-9+/]+$/) });
+const validateKey = z.object({ fingerprint: z.string().regex(/^SHA256:[A-Za-z0-9+/=]+$/) });
 const usageEvent = z.object({
   tunnelId: z.uuid(),
   bytesTransferred: z.number().int().nonnegative(),
@@ -16,8 +16,8 @@ const usageEvent = z.object({
 });
 function authorized(token: string | undefined, secret: string) {
   if (!token) return false;
-  const a = Buffer.from(token),
-    b = Buffer.from(secret);
+  const a = Buffer.from(token.trim()),
+    b = Buffer.from(secret.trim());
   return a.length === b.length && timingSafeEqual(a, b);
 }
 

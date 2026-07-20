@@ -71,7 +71,7 @@ func Load() (*Config, error) {
 		TLSKeyPath:               getEnv("TLS_KEY_PATH", ""),
 		HealthListenAddr:         getEnv("HEALTH_LISTEN_ADDR", ":9090"),
 		ControlPlaneURL:          getEnv("CONTROL_PLANE_URL", "http://localhost:3001"),
-		InternalSharedSecret:     getEnv("INTERNAL_SHARED_SECRET", ""),
+		InternalSharedSecret:     strings.TrimSpace(getEnv("INTERNAL_SHARED_SECRET", "changeme-shared-secret-at-least-16-chars")),
 		SubdomainRetries:         getEnvInt("SUBDOMAIN_RETRIES", 5),
 		MaxConnsPerIP:            getEnvInt("MAX_CONNS_PER_IP", 10),
 		MaxAnonymousTunnelsPerIP: getEnvInt("MAX_ANONYMOUS_TUNNELS_PER_IP", 1),
