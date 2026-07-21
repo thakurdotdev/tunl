@@ -24,6 +24,7 @@ export const plans = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     name: text("name").notNull().unique(),
     maxReservedSubdomains: integer("max_reserved_subdomains").notNull().default(1),
+    maxActiveTunnels: integer("max_active_tunnels").notNull().default(1),
     isDefault: boolean("is_default").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -97,5 +98,24 @@ export const tunnels = pgTable(
   (table) => [
     index("tunnels_user_id_idx").on(table.userId),
     check("tunnels_subdomain_format_check", sql`${table.subdomain} ~ '^[a-z0-9-]{3,63}$'`),
+  ],
+);
+
+export const activeTunnelSessions = pgTable(
+  "active_tunnel_sessions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tunnelId: uuid("tunnel_id").references(() => tunnels.id, { onDelete: "set null" }),
+    subdomain: text("subdomain").notNull(),
+    remoteIp: text("remote_ip").notNull().default(""),
+    connectedAt: timestamp("connected_at", { withTimezone: true }).notNull().defaultNow(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("active_tunnel_sessions_user_id_idx").on(table.userId),
+    uniqueIndex("active_tunnel_sessions_user_subdomain_uidx").on(table.userId, table.subdomain),
   ],
 );

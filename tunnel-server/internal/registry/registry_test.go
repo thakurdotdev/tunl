@@ -27,7 +27,7 @@ func (f *fakeConn) Dial(ctx context.Context, addr string, port uint32) (io.ReadW
 }
 
 func TestRegister_DuplicateSubdomainFails(t *testing.T) {
-	r := New(50*time.Millisecond, nil, 1)
+	r := New(50*time.Millisecond, nil)
 	t1 := &Tunnel{Subdomain: "abc123", Conn: newFakeConn("1", "")}
 	t2 := &Tunnel{Subdomain: "abc123", Conn: newFakeConn("2", "")}
 
@@ -40,7 +40,7 @@ func TestRegister_DuplicateSubdomainFails(t *testing.T) {
 }
 
 func TestLookup_AfterUnregisterReturnsFalse(t *testing.T) {
-	r := New(50*time.Millisecond, nil, 1)
+	r := New(50*time.Millisecond, nil)
 	tn := &Tunnel{Subdomain: "gone", Conn: newFakeConn("1", "")}
 	_ = r.Register(tn)
 	r.Unregister("gone")
@@ -52,7 +52,7 @@ func TestLookup_AfterUnregisterReturnsFalse(t *testing.T) {
 
 func TestMarkDisconnected_ReconnectWithinGraceWindowCancelsRemoval(t *testing.T) {
 	grace := 100 * time.Millisecond
-	r := New(grace, nil, 1)
+	r := New(grace, nil)
 	tn := &Tunnel{Subdomain: "sticky", Conn: newFakeConn("1", "")}
 	_ = r.Register(tn)
 
@@ -68,7 +68,7 @@ func TestMarkDisconnected_ReconnectWithinGraceWindowCancelsRemoval(t *testing.T)
 
 func TestMarkDisconnected_NoReconnectRemovesAfterGraceWindow(t *testing.T) {
 	grace := 50 * time.Millisecond
-	r := New(grace, nil, 1)
+	r := New(grace, nil)
 	tn := &Tunnel{Subdomain: "expiring", Conn: newFakeConn("1", "")}
 	_ = r.Register(tn)
 
@@ -81,7 +81,7 @@ func TestMarkDisconnected_NoReconnectRemovesAfterGraceWindow(t *testing.T) {
 }
 
 func TestIsDisconnected(t *testing.T) {
-	r := New(200*time.Millisecond, nil, 1)
+	r := New(200*time.Millisecond, nil)
 	_ = r.Register(&Tunnel{Subdomain: "live", Conn: newFakeConn("1", "")})
 
 	if r.IsDisconnected("live") {
@@ -99,7 +99,7 @@ func TestIsDisconnected(t *testing.T) {
 
 func TestReclaim_ReplacesConnOnDisconnectedEntry(t *testing.T) {
 	grace := 200 * time.Millisecond
-	r := New(grace, nil, 1)
+	r := New(grace, nil)
 	oldConn := newFakeConn("old", "u1")
 	_ = r.Register(&Tunnel{Subdomain: "reserved", UserID: "u1", Reserved: true, BindAddr: "0.0.0.0", BindPort: 80, Conn: oldConn})
 
@@ -129,7 +129,7 @@ func TestReclaim_ReplacesConnOnDisconnectedEntry(t *testing.T) {
 }
 
 func TestReclaim_FailsOnActiveEntry(t *testing.T) {
-	r := New(200*time.Millisecond, nil, 1)
+	r := New(200*time.Millisecond, nil)
 	_ = r.Register(&Tunnel{Subdomain: "active", Conn: newFakeConn("1", "")})
 
 	if err := r.Reclaim("active", newFakeConn("2", ""), "0.0.0.0", 80); err != ErrSubdomainTaken {
@@ -138,7 +138,7 @@ func TestReclaim_FailsOnActiveEntry(t *testing.T) {
 }
 
 func TestCounts_AnonymousAndReserved(t *testing.T) {
-	r := New(50*time.Millisecond, nil, 1)
+	r := New(50*time.Millisecond, nil)
 	_ = r.Register(&Tunnel{Subdomain: "anon1", Reserved: false, Conn: newFakeConn("1", "")})
 	_ = r.Register(&Tunnel{Subdomain: "anon2", Reserved: false, Conn: newFakeConn("2", "")})
 	_ = r.Register(&Tunnel{Subdomain: "res1", Reserved: true, UserID: "u1", Conn: newFakeConn("3", "u1")})
@@ -155,7 +155,7 @@ func TestCounts_AnonymousAndReserved(t *testing.T) {
 }
 
 func TestConcurrentRegisterLookupUnregister_Race(t *testing.T) {
-	r := New(20*time.Millisecond, nil, 100)
+	r := New(20*time.Millisecond, nil)
 	var wg sync.WaitGroup
 
 	for i := 0; i < 50; i++ {
@@ -181,9 +181,9 @@ func TestConcurrentRegisterLookupUnregister_Race(t *testing.T) {
 }
 
 func TestRegister_UserTunnelLimitEnforced(t *testing.T) {
-	r := New(50*time.Millisecond, nil, 1)
-	t1 := &Tunnel{Subdomain: "sub1", UserID: "u123", Conn: newFakeConn("1", "u123")}
-	t2 := &Tunnel{Subdomain: "sub2", UserID: "u123", Conn: newFakeConn("2", "u123")}
+	r := New(50*time.Millisecond, nil)
+	t1 := &Tunnel{Subdomain: "sub1", UserID: "u123", MaxActiveTunnels: 1, Conn: newFakeConn("1", "u123")}
+	t2 := &Tunnel{Subdomain: "sub2", UserID: "u123", MaxActiveTunnels: 1, Conn: newFakeConn("2", "u123")}
 
 	if err := r.Register(t1); err != nil {
 		t.Fatalf("first user register should succeed, got %v", err)
@@ -193,16 +193,49 @@ func TestRegister_UserTunnelLimitEnforced(t *testing.T) {
 	}
 }
 
-func TestRegister_AnonymousTunnelLimitEnforced(t *testing.T) {
-	r := New(50*time.Millisecond, nil, 1)
-	t1 := &Tunnel{Subdomain: "anon1", RemoteIP: "192.168.1.1", Conn: newFakeConn("1", "")}
-	t2 := &Tunnel{Subdomain: "anon2", RemoteIP: "192.168.1.1", Conn: newFakeConn("2", "")}
+func TestRegister_PlanBasedTunnelLimit(t *testing.T) {
+	r := New(50*time.Millisecond, nil)
 
-	if err := r.Register(t1); err != nil {
-		t.Fatalf("first anonymous register should succeed, got %v", err)
+	for i := 0; i < 3; i++ {
+		tn := &Tunnel{
+			Subdomain:        subdomainFor(i),
+			UserID:           "u1",
+			MaxActiveTunnels: 3,
+			Conn:             newFakeConn(subdomainFor(i), "u1"),
+		}
+		if err := r.Register(tn); err != nil {
+			t.Fatalf("register %d should succeed, got %v", i, err)
+		}
 	}
-	if err := r.Register(t2); err != ErrAnonymousTunnelLimitReached {
-		t.Fatalf("expected ErrAnonymousTunnelLimitReached, got %v", err)
+
+	t4 := &Tunnel{Subdomain: "extra", UserID: "u1", MaxActiveTunnels: 3, Conn: newFakeConn("extra", "u1")}
+	if err := r.Register(t4); err != ErrUserTunnelLimitReached {
+		t.Fatalf("expected ErrUserTunnelLimitReached, got %v", err)
+	}
+}
+
+func TestRegister_UnlimitedWhenMaxActiveTunnelsZero(t *testing.T) {
+	r := New(50*time.Millisecond, nil)
+	for i := 0; i < 5; i++ {
+		tn := &Tunnel{
+			Subdomain:        subdomainFor(i),
+			UserID:           "u1",
+			MaxActiveTunnels: 0,
+			Conn:             newFakeConn(subdomainFor(i), "u1"),
+		}
+		if err := r.Register(tn); err != nil {
+			t.Fatalf("register %d should succeed with unlimited, got %v", i, err)
+		}
+	}
+}
+
+func TestRegister_AnonymousTunnelsNotLimitedByIP(t *testing.T) {
+	r := New(50*time.Millisecond, nil)
+	for i := 0; i < 5; i++ {
+		tn := &Tunnel{Subdomain: subdomainFor(i + 10), RemoteIP: "192.168.1.1", Conn: newFakeConn(subdomainFor(i+10), "")}
+		if err := r.Register(tn); err != nil {
+			t.Fatalf("anonymous register %d from same IP should succeed, got %v", i, err)
+		}
 	}
 }
 

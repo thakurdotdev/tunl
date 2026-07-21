@@ -10,6 +10,6 @@ const db = drizzle(client);
 
 await db
   .insert(plans)
-  .values({ name: "free", maxReservedSubdomains: 1, isDefault: true })
+  .values({ name: "free", maxReservedSubdomains: 1, maxActiveTunnels: 1, isDefault: true })
   .onConflictDoNothing({ target: plans.name });
 await client.end();

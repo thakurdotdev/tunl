@@ -29,13 +29,14 @@ func registerAnonymous(reg registry.TunnelRegistry, sess *sshSession, bindAddr s
 			return "", err
 		}
 		t := &registry.Tunnel{
-			Subdomain: sub,
-			UserID:    sess.UserID(),
-			Reserved:  false,
-			BindAddr:  bindAddr,
-			BindPort:  bindPort,
-			RemoteIP:  sess.RemoteIP(),
-			Conn:      sess,
+			Subdomain:        sub,
+			UserID:           sess.UserID(),
+			Reserved:         false,
+			BindAddr:         bindAddr,
+			BindPort:         bindPort,
+			RemoteIP:         sess.RemoteIP(),
+			MaxActiveTunnels: sess.MaxActiveTunnels(),
+			Conn:             sess,
 		}
 		if err := reg.Register(t); err == nil {
 			return sub, nil
@@ -51,13 +52,14 @@ func registerAnonymous(reg registry.TunnelRegistry, sess *sshSession, bindAddr s
 func registerReserved(reg registry.TunnelRegistry, sess *sshSession, bindAddr string, bindPort uint32) (string, error) {
 	sub := sess.AllowedSubdomain()
 	t := &registry.Tunnel{
-		Subdomain: sub,
-		UserID:    sess.UserID(),
-		Reserved:  true,
-		BindAddr:  bindAddr,
-		BindPort:  bindPort,
-		RemoteIP:  sess.RemoteIP(),
-		Conn:      sess,
+		Subdomain:        sub,
+		UserID:           sess.UserID(),
+		Reserved:         true,
+		BindAddr:         bindAddr,
+		BindPort:         bindPort,
+		RemoteIP:         sess.RemoteIP(),
+		MaxActiveTunnels: sess.MaxActiveTunnels(),
+		Conn:             sess,
 	}
 	if err := reg.Register(t); err == nil {
 		return sub, nil
@@ -100,9 +102,7 @@ func (s *Server) handleForwardRequest(ctx context.Context, req *ssh.Request, ses
 		s.log.Error("subdomain registration failed", "error", err)
 		switch err {
 		case registry.ErrUserTunnelLimitReached:
-			sess.setRegisterError("An active tunnel is already running for your account. Limit: 1 active tunnel.")
-		case registry.ErrAnonymousTunnelLimitReached:
-			sess.setRegisterError("Anonymous tunnel limit reached for your IP (Max 1 free tunnel per IP). Please sign up to create more.")
+			sess.setRegisterError(fmt.Sprintf("Active tunnel limit reached for your account (max %d).", sess.MaxActiveTunnels()))
 		case registry.ErrSubdomainTaken:
 			sess.setRegisterError(fmt.Sprintf("Reserved subdomain '%s' is already in use by an active session.", sess.AllowedSubdomain()))
 		default:
@@ -126,6 +126,10 @@ func (s *Server) handleForwardRequest(ctx context.Context, req *ssh.Request, ses
 	reply := tcpipForwardReply{BoundPort: fwd.BindPort}
 	req.Reply(true, ssh.Marshal(&reply))
 	sess.markReady()
+
+	if sess.UserID() != "" && s.sessionReporter != nil {
+		go s.sessionReporter.ReportConnected(context.Background(), sess.UserID(), sub, sess.RemoteIP())
+	}
 }
 
 func closeGracefully(sess *sshSession) {

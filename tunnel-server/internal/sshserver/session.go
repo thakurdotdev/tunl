@@ -16,6 +16,7 @@ type sshSession struct {
 	email            string
 	allowedSubdomain string
 	plan             string
+	maxActiveTunnels int
 	remoteIP         string
 	sshConn          *ssh.ServerConn
 	done             chan struct{}
@@ -38,13 +39,14 @@ type sshSession struct {
 	regErr    string
 }
 
-func newSSHSession(id, userID, email, allowedSubdomain, plan, remoteIP string, conn *ssh.ServerConn) *sshSession {
+func newSSHSession(id, userID, email, allowedSubdomain, plan, remoteIP string, maxActiveTunnels int, conn *ssh.ServerConn) *sshSession {
 	return &sshSession{
 		id:               id,
 		userID:           userID,
 		email:            email,
 		allowedSubdomain: allowedSubdomain,
 		plan:             plan,
+		maxActiveTunnels: maxActiveTunnels,
 		remoteIP:         remoteIP,
 		sshConn:          conn,
 		done:             make(chan struct{}),
@@ -57,6 +59,7 @@ func (s *sshSession) ID() string                   { return s.id }
 func (s *sshSession) UserID() string               { return s.userID }
 func (s *sshSession) Email() string                { return s.email }
 func (s *sshSession) Plan() string                 { return s.plan }
+func (s *sshSession) MaxActiveTunnels() int        { return s.maxActiveTunnels }
 func (s *sshSession) AllowedSubdomain() string     { return s.allowedSubdomain }
 func (s *sshSession) RemoteIP() string             { return s.remoteIP }
 func (s *sshSession) Done() <-chan struct{}        { return s.done }

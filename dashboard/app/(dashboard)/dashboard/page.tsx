@@ -18,11 +18,12 @@ import {
   useCreateTunnelMutation,
   useDeleteTunnelMutation,
   useTunnelsQuery,
+  useTunnelSessionsQuery,
 } from "@/hooks/use-tunnels";
 import { ApiClientError } from "@/lib/api-client";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { format } from "date-fns";
-import { Calendar, Copy, Globe, Trash2 } from "lucide-react";
+import { formatDistanceToNow, format } from "date-fns";
+import { Calendar, Copy, Globe, Trash2, Wifi, WifiOff } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -41,6 +42,7 @@ type TunnelFormValues = z.infer<typeof tunnelSchema>;
 export default function TunnelsPage() {
   const { data: profile } = useProfileQuery();
   const { data: tunnels = [], isLoading } = useTunnelsQuery();
+  const { data: activeSessions = [] } = useTunnelSessionsQuery();
   const createMutation = useCreateTunnelMutation();
   const deleteMutation = useDeleteTunnelMutation();
 
@@ -243,6 +245,83 @@ export default function TunnelsPage() {
                     </tr>
                   );
                 })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="border-border bg-card overflow-hidden rounded-2xl border">
+        <div className="border-border flex items-center justify-between border-b px-6 py-4">
+          <div>
+            <h2 className="text-base font-medium">Active Sessions</h2>
+            <p className="text-muted-foreground mt-0.5 text-xs">
+              Live tunnel connections right now · refreshes every 30s
+            </p>
+          </div>
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
+              activeSessions.length > 0
+                ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
+                : "bg-zinc-100 text-zinc-500 dark:bg-zinc-900/40 dark:text-zinc-400"
+            }`}
+          >
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${activeSessions.length > 0 ? "animate-pulse bg-emerald-500" : "bg-zinc-400"}`}
+            />
+            {activeSessions.length} live
+          </span>
+        </div>
+
+        {activeSessions.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-3 px-4 py-12 text-center">
+            <WifiOff className="text-muted-foreground/40 h-8 w-8" />
+            <p className="text-muted-foreground text-sm">No active tunnel sessions</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left text-sm">
+              <thead>
+                <tr className="border-border bg-muted/30 border-b">
+                  <th className="text-muted-foreground p-4 font-medium">Subdomain</th>
+                  <th className="text-muted-foreground p-4 font-medium">Remote IP</th>
+                  <th className="text-muted-foreground p-4 font-medium">Connected</th>
+                  <th className="text-muted-foreground p-4 font-medium">Type</th>
+                </tr>
+              </thead>
+              <tbody>
+                {activeSessions.map((session) => (
+                  <tr
+                    key={session.id}
+                    className="border-border hover:bg-muted/10 border-b transition-colors last:border-0"
+                  >
+                    <td className="p-4">
+                      <span className="flex items-center gap-2">
+                        <Wifi className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                        <span className="text-foreground font-mono font-medium">
+                          {session.subdomain}.thakur.dev
+                        </span>
+                      </span>
+                    </td>
+                    <td className="text-muted-foreground p-4 font-mono text-xs">
+                      {session.remoteIp || "—"}
+                    </td>
+                    <td className="text-muted-foreground p-4 text-xs whitespace-nowrap">
+                      {formatDistanceToNow(new Date(session.connectedAt), { addSuffix: true })}
+                    </td>
+                    <td className="p-4">
+                      <span
+                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                          session.tunnelId
+                            ? "bg-violet-50 text-violet-700 dark:bg-violet-950/30 dark:text-violet-400"
+                            : "bg-zinc-100 text-zinc-600 dark:bg-zinc-900/40 dark:text-zinc-400"
+                        }`}
+                      >
+                        {session.tunnelId ? "Reserved" : "Random"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

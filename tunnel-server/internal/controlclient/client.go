@@ -1,6 +1,3 @@
-// Package controlclient is a thin HTTP client for tunneld -> NestJS calls.
-// One package — the TTL cache (cache.go) is an implementation detail, not
-// a separate module. See plan section 1.3 step 8.
 package controlclient
 
 import (
@@ -8,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 )
@@ -17,6 +15,7 @@ type Client struct {
 	sharedSecret string
 	httpClient   *http.Client
 	cache        *ttlCache
+	log          *slog.Logger
 }
 
 type Options struct {
@@ -24,6 +23,7 @@ type Options struct {
 	SharedSecret string
 	CacheTTL     time.Duration
 	Timeout      time.Duration
+	Logger       *slog.Logger
 }
 
 func New(opts Options) *Client {
@@ -31,11 +31,16 @@ func New(opts Options) *Client {
 	if timeout == 0 {
 		timeout = 5 * time.Second
 	}
+	log := opts.Logger
+	if log == nil {
+		log = slog.Default()
+	}
 	return &Client{
 		baseURL:      opts.BaseURL,
 		sharedSecret: opts.SharedSecret,
 		httpClient:   &http.Client{Timeout: timeout},
 		cache:        newTTLCache(opts.CacheTTL),
+		log:          log,
 	}
 }
 
@@ -44,44 +49,62 @@ type validateKeyResponse struct {
 	Email            string  `json:"email"`
 	AllowedSubdomain *string `json:"allowedSubdomain"`
 	Plan             string  `json:"plan"`
+	MaxActiveTunnels int     `json:"maxActiveTunnels"`
 }
 
-// ValidateKey checks the cache first; on miss, calls
-// POST /internal/validate-key and caches the result for CacheTTL.
-// NOTE: a revoked key or downgraded plan can stay valid for up to one TTL
-// window after the change lands in Postgres — deliberate tradeoff, see
-// plan's cache-staleness design note.
-func (c *Client) ValidateKey(ctx context.Context, fingerprint string) (userID, email, allowedSubdomain, plan string, ok bool) {
+type cachedKeyResult struct {
+	userID           string
+	email            string
+	allowedSubdomain string
+	plan             string
+	maxActiveTunnels int
+}
+
+func (c *Client) ValidateKey(ctx context.Context, fingerprint string) (userID, email, allowedSubdomain, plan string, maxActiveTunnels int, ok bool) {
+	if cached, hit := c.cache.get(fingerprint); hit {
+		r := cached.(*cachedKeyResult)
+		return r.userID, r.email, r.allowedSubdomain, r.plan, r.maxActiveTunnels, true
+	}
+
 	body, _ := json.Marshal(map[string]string{"fingerprint": fingerprint})
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
 		c.baseURL+"/internal/validate-key", bytes.NewReader(body))
 	if err != nil {
-		return "", "", "", "", false
+		return "", "", "", "", 0, false
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Internal-Token", c.sharedSecret)
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		fmt.Printf("[controlclient] ValidateKey HTTP request failed: %v\n", err)
-		return "", "", "", "", false
+		c.log.Warn("validate-key request failed", "error", err)
+		return "", "", "", "", 0, false
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusNotFound {
-		fmt.Printf("[controlclient] ValidateKey key not found for fingerprint %s\n", fingerprint)
-		return "", "", "", "", false
+		return "", "", "", "", 0, false
 	}
 	if resp.StatusCode != http.StatusOK {
-		fmt.Printf("[controlclient] ValidateKey returned unexpected status %d for fingerprint %s\n", resp.StatusCode, fingerprint)
-		return "", "", "", "", false
+		c.log.Warn("validate-key unexpected status", "status", resp.StatusCode, "fingerprint", fingerprint)
+		return "", "", "", "", 0, false
 	}
 
 	var r validateKeyResponse
 	if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
-		return "", "", "", "", false
+		return "", "", "", "", 0, false
 	}
-	return r.UserID, r.Email, optionalSubdomain(r.AllowedSubdomain), r.Plan, true
+
+	result := &cachedKeyResult{
+		userID:           r.UserID,
+		email:            r.Email,
+		allowedSubdomain: optionalSubdomain(r.AllowedSubdomain),
+		plan:             r.Plan,
+		maxActiveTunnels: r.MaxActiveTunnels,
+	}
+	c.cache.set(fingerprint, result)
+
+	return result.userID, result.email, result.allowedSubdomain, result.plan, result.maxActiveTunnels, true
 }
 
 func optionalSubdomain(value *string) string {
@@ -97,8 +120,6 @@ type usageEvent struct {
 	Timestamp        string `json:"timestamp"`
 }
 
-// ReportUsage calls POST /internal/usage. Fire-and-forget is acceptable —
-// this is a stub in NestJS for now (logs only, no billing logic yet).
 func (c *Client) ReportUsage(ctx context.Context, tunnelID string, bytesTransferred int64) error {
 	ev := usageEvent{
 		TunnelID:         tunnelID,
@@ -124,3 +145,49 @@ func (c *Client) ReportUsage(ctx context.Context, tunnelID string, bytesTransfer
 	}
 	return nil
 }
+
+func (c *Client) ReportConnected(ctx context.Context, userID, subdomain, remoteIP string) {
+	body, _ := json.Marshal(map[string]string{
+		"userId":    userID,
+		"subdomain": subdomain,
+		"remoteIp":  remoteIP,
+	})
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
+		c.baseURL+"/internal/tunnel-connected", bytes.NewReader(body))
+	if err != nil {
+		c.log.Warn("tunnel-connected request build failed", "error", err)
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Internal-Token", c.sharedSecret)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		c.log.Warn("tunnel-connected request failed", "error", err, "subdomain", subdomain)
+		return
+	}
+	resp.Body.Close()
+}
+
+func (c *Client) ReportDisconnected(ctx context.Context, userID, subdomain string) {
+	body, _ := json.Marshal(map[string]string{
+		"userId":    userID,
+		"subdomain": subdomain,
+	})
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
+		c.baseURL+"/internal/tunnel-disconnected", bytes.NewReader(body))
+	if err != nil {
+		c.log.Warn("tunnel-disconnected request build failed", "error", err)
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Internal-Token", c.sharedSecret)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		c.log.Warn("tunnel-disconnected request failed", "error", err, "subdomain", subdomain)
+		return
+	}
+	resp.Body.Close()
+}
+

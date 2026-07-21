@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { client } from "@/lib/api-client";
-import type { Tunnel } from "@/lib/types";
+import type { Tunnel, TunnelSession } from "@/lib/types";
 
 export function useTunnelsQuery() {
   return useQuery({
@@ -9,6 +9,17 @@ export function useTunnelsQuery() {
       const { data } = await client.get<Tunnel[]>("/v1/tunnels");
       return data;
     },
+  });
+}
+
+export function useTunnelSessionsQuery() {
+  return useQuery({
+    queryKey: ["tunnel-sessions"],
+    queryFn: async () => {
+      const { data } = await client.get<TunnelSession[]>("/v1/tunnel-sessions");
+      return data;
+    },
+    refetchInterval: 30_000,
   });
 }
 

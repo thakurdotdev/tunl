@@ -22,15 +22,16 @@ type TunnelConnection interface {
 }
 
 type Tunnel struct {
-	Subdomain string
-	UserID    string // empty for anonymous tunnels
-	Reserved  bool   // true if tied to a paid/authenticated reservation
-	BindAddr  string // echoed in forwarded-tcpip; must match exactly what the client sent in tcpip-forward
-	BindPort  uint32
-	RemoteIP  string
-	CreatedAt time.Time
-	LastSeen  time.Time
-	Conn      TunnelConnection
+	Subdomain       string
+	UserID          string // empty for anonymous tunnels
+	Reserved        bool   // true if tied to a paid/authenticated reservation
+	BindAddr        string // echoed in forwarded-tcpip; must match exactly what the client sent in tcpip-forward
+	BindPort        uint32
+	RemoteIP        string
+	MaxActiveTunnels int   // from plan; 0 means unlimited
+	CreatedAt       time.Time
+	LastSeen        time.Time
+	Conn            TunnelConnection
 }
 
 type TunnelRegistry interface {
@@ -48,9 +49,8 @@ type TunnelRegistry interface {
 }
 
 var (
-	ErrSubdomainTaken               = fmt.Errorf("subdomain already registered")
-	ErrUserTunnelLimitReached     = fmt.Errorf("active tunnel limit reached for user")
-	ErrAnonymousTunnelLimitReached = fmt.Errorf("active anonymous tunnel limit reached for IP")
+	ErrSubdomainTaken            = fmt.Errorf("subdomain already registered")
+	ErrUserTunnelLimitReached    = fmt.Errorf("active tunnel limit reached for user")
 )
 
 type entry struct {
@@ -62,25 +62,20 @@ type entry struct {
 // InMemoryRegistry is the only TunnelRegistry implementation for now —
 // Redis / multi-instance is explicitly out of scope (plan section 1.4 / 6).
 type InMemoryRegistry struct {
-	mu                 sync.RWMutex
-	entries            map[string]*entry
-	reserved           map[string]struct{}
-	graceWindow        time.Duration
-	maxAnonymousPerIP int
+	mu          sync.RWMutex
+	entries     map[string]*entry
+	reserved    map[string]struct{}
+	graceWindow time.Duration
 }
 
-func New(graceWindow time.Duration, reserved map[string]struct{}, maxAnonymousPerIP int) *InMemoryRegistry {
+func New(graceWindow time.Duration, reserved map[string]struct{}) *InMemoryRegistry {
 	if reserved == nil {
 		reserved = make(map[string]struct{})
 	}
-	if maxAnonymousPerIP <= 0 {
-		maxAnonymousPerIP = 1
-	}
 	return &InMemoryRegistry{
-		entries:            make(map[string]*entry),
-		reserved:           reserved,
-		graceWindow:        graceWindow,
-		maxAnonymousPerIP: maxAnonymousPerIP,
+		entries:     make(map[string]*entry),
+		reserved:    reserved,
+		graceWindow: graceWindow,
 	}
 }
 
@@ -88,21 +83,15 @@ func (r *InMemoryRegistry) Register(t *Tunnel) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	if t.UserID != "" {
+	if t.UserID != "" && t.MaxActiveTunnels > 0 {
+		active := 0
 		for _, e := range r.entries {
 			if !e.disconnected && e.tunnel.UserID == t.UserID {
-				return ErrUserTunnelLimitReached
+				active++
 			}
 		}
-	} else if t.RemoteIP != "" {
-		anonCount := 0
-		for _, e := range r.entries {
-			if !e.disconnected && !e.tunnel.Reserved && e.tunnel.RemoteIP == t.RemoteIP {
-				anonCount++
-			}
-		}
-		if anonCount >= r.maxAnonymousPerIP {
-			return ErrAnonymousTunnelLimitReached
+		if active >= t.MaxActiveTunnels {
+			return ErrUserTunnelLimitReached
 		}
 	}
 

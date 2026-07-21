@@ -23,6 +23,15 @@ export type Tunnel = {
   createdAt: string;
 };
 
+export type TunnelSession = {
+  id: string;
+  tunnelId: string | null;
+  subdomain: string;
+  remoteIp: string;
+  connectedAt: string;
+  lastSeenAt: string;
+};
+
 export type ApiError = {
   error: {
     code: string;

@@ -51,8 +51,7 @@ type Config struct {
 	// reserved before being freed (plan's grace-window design note).
 	ReconnectGraceWindow time.Duration
 
-	MaxConnsPerIP            int
-	MaxAnonymousTunnelsPerIP int
+	MaxConnsPerIP int
 
 	// ReservedSubdomains are existing subdomains that must never be assigned
 	// to tunnels (e.g. "blog,api,www" to protect blog.thakur.dev, etc.).
@@ -74,7 +73,6 @@ func Load() (*Config, error) {
 		InternalSharedSecret:     strings.TrimSpace(getEnv("INTERNAL_SHARED_SECRET", "changeme-shared-secret-at-least-16-chars")),
 		SubdomainRetries:         getEnvInt("SUBDOMAIN_RETRIES", 5),
 		MaxConnsPerIP:            getEnvInt("MAX_CONNS_PER_IP", 10),
-		MaxAnonymousTunnelsPerIP: getEnvInt("MAX_ANONYMOUS_TUNNELS_PER_IP", 1),
 	}
 
 	cacheTTLSeconds := getEnvInt("CACHE_TTL_SECONDS", 300) // 5 min default

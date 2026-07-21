@@ -66,21 +66,27 @@ func (l *connLimiter) release(ip string) {
 	}
 }
 
-type Server struct {
-	listenAddr   string
-	baseDomain   string
-	tunnelScheme string
-	registry     registry.TunnelRegistry
-	keyValidator KeyValidator
-	subdomainMax int
-	sshConfig    *ssh.ServerConfig
-	limiter      *connLimiter
-	log          *slog.Logger
+// SessionReporter is called after a tunnel is established or torn down so
+// the control plane can update active_tunnel_sessions. Both methods are
+// fire-and-forget — a slow or unavailable control plane must never stall
+// a live tunnel.
+type SessionReporter interface {
+	ReportConnected(ctx context.Context, userID, subdomain, remoteIP string)
+	ReportDisconnected(ctx context.Context, userID, subdomain string)
+}
 
-	// sessMu/sessions track every live sshSession so that ListenAndServe
-	// can force-close them when ctx is cancelled. Without this, existing
-	// tunnels stayed open indefinitely after a shutdown signal, since
-	// cancelling ctx previously only stopped Accept()ing new connections.
+type Server struct {
+	listenAddr      string
+	baseDomain      string
+	tunnelScheme    string
+	registry        registry.TunnelRegistry
+	keyValidator    KeyValidator
+	sessionReporter SessionReporter
+	subdomainMax    int
+	sshConfig       *ssh.ServerConfig
+	limiter         *connLimiter
+	log             *slog.Logger
+
 	sessMu   sync.Mutex
 	sessions map[string]*sshSession
 }
@@ -91,6 +97,7 @@ type Options struct {
 	URLScheme        string
 	Registry         registry.TunnelRegistry
 	KeyValidator     KeyValidator
+	SessionReporter  SessionReporter
 	SubdomainRetries int
 	HostKey          ssh.Signer
 	MaxConnsPerIP    int
@@ -111,6 +118,12 @@ func New(opts Options) *Server {
 	cfg := &ssh.ServerConfig{
 		NoClientAuth:      false,
 		PublicKeyCallback: buildAuthCallback(kv, log),
+		PasswordCallback: func(meta ssh.ConnMetadata, password []byte) (*ssh.Permissions, error) {
+			return nil, fmt.Errorf("password auth disabled")
+		},
+		KeyboardInteractiveCallback: func(meta ssh.ConnMetadata, client ssh.KeyboardInteractiveChallenge) (*ssh.Permissions, error) {
+			return nil, fmt.Errorf("keyboard-interactive auth disabled")
+		},
 	}
 	cfg.AddHostKey(opts.HostKey)
 
@@ -125,16 +138,17 @@ func New(opts Options) *Server {
 	}
 
 	return &Server{
-		listenAddr:   opts.ListenAddr,
-		baseDomain:   opts.BaseDomain,
-		tunnelScheme: scheme,
-		registry:     opts.Registry,
-		keyValidator: kv,
-		subdomainMax: opts.SubdomainRetries,
-		sshConfig:    cfg,
-		limiter:      newConnLimiter(maxPerIP),
-		log:          log,
-		sessions:     make(map[string]*sshSession),
+		listenAddr:      opts.ListenAddr,
+		baseDomain:      opts.BaseDomain,
+		tunnelScheme:    scheme,
+		registry:        opts.Registry,
+		keyValidator:    kv,
+		sessionReporter: opts.SessionReporter,
+		subdomainMax:    opts.SubdomainRetries,
+		sshConfig:       cfg,
+		limiter:         newConnLimiter(maxPerIP),
+		log:             log,
+		sessions:        make(map[string]*sshSession),
 	}
 }
 
@@ -209,7 +223,12 @@ func (s *Server) handleConn(ctx context.Context, conn net.Conn) {
 		conn.Close()
 		return
 	}
-	defer s.limiter.release(remoteIP)
+	limiterReleased := false
+	defer func() {
+		if !limiterReleased {
+			s.limiter.release(remoteIP)
+		}
+	}()
 
 	if tcpConn, ok := conn.(*net.TCPConn); ok {
 		_ = tcpConn.SetKeepAlive(true)
@@ -223,8 +242,15 @@ func (s *Server) handleConn(ctx context.Context, conn net.Conn) {
 		return
 	}
 
-	userID, email, allowedSubdomain, plan := extractPermissions(sshConn.Permissions)
-	sess := newSSHSession(sessionID(), userID, email, allowedSubdomain, plan, remoteIP, sshConn)
+	userID, email, allowedSubdomain, plan, maxActiveTunnels := extractPermissions(sshConn.Permissions)
+	sess := newSSHSession(sessionID(), userID, email, allowedSubdomain, plan, remoteIP, maxActiveTunnels, sshConn)
+
+	// Authenticated users are bounded by their plan's maxActiveTunnels,
+	// not the per-IP anonymous connection cap.
+	if userID != "" {
+		s.limiter.release(remoteIP)
+		limiterReleased = true
+	}
 
 	s.trackSession(sess)
 
@@ -243,6 +269,9 @@ func (s *Server) handleConn(ctx context.Context, conn net.Conn) {
 		if sub := sess.Subdomain(); sub != "" {
 			s.registry.MarkDisconnected(sub)
 			connLog.Info("tunnel disconnected", logging.FieldSubdomain, sub)
+			if userID != "" && s.sessionReporter != nil {
+				go s.sessionReporter.ReportDisconnected(context.Background(), userID, sub)
+			}
 		}
 		sshConn.Close()
 	}()
@@ -279,11 +308,15 @@ func (s *Server) handleConn(ctx context.Context, conn net.Conn) {
 	s.handleChannels(chans, sess, connLog)
 }
 
-func extractPermissions(perms *ssh.Permissions) (userID, email, allowedSubdomain, plan string) {
+func extractPermissions(perms *ssh.Permissions) (userID, email, allowedSubdomain, plan string, maxActiveTunnels int) {
 	if perms == nil || perms.Extensions == nil {
-		return "", "", "", ""
+		return "", "", "", "", 0
 	}
-	return perms.Extensions["user_id"], perms.Extensions["email"], perms.Extensions["allowed_subdomain"], perms.Extensions["plan"]
+	max := 0
+	if v, ok := perms.Extensions["max_active_tunnels"]; ok {
+		fmt.Sscanf(v, "%d", &max)
+	}
+	return perms.Extensions["user_id"], perms.Extensions["email"], perms.Extensions["allowed_subdomain"], perms.Extensions["plan"], max
 }
 
 func extractIP(addr net.Addr) string {
@@ -402,7 +435,10 @@ func renderTerminalBanner(ch io.Writer, s *Server, sess *sshSession) {
 	if targetHost == "" || targetHost == "0.0.0.0" || targetHost == "127.0.0.1" {
 		targetHost = "localhost"
 	}
-	forwardTarget := fmt.Sprintf("http://%s:%d", targetHost, sess.BindPort())
+	forwardTarget := fmt.Sprintf("http://%s", targetHost)
+	if sess.BindPort() != 80 && sess.BindPort() != 443 {
+		forwardTarget = fmt.Sprintf("http://%s:%d", targetHost, sess.BindPort())
+	}
 
 	accountStr := "\033[90mAnonymous\033[0m"
 	if sess.UserID() != "" {

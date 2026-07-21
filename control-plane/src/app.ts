@@ -12,6 +12,7 @@ import { ResendAuthMailer } from "./modules/auth/mailer.js";
 import { internalRouter } from "./modules/internal/internal.router.js";
 import { sshKeysRouter } from "./modules/ssh-keys/ssh-keys.router.js";
 import { tunnelsRouter } from "./modules/tunnels/tunnels.router.js";
+import { tunnelSessionsRouter } from "./modules/tunnel-sessions/tunnel-sessions.router.js";
 import { usersRouter } from "./modules/users/users.router.js";
 import cors from "cors";
 
@@ -40,6 +41,7 @@ export function createApp(db: Database, redis: RedisClient, config: Config) {
   app.use("/v1", usersRouter(db));
   app.use("/v1/ssh-keys", sshKeysRouter(db, redis));
   app.use("/v1/tunnels", tunnelsRouter(db, redis));
+  app.use("/v1/tunnel-sessions", tunnelSessionsRouter(db));
   app.use("/internal", internalRouter(db, redis, config));
   app.use(errorHandler);
   return app;
