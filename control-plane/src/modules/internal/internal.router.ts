@@ -1,5 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, lt, ne } from "drizzle-orm";
 import { Router } from "express";
 import { z } from "zod";
 import type { Database } from "../../db/client.js";
@@ -86,6 +86,30 @@ export function internalRouter(db: Database, redis: RedisClient, config: Config)
         .where(and(eq(tunnels.userId, userId), eq(tunnels.subdomain, subdomain)))
         .limit(1);
 
+      // Sweep orphaned sessions for this user on different subdomains.
+      // These accumulate when ReportDisconnected is never called (server restart,
+      // network partition, pre-deploy connections). Safe to delete — if a session
+      // is alive the tunnel server will re-report it on the next keepalive cycle.
+      const orphans = await db
+        .delete(activeTunnelSessions)
+        .where(
+          and(
+            eq(activeTunnelSessions.userId, userId),
+            ne(activeTunnelSessions.subdomain, subdomain),
+          ),
+        )
+        .returning({ subdomain: activeTunnelSessions.subdomain, tunnelId: activeTunnelSessions.tunnelId });
+
+      // Reset any reservations whose sessions we just wiped so they show as reserved not active.
+      for (const orphan of orphans) {
+        if (orphan.tunnelId) {
+          await db
+            .update(tunnels)
+            .set({ status: "reserved", updatedAt: new Date() })
+            .where(eq(tunnels.id, orphan.tunnelId));
+        }
+      }
+
       // Upsert on (userId, subdomain) — handles reconnects without duplicates.
       await db
         .insert(activeTunnelSessions)
@@ -149,6 +173,25 @@ export function internalRouter(db: Database, redis: RedisClient, config: Config)
   );
 
   router.post(
+    "/tunnel-heartbeat",
+    asyncRoute(async (req, res) => {
+      const { userId, subdomain } = sessionDisconnectedBody.parse(req.body);
+
+      await db
+        .update(activeTunnelSessions)
+        .set({ lastSeenAt: new Date() })
+        .where(
+          and(
+            eq(activeTunnelSessions.userId, userId),
+            eq(activeTunnelSessions.subdomain, subdomain),
+          ),
+        );
+
+      res.status(204).send();
+    }),
+  );
+
+  router.post(
     "/usage",
     asyncRoute(async (req, res) => {
       const event = usageBody.parse(req.body);
@@ -160,3 +203,32 @@ export function internalRouter(db: Database, redis: RedisClient, config: Config)
   return router;
 }
 
+// Purge sessions where lastSeenAt hasn't been updated in over 3 minutes
+// (6 missed keepalive intervals). Called once at startup; runs on a 60s cadence.
+export function startStaleSessionSweeper(db: Database) {
+  const STALE_THRESHOLD_MS = 3 * 60 * 1000;
+
+  async function sweep() {
+    const cutoff = new Date(Date.now() - STALE_THRESHOLD_MS);
+    const stale = await db
+      .delete(activeTunnelSessions)
+      .where(lt(activeTunnelSessions.lastSeenAt, cutoff))
+      .returning({ tunnelId: activeTunnelSessions.tunnelId });
+
+    for (const row of stale) {
+      if (row.tunnelId) {
+        await db
+          .update(tunnels)
+          .set({ status: "reserved", updatedAt: new Date() })
+          .where(eq(tunnels.id, row.tunnelId));
+      }
+    }
+
+    if (stale.length > 0) {
+      console.info({ count: stale.length }, "swept stale tunnel sessions");
+    }
+  }
+
+  sweep().catch(console.error);
+  setInterval(() => sweep().catch(console.error), 60_000);
+}

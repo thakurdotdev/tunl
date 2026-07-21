@@ -167,3 +167,22 @@ func (c *Client) ReportDisconnected(ctx context.Context, userID, subdomain strin
 	resp.Body.Close()
 }
 
+func (c *Client) ReportHeartbeat(ctx context.Context, userID, subdomain string) {
+	body, _ := json.Marshal(map[string]string{
+		"userId":    userID,
+		"subdomain": subdomain,
+	})
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
+		c.baseURL+"/internal/tunnel-heartbeat", bytes.NewReader(body))
+	if err != nil {
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Internal-Token", c.sharedSecret)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return
+	}
+	resp.Body.Close()
+}

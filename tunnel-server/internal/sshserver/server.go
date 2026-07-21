@@ -73,6 +73,7 @@ func (l *connLimiter) release(ip string) {
 type SessionReporter interface {
 	ReportConnected(ctx context.Context, userID, subdomain, remoteIP string)
 	ReportDisconnected(ctx context.Context, userID, subdomain string)
+	ReportHeartbeat(ctx context.Context, userID, subdomain string)
 }
 
 type Server struct {
@@ -299,6 +300,9 @@ func (s *Server) handleConn(ctx context.Context, conn net.Conn) {
 					connLog.Debug("ssh keepalive failed, closing session", "error", err)
 					sess.Close()
 					return
+				}
+				if sub := sess.Subdomain(); sub != "" && userID != "" && s.sessionReporter != nil {
+					go s.sessionReporter.ReportHeartbeat(context.Background(), userID, sub)
 				}
 			}
 		}
