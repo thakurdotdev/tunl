@@ -48,7 +48,6 @@ func main() {
 	ccClient := controlclient.New(controlclient.Options{
 		BaseURL:      cfg.ControlPlaneURL,
 		SharedSecret: cfg.InternalSharedSecret,
-		CacheTTL:     cfg.CacheTTL,
 		Logger:       logger,
 	})
 

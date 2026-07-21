@@ -39,9 +39,6 @@ type Config struct {
 	ControlPlaneURL      string
 	InternalSharedSecret string
 
-	// CacheTTL controls how long controlclient caches ValidateKey results.
-	// Deliberate consistency/latency tradeoff — see plan's cache-staleness note.
-	CacheTTL time.Duration
 
 	// SubdomainRetries is how many times to retry random subdomain generation
 	// on a Register collision before giving up (plan step 4).
@@ -75,8 +72,6 @@ func Load() (*Config, error) {
 		MaxConnsPerIP:            getEnvInt("MAX_CONNS_PER_IP", 10),
 	}
 
-	cacheTTLSeconds := getEnvInt("CACHE_TTL_SECONDS", 300) // 5 min default
-	cfg.CacheTTL = time.Duration(cacheTTLSeconds) * time.Second
 
 	graceSeconds := getEnvInt("RECONNECT_GRACE_SECONDS", 12)
 	cfg.ReconnectGraceWindow = time.Duration(graceSeconds) * time.Second

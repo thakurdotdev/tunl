@@ -14,14 +14,12 @@ type Client struct {
 	baseURL      string
 	sharedSecret string
 	httpClient   *http.Client
-	cache        *ttlCache
 	log          *slog.Logger
 }
 
 type Options struct {
 	BaseURL      string
 	SharedSecret string
-	CacheTTL     time.Duration
 	Timeout      time.Duration
 	Logger       *slog.Logger
 }
@@ -39,7 +37,6 @@ func New(opts Options) *Client {
 		baseURL:      opts.BaseURL,
 		sharedSecret: opts.SharedSecret,
 		httpClient:   &http.Client{Timeout: timeout},
-		cache:        newTTLCache(opts.CacheTTL),
 		log:          log,
 	}
 }
@@ -52,20 +49,8 @@ type validateKeyResponse struct {
 	MaxActiveTunnels int     `json:"maxActiveTunnels"`
 }
 
-type cachedKeyResult struct {
-	userID           string
-	email            string
-	allowedSubdomain string
-	plan             string
-	maxActiveTunnels int
-}
 
 func (c *Client) ValidateKey(ctx context.Context, fingerprint string) (userID, email, allowedSubdomain, plan string, maxActiveTunnels int, ok bool) {
-	if cached, hit := c.cache.get(fingerprint); hit {
-		r := cached.(*cachedKeyResult)
-		return r.userID, r.email, r.allowedSubdomain, r.plan, r.maxActiveTunnels, true
-	}
-
 	body, _ := json.Marshal(map[string]string{"fingerprint": fingerprint})
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
 		c.baseURL+"/internal/validate-key", bytes.NewReader(body))
@@ -95,16 +80,7 @@ func (c *Client) ValidateKey(ctx context.Context, fingerprint string) (userID, e
 		return "", "", "", "", 0, false
 	}
 
-	result := &cachedKeyResult{
-		userID:           r.UserID,
-		email:            r.Email,
-		allowedSubdomain: optionalSubdomain(r.AllowedSubdomain),
-		plan:             r.Plan,
-		maxActiveTunnels: r.MaxActiveTunnels,
-	}
-	c.cache.set(fingerprint, result)
-
-	return result.userID, result.email, result.allowedSubdomain, result.plan, result.maxActiveTunnels, true
+	return r.UserID, r.Email, optionalSubdomain(r.AllowedSubdomain), r.Plan, r.MaxActiveTunnels, true
 }
 
 func optionalSubdomain(value *string) string {
