@@ -13,55 +13,56 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { user, logout } = useAuth();
   const pathname = usePathname();
 
+  const navItems = [
+    { href: "/dashboard", label: "0:tunnels", pathMatch: "/dashboard" },
+    { href: "/keys", label: "1:ssh-keys", pathMatch: "/keys" },
+    { href: "/docs", label: "2:docs", pathMatch: "/docs" },
+  ];
+
   return (
     <RouteGuard>
-      <div className="bg-background flex min-h-screen flex-col">
-        <header className="border-border bg-card border-b">
+      <div className="bg-background flex min-h-screen flex-col font-mono">
+        <header className="border-border bg-card/90 sticky top-0 z-50 border-b backdrop-blur-xs">
           <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
-            <div className="flex items-center gap-8">
-              <Link href="/dashboard">
+            <div className="flex items-center gap-3 sm:gap-6 overflow-hidden">
+              <Link href="/dashboard" className="flex items-center gap-2 shrink-0">
                 <Logo />
               </Link>
-              <nav className="flex items-center gap-6">
-                <Link
-                  href="/dashboard"
-                  className={`text-sm transition-colors ${
-                    pathname === "/dashboard"
-                      ? "text-foreground font-medium"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  Tunnels
-                </Link>
-                <Link
-                  href="/keys"
-                  className={`text-sm transition-colors ${
-                    pathname === "/keys"
-                      ? "text-foreground font-medium"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  SSH Keys
-                </Link>
-                <Link
-                  href="/docs"
-                  className={`text-sm transition-colors ${
-                    pathname === "/docs"
-                      ? "text-foreground font-medium"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  Docs
-                </Link>
+              <div className="bg-border/60 hidden h-4 w-px sm:block shrink-0" />
+              <nav className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto py-1 no-scrollbar">
+                {navItems.map((item) => {
+                  const isActive = pathname === item.pathMatch;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`flex items-center rounded-md px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs font-mono transition-all whitespace-nowrap ${
+                        isActive
+                          ? "bg-primary/15 text-primary border-primary/30 border font-semibold"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                      }`}
+                    >
+                      <span className="opacity-60">{isActive ? "> " : ""}</span>
+                      {item.label}
+                    </Link>
+                  );
+                })}
               </nav>
             </div>
-            <div className="flex items-center gap-3">
-              <span className="text-muted-foreground hidden text-sm sm:inline">{user?.email}</span>
+            <div className="flex items-center gap-2 sm:gap-3 text-xs shrink-0">
+              <div className="border-border bg-muted/40 hidden items-center gap-2 rounded-md border px-2.5 py-1 md:flex">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-muted-foreground font-mono text-[11px]">SSH:2222 READY</span>
+              </div>
+              <span className="text-muted-foreground hidden font-mono text-xs lg:inline">
+                {user?.email}
+              </span>
               <ModeToggle />
-              <Button variant="outline" size="sm" onClick={logout}>
-                Log out
+              <Button variant="outline" size="xs" onClick={logout} className="font-mono text-xs">
+                [exit]
               </Button>
             </div>
+
           </div>
         </header>
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">{children}</main>
@@ -69,3 +70,4 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     </RouteGuard>
   );
 }
+

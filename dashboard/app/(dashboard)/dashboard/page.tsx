@@ -47,11 +47,13 @@ export default function TunnelsPage() {
   const deleteMutation = useDeleteTunnelMutation();
 
   const [deleteTunnelId, setDeleteTunnelId] = useState<string | null>(null);
+  const [customPort, setCustomPort] = useState("3000");
 
   const {
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors },
   } = useForm<TunnelFormValues>({
     resolver: zodResolver(tunnelSchema),
@@ -103,87 +105,189 @@ export default function TunnelsPage() {
   const currentTunnelsCount = tunnels.length;
   const limitReached = currentTunnelsCount >= maxTunnels;
 
+  const subdomainInput = watch("subdomain")?.trim();
+  const sshTargetHost = subdomainInput ? `${subdomainInput}@t.thakur.dev` : "t.thakur.dev";
+  const generatedSshCommand = `ssh -R 80:localhost:${customPort || "3000"} -p 2222 ${sshTargetHost}`;
+
   return (
-    <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-6 font-mono">
+      {/* Top Header & Stats Counter Bar */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Tunnels</h1>
-          <p className="text-muted-foreground text-sm">
-            Reserve subdomains and view connectivity status.
+          <div className="flex items-center gap-2">
+            <span className="text-primary font-bold text-xl">{">"}</span>
+            <h1 className="text-xl font-bold tracking-tight">Tunnels & Subdomains</h1>
+          </div>
+          <p className="text-muted-foreground text-xs mt-0.5">
+            // Manage static endpoints and monitor live HTTP/SSH tunnel sessions.
           </p>
         </div>
-        <div className="border-border bg-card self-start rounded-xl border px-3 py-1.5 text-sm font-medium sm:self-center">
-          Plan Limit: {currentTunnelsCount} / {maxTunnels} reserved
+        <div className="flex items-center gap-3 text-xs">
+          <div className="border-border bg-card flex items-center gap-2 rounded-md border px-3 py-1.5 shadow-2xs">
+            <span className="text-muted-foreground text-[10px]">RESERVED</span>
+            <span className="text-primary font-bold">{currentTunnelsCount} / {maxTunnels}</span>
+          </div>
+          <div className="border-border bg-card flex items-center gap-2 rounded-md border px-3 py-1.5 shadow-2xs">
+            <span className="text-muted-foreground text-[10px]">LIVE SESSIONS</span>
+            <span className="text-emerald-400 font-bold flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              {activeSessions.length}
+            </span>
+          </div>
         </div>
       </div>
 
-      <div className="border-border bg-card flex flex-col gap-4 rounded-2xl border p-6">
-        <h2 className="text-lg font-medium">Reserve Subdomain</h2>
-        <form
-          onSubmit={handleSubmit(onSubmit)}
-          className="flex flex-col gap-4 sm:flex-row sm:items-end"
-        >
-          <div className="flex flex-1 flex-col gap-2">
-            <Label htmlFor="subdomain">Subdomain</Label>
-            <div className="relative flex items-center">
-              <Input
-                id="subdomain"
-                placeholder="my-app"
-                disabled={createMutation.isPending || limitReached}
-                className="pr-[100px]"
-                {...register("subdomain")}
-                aria-invalid={!!errors.subdomain}
-              />
-              <span className="text-muted-foreground pointer-events-none absolute right-3 font-mono text-sm select-none">
-                .thakur.dev
+      {/* 2-Column Grid Top Section */}
+      <div className="grid gap-6 lg:grid-cols-12">
+        {/* Reservation Form Column */}
+        <div className="lg:col-span-6 border-border bg-card overflow-hidden rounded-lg border shadow-xs flex flex-col">
+          <div className="border-border bg-muted/40 flex items-center justify-between border-b px-4 py-2 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-full bg-rose-500/80 inline-block" />
+              <span className="h-2.5 w-2.5 rounded-full bg-amber-500/80 inline-block" />
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500/80 inline-block" />
+              <span className="text-muted-foreground ml-2 font-mono text-[11px]">
+                tunl :: reserve-subdomain
               </span>
             </div>
-            {errors.subdomain && (
-              <p className="text-destructive text-xs">{errors.subdomain.message}</p>
+            <span className="text-muted-foreground text-[10px]">STATIC ALIAS</span>
+          </div>
+
+          <div className="p-5 flex flex-col justify-between flex-1 gap-4">
+            <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="subdomain" className="text-xs font-semibold text-muted-foreground">
+                  TARGET SUBDOMAIN ALIAS
+                </Label>
+                <div className="relative flex items-center">
+                  <span className="text-primary absolute left-3 font-bold text-xs select-none">
+                    $
+                  </span>
+                  <Input
+                    id="subdomain"
+                    placeholder="my-app"
+                    disabled={createMutation.isPending || limitReached}
+                    className="pl-7 pr-[105px] font-mono text-xs h-9 bg-background/50 border-border focus-visible:ring-primary/40"
+                    {...register("subdomain")}
+                    aria-invalid={!!errors.subdomain}
+                  />
+                  <span className="text-muted-foreground/70 pointer-events-none absolute right-3 font-mono text-xs select-none">
+                    .thakur.dev
+                  </span>
+                </div>
+                {errors.subdomain && (
+                  <p className="text-destructive text-xs font-mono">{errors.subdomain.message}</p>
+                )}
+              </div>
+              <Button
+                type="submit"
+                disabled={createMutation.isPending || limitReached}
+                size="sm"
+                className="h-9 shrink-0 font-mono text-xs gap-1.5 self-start"
+              >
+                {createMutation.isPending ? "Reserving..." : "[+ Reserve Subdomain]"}
+              </Button>
+            </form>
+            {limitReached && (
+              <p className="text-xs text-amber-500 font-mono">
+                [!] Reservation limit reached. Delete an existing tunnel to claim a new alias.
+              </p>
             )}
           </div>
-          <Button
-            type="submit"
-            disabled={createMutation.isPending || limitReached}
-            className="h-8 shrink-0"
-          >
-            {createMutation.isPending ? "Reserving..." : "Reserve"}
-          </Button>
-        </form>
-        {limitReached && (
-          <p className="text-xs text-amber-600 dark:text-amber-500">
-            You have reached the reservation limit for your plan. Delete an existing tunnel to
-            reserve a new one.
-          </p>
-        )}
+        </div>
+
+        {/* Quick Connect Command Preview Box */}
+        <div className="lg:col-span-6 border-border bg-card overflow-hidden rounded-lg border shadow-xs flex flex-col">
+          <div className="border-border bg-muted/40 flex items-center justify-between border-b px-4 py-2 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-full bg-rose-500/80 inline-block" />
+              <span className="h-2.5 w-2.5 rounded-full bg-amber-500/80 inline-block" />
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500/80 inline-block" />
+              <span className="text-muted-foreground ml-2 font-mono text-[11px]">
+                tunl :: quick-connect-cli
+              </span>
+            </div>
+            <span className="text-primary font-bold text-[10px]">OPENSSH</span>
+          </div>
+
+          <div className="p-5 flex flex-col justify-between flex-1 gap-3">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex flex-col gap-1">
+                <span className="text-xs font-semibold text-muted-foreground">GENERATED SSH COMMAND</span>
+                <p className="text-muted-foreground text-[11px]">
+                  Forward local port {customPort || "3000"} to the internet:
+                </p>
+              </div>
+              <div className="flex flex-col gap-1 shrink-0 w-24">
+                <Label htmlFor="quickPort" className="text-[10px] font-semibold text-muted-foreground">
+                  LOCAL PORT
+                </Label>
+                <Input
+                  id="quickPort"
+                  value={customPort}
+                  onChange={(e) => setCustomPort(e.target.value)}
+                  placeholder="3000"
+                  className="h-7 text-xs font-mono bg-background/50 border-border px-2 text-center"
+                />
+              </div>
+            </div>
+
+            <div className="bg-muted/80 text-primary border-border flex items-center gap-3 rounded-md border p-3 font-mono text-xs select-all">
+              <span className="text-muted-foreground select-none">$</span>
+              <code className="flex-1 truncate">{generatedSshCommand}</code>
+              <Button
+                variant="outline"
+                size="icon-xs"
+                onClick={() => copyToClipboard(generatedSshCommand)}
+                className="shrink-0"
+              >
+                <Copy className="h-3 w-3" />
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="border-border bg-card overflow-hidden rounded-2xl border">
+
+      {/* Reserved Tunnels List Window */}
+      <div className="border-border bg-card overflow-hidden rounded-lg border shadow-sm">
+        <div className="border-border bg-muted/40 flex items-center justify-between border-b px-4 py-2 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="h-2.5 w-2.5 rounded-full bg-rose-500/80 inline-block" />
+            <span className="h-2.5 w-2.5 rounded-full bg-amber-500/80 inline-block" />
+            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500/80 inline-block" />
+            <span className="text-muted-foreground ml-2 font-mono text-[11px]">
+              tunl :: reserved-subdomains [{tunnels.length}]
+            </span>
+          </div>
+          <span className="text-muted-foreground text-[10px]">PORT 2222</span>
+        </div>
+
         {isLoading ? (
           <div className="flex flex-col items-center justify-center gap-2 py-12">
-            <div className="border-foreground/20 border-t-foreground h-5 w-5 animate-spin rounded-full border-2" />
-            <p className="text-muted-foreground text-sm">Loading tunnels...</p>
+            <div className="border-primary/20 border-t-primary h-5 w-5 animate-spin rounded-full border-2" />
+            <p className="text-muted-foreground text-xs font-mono">Loading subdomains...</p>
           </div>
         ) : tunnels.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-3 px-4 py-16 text-center">
-            <Globe className="text-muted-foreground/50 h-10 w-10" />
+          <div className="flex flex-col items-center justify-center gap-3 px-4 py-14 text-center">
+            <Globe className="text-muted-foreground/30 h-8 w-8" />
             <div className="flex flex-col gap-1">
-              <h3 className="text-base font-medium">No subdomains reserved</h3>
-              <p className="text-muted-foreground max-w-sm text-sm">
-                Reserve your first subdomain above to expose your local port via SSH.
+              <h3 className="text-sm font-semibold">No subdomains reserved</h3>
+              <p className="text-muted-foreground max-w-sm text-xs">
+                Reserve a subdomain above to enable static tunneling endpoints.
               </p>
             </div>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-left text-sm">
+            <table className="w-full border-collapse text-left text-xs font-mono">
               <thead>
-                <tr className="border-border bg-muted/30 border-b">
-                  <th className="text-muted-foreground p-4 font-medium">Subdomain</th>
-                  <th className="text-muted-foreground p-4 font-medium">Status</th>
-                  <th className="text-muted-foreground p-4 font-medium">Connection Details</th>
-                  <th className="text-muted-foreground p-4 font-medium">Created</th>
-                  <th className="text-muted-foreground p-4 text-right font-medium">Actions</th>
+                <tr className="border-border bg-muted/20 border-b text-[11px] uppercase tracking-wider text-muted-foreground">
+                  <th className="p-3.5 font-semibold">Subdomain Endpoint</th>
+                  <th className="p-3.5 font-semibold">State</th>
+                  <th className="p-3.5 font-semibold">SSH Command Snippet</th>
+                  <th className="p-3.5 font-semibold">Created Date</th>
+                  <th className="p-3.5 text-right font-semibold">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -192,51 +296,52 @@ export default function TunnelsPage() {
                   return (
                     <tr
                       key={tunnel.id}
-                      className="border-border hover:bg-muted/10 border-b transition-colors last:border-0"
+                      className="border-border hover:bg-muted/15 border-b transition-colors last:border-0"
                     >
-                      <td className="text-foreground p-4 font-mono font-medium">
+                      <td className="text-foreground p-3.5 font-bold">
                         {tunnel.subdomain}.thakur.dev
                       </td>
-                      <td className="p-4">
+                      <td className="p-3.5">
                         <span
-                          className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium ${
+                          className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold ${
                             tunnel.status === "active"
-                              ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-400"
-                              : "border-zinc-200 bg-zinc-50 text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-400"
+                              ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                              : "bg-muted text-muted-foreground border border-border"
                           }`}
                         >
                           <span
                             className={`h-1.5 w-1.5 rounded-full ${
-                              tunnel.status === "active" ? "bg-emerald-500" : "bg-zinc-400"
+                              tunnel.status === "active" ? "bg-emerald-400 animate-pulse" : "bg-muted-foreground"
                             }`}
                           />
-                          {tunnel.status === "active" ? "Active" : "Reserved"}
+                          {tunnel.status === "active" ? "ACTIVE" : "RESERVED"}
                         </span>
                       </td>
-                      <td className="p-4">
-                        <div className="flex max-w-[320px] items-center gap-2">
-                          <code className="bg-muted/65 block flex-1 truncate overflow-x-auto rounded-xl p-2 font-mono text-xs select-all">
+                      <td className="p-3.5">
+                        <div className="flex max-w-[340px] items-center gap-2">
+                          <code className="bg-muted/70 text-primary border-border block flex-1 truncate overflow-x-auto rounded-md border p-1.5 font-mono text-[11px] select-all">
                             {sshCommand}
                           </code>
                           <Button
                             variant="outline"
-                            size="icon-sm"
+                            size="icon-xs"
                             onClick={() => copyToClipboard(sshCommand)}
+                            className="shrink-0"
                           >
                             <Copy className="h-3 w-3" />
                           </Button>
                         </div>
                       </td>
-                      <td className="text-muted-foreground p-4 whitespace-nowrap">
+                      <td className="text-muted-foreground p-3.5 whitespace-nowrap text-[11px]">
                         <span className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
                           {format(new Date(tunnel.createdAt), "MMM d, yyyy")}
                         </span>
                       </td>
-                      <td className="p-4 text-right">
+                      <td className="p-3.5 text-right">
                         <Button
                           variant="destructive"
-                          size="icon-sm"
+                          size="icon-xs"
                           onClick={() => setDeleteTunnelId(tunnel.id)}
                         >
                           <Trash2 className="h-3 w-3" />
@@ -251,73 +356,78 @@ export default function TunnelsPage() {
         )}
       </div>
 
-      <div className="border-border bg-card overflow-hidden rounded-2xl border">
-        <div className="border-border flex items-center justify-between border-b px-6 py-4">
-          <div>
-            <h2 className="text-base font-medium">Active Sessions</h2>
-            <p className="text-muted-foreground mt-0.5 text-xs">
-              Live tunnel connections right now · refreshes every 30s
-            </p>
+      {/* Active Live Sessions Monitor */}
+      <div className="border-border bg-card overflow-hidden rounded-lg border shadow-sm">
+        <div className="border-border bg-muted/40 flex items-center justify-between border-b px-4 py-2 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="h-2.5 w-2.5 rounded-full bg-rose-500/80 inline-block" />
+            <span className="h-2.5 w-2.5 rounded-full bg-amber-500/80 inline-block" />
+            <span className="h-2.5 w-2.5 rounded-full bg-emerald-500/80 inline-block" />
+            <span className="text-muted-foreground ml-2 font-mono text-[11px]">
+              tunl :: active-sessions-monitor
+            </span>
           </div>
           <span
-            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
+            className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[10px] font-semibold ${
               activeSessions.length > 0
-                ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400"
-                : "bg-zinc-100 text-zinc-500 dark:bg-zinc-900/40 dark:text-zinc-400"
+                ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                : "bg-muted text-muted-foreground"
             }`}
           >
             <span
-              className={`h-1.5 w-1.5 rounded-full ${activeSessions.length > 0 ? "animate-pulse bg-emerald-500" : "bg-zinc-400"}`}
+              className={`h-1.5 w-1.5 rounded-full ${
+                activeSessions.length > 0 ? "animate-pulse bg-emerald-400" : "bg-muted-foreground"
+              }`}
             />
-            {activeSessions.length} live
+            {activeSessions.length} LIVE
           </span>
         </div>
 
         {activeSessions.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-3 px-4 py-12 text-center">
-            <WifiOff className="text-muted-foreground/40 h-8 w-8" />
-            <p className="text-muted-foreground text-sm">No active tunnel sessions</p>
+            <WifiOff className="text-muted-foreground/30 h-7 w-7" />
+            <p className="text-muted-foreground text-xs font-mono">// No active tunnel sessions currently established</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-left text-sm">
+            <table className="w-full border-collapse text-left text-xs font-mono">
               <thead>
-                <tr className="border-border bg-muted/30 border-b">
-                  <th className="text-muted-foreground p-4 font-medium">Subdomain</th>
-                  <th className="text-muted-foreground p-4 font-medium">Remote IP</th>
-                  <th className="text-muted-foreground p-4 font-medium">Connected</th>
-                  <th className="text-muted-foreground p-4 font-medium">Type</th>
+                <tr className="border-border bg-muted/20 border-b text-[11px] uppercase tracking-wider text-muted-foreground">
+                  <th className="p-3.5 font-semibold">Endpoint</th>
+                  <th className="p-3.5 font-semibold">Client IP</th>
+                  <th className="p-3.5 font-semibold">Uptime</th>
+                  <th className="p-3.5 font-semibold">Type</th>
                 </tr>
               </thead>
               <tbody>
                 {activeSessions.map((session) => (
                   <tr
                     key={session.id}
-                    className="border-border hover:bg-muted/10 border-b transition-colors last:border-0"
+                    className="border-border hover:bg-muted/15 border-b transition-colors last:border-0"
                   >
-                    <td className="p-4">
+                    <td className="p-3.5">
                       <span className="flex items-center gap-2">
-                        <Wifi className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
-                        <span className="text-foreground font-mono font-medium">
+                        <Wifi className="h-3.5 w-3.5 shrink-0 text-emerald-400 animate-pulse" />
+                        <span className="text-foreground font-bold">
                           {session.subdomain}.thakur.dev
                         </span>
                       </span>
                     </td>
-                    <td className="text-muted-foreground p-4 font-mono text-xs">
+                    <td className="text-muted-foreground p-3.5 font-mono text-[11px]">
                       {session.remoteIp || "—"}
                     </td>
-                    <td className="text-muted-foreground p-4 text-xs whitespace-nowrap">
+                    <td className="text-muted-foreground p-3.5 text-[11px] whitespace-nowrap">
                       {formatDistanceToNow(new Date(session.connectedAt), { addSuffix: true })}
                     </td>
-                    <td className="p-4">
+                    <td className="p-3.5">
                       <span
-                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                        className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-semibold ${
                           session.tunnelId
-                            ? "bg-violet-50 text-violet-700 dark:bg-violet-950/30 dark:text-violet-400"
-                            : "bg-zinc-100 text-zinc-600 dark:bg-zinc-900/40 dark:text-zinc-400"
+                            ? "bg-cyan-500/15 text-cyan-400 border border-cyan-500/30"
+                            : "bg-muted text-muted-foreground border border-border"
                         }`}
                       >
-                        {session.tunnelId ? "Reserved" : "Random"}
+                        {session.tunnelId ? "STATIC" : "EPHEMERAL"}
                       </span>
                     </td>
                   </tr>
@@ -329,21 +439,22 @@ export default function TunnelsPage() {
       </div>
 
       <AlertDialog open={!!deleteTunnelId}>
-        <AlertDialogContent>
+        <AlertDialogContent className="font-mono">
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete the reserved subdomain and terminate any active SSH
-              session associated with it. This action cannot be undone.
+            <AlertDialogTitle>[!] TERMINATE RESERVED SUBDOMAIN?</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs">
+              This will permanently delete the reserved subdomain and close any active SSH connections bound to it.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDeleteTunnelId(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setDeleteTunnelId(null)} className="text-xs">
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteConfirm}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 text-xs"
             >
-              Delete
+              [Delete]
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -351,3 +462,5 @@ export default function TunnelsPage() {
     </div>
   );
 }
+
+

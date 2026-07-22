@@ -1,6 +1,7 @@
 import { Logo } from "@/components/logo";
 import { GuestGuard } from "@/components/guest-guard";
 import { ModeToggle } from "@/components/mode-toggle";
+import { TerminalDemo } from "@/components/terminal-demo";
 import "./auth.css";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
@@ -18,31 +19,14 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         </div>
         <div className="auth-brand-panel">
           <div className="auth-brand-content">
-            <div className="auth-terminal">
-              <div className="auth-terminal-bar">
-                <span className="auth-terminal-dot" />
-                <span className="auth-terminal-dot" />
-                <span className="auth-terminal-dot" />
-              </div>
-              <pre className="auth-terminal-body">
-                <code>
-                  <span className="auth-terminal-prompt">$</span>{" "}
-                  <span className="auth-terminal-cmd">ssh</span> -R 80:localhost:3000 -p 2222
-                  myapp@t.thakur.dev
-                  {"\n"}
-                  <span className="auth-terminal-output">→ https://myapp.thakur.dev</span>
-                  {"\n"}
-                  <span className="auth-terminal-muted">
-                    Forwarding HTTP traffic to localhost:3000
-                  </span>
-                </code>
-              </pre>
-            </div>
+            <TerminalDemo />
             <div className="auth-brand-text">
-              <h2>Expose localhost in one command</h2>
+              <div className="flex items-center gap-2">
+                <span className="text-primary font-bold text-lg">{">"}</span>
+                <h2>Instant SSH Tunnels to Localhost</h2>
+              </div>
               <p>
-                No binaries, no configuration. Run a single SSH command and your local server is
-                live on the internet with a public URL.
+                Zero binaries to install. Expose local web applications to the internet instantly using standard OpenSSH built into your terminal.
               </p>
             </div>
           </div>
@@ -51,3 +35,5 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     </GuestGuard>
   );
 }
+
+

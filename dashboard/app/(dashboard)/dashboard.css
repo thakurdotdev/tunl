@@ -11,26 +11,31 @@
 }
 
 .dashboard-title {
-  font-size: 1.875rem;
-  font-weight: 600;
-  letter-spacing: -0.025em;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-family: var(--font-mono), monospace;
   color: var(--foreground);
 }
 
 .dashboard-description {
   font-size: 0.875rem;
   color: var(--muted-foreground);
+  font-family: var(--font-mono), monospace;
 }
 
 .dashboard-card {
   border: 1px solid var(--border);
   background-color: var(--card);
+  border-radius: 0.5rem;
   padding: 1.5rem;
+  box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.2);
 }
 
 .dashboard-card-title {
-  font-size: 1.125rem;
-  font-weight: 500;
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: var(--font-mono), monospace;
   color: var(--foreground);
   margin-bottom: 0.5rem;
 }
@@ -38,21 +43,23 @@
 .dashboard-table {
   width: 100%;
   border-collapse: collapse;
+  font-family: var(--font-mono), monospace;
 }
 
 .dashboard-table th {
   text-align: left;
   padding: 0.75rem 1rem;
   font-size: 0.75rem;
-  font-weight: 500;
+  font-weight: 600;
   text-transform: uppercase;
+  letter-spacing: 0.05em;
   color: var(--muted-foreground);
   border-bottom: 1px solid var(--border);
 }
 
 .dashboard-table td {
-  padding: 1rem;
-  font-size: 0.875rem;
+  padding: 0.875rem 1rem;
+  font-size: 0.8125rem;
   color: var(--foreground);
   border-bottom: 1px solid var(--border);
 }
@@ -60,3 +67,4 @@
 .dashboard-table tr:last-child td {
   border-bottom: none;
 }
+
