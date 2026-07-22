@@ -36,6 +36,13 @@
       "when": 1784612983590,
       "tag": "0004_adorable_moon_knight",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1784699292336,
+      "tag": "0005_analytics_events",
+      "breakpoints": true
     }
   ]
 }

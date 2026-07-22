@@ -16,25 +16,13 @@ import (
 )
 
 const (
-	// defaultMaxConnsPerIP is used when Options.MaxConnsPerIP is unset/invalid.
 	defaultMaxConnsPerIP = 10
 
-	// keepaliveInterval controls how often we ping the client and how often
-	// we expect TCP-level keepalive probes to fire.
-	keepaliveInterval = 15 * time.Second
-
-	// keepaliveSendTimeout bounds how long a single keepalive SendRequest is
-	// allowed to block on a half-dead connection before we give up on it.
+	keepaliveInterval    = 15 * time.Second
 	keepaliveSendTimeout = 10 * time.Second
-
-	// acceptErrorBackoff is a small pause before retrying Accept() after a
-	// non-fatal error, to avoid a tight CPU-spinning loop under sustained
-	// accept failures (e.g. fd exhaustion).
-	acceptErrorBackoff = 100 * time.Millisecond
-
-	// sessionReadBufSize is the buffer size used when scanning session
-	// channel input for control characters (Ctrl+C / Ctrl+D).
-	sessionReadBufSize = 128
+	handshakeTimeout     = 10 * time.Second
+	acceptErrorBackoff   = 100 * time.Millisecond
+	sessionReadBufSize   = 128
 )
 
 type connLimiter struct {
@@ -67,27 +55,27 @@ func (l *connLimiter) release(ip string) {
 }
 
 // SessionReporter is called after a tunnel is established or torn down so
-// the control plane can update active_tunnel_sessions. Both methods are
-// fire-and-forget — a slow or unavailable control plane must never stall
-// a live tunnel.
+// the control plane can update operational state and analytics. Both methods
+// are fire-and-forget — a slow control plane must never stall a live tunnel.
 type SessionReporter interface {
-	ReportConnected(ctx context.Context, userID, subdomain, remoteIP string)
-	ReportDisconnected(ctx context.Context, userID, subdomain string)
+	ReportConnected(ctx context.Context, userID, deviceID, subdomain, remoteIP, plan string, connectedAt time.Time)
+	ReportDisconnected(ctx context.Context, userID, deviceID, subdomain string, connectedAt time.Time)
 	ReportHeartbeat(ctx context.Context, userID, subdomain string)
 }
 
 type Server struct {
-	listenAddr      string
-	baseDomain      string
-	tunnelScheme    string
-	registry        registry.TunnelRegistry
-	keyValidator    KeyValidator
-	sessionReporter SessionReporter
-	subdomainMax    int
-	sshConfig       *ssh.ServerConfig
-	limiter         *connLimiter
+	listenAddr         string
+	baseDomain         string
+	tunnelScheme       string
+	registry           registry.TunnelRegistry
+	keyValidator       KeyValidator
+	sessionReporter    SessionReporter
+	subdomainMax       int
+	anonMaxDuration    time.Duration
+	sshConfig          *ssh.ServerConfig
+	limiter            *connLimiter
 	deviceFingerprints *deviceFingerprintStore
-	log             *slog.Logger
+	log                *slog.Logger
 
 	sessMu   sync.Mutex
 	sessions map[string]*sshSession
@@ -103,6 +91,7 @@ type Options struct {
 	SubdomainRetries int
 	HostKey          ssh.Signer
 	MaxConnsPerIP    int
+	AnonMaxDuration  time.Duration
 	Logger           *slog.Logger
 }
 
@@ -143,6 +132,7 @@ func New(opts Options) *Server {
 		keyValidator:       kv,
 		sessionReporter:    opts.SessionReporter,
 		subdomainMax:       opts.SubdomainRetries,
+		anonMaxDuration:    opts.AnonMaxDuration,
 		sshConfig:          cfg,
 		limiter:            newConnLimiter(maxPerIP),
 		deviceFingerprints: fps,
@@ -234,12 +224,14 @@ func (s *Server) handleConn(ctx context.Context, conn net.Conn) {
 		_ = tcpConn.SetKeepAlivePeriod(keepaliveInterval)
 	}
 
+	conn.SetDeadline(time.Now().Add(handshakeTimeout))
 	sshConn, chans, reqs, err := ssh.NewServerConn(conn, s.sshConfig)
 	if err != nil {
 		s.log.Warn("ssh handshake failed", "remote", conn.RemoteAddr(), "error", err)
 		conn.Close()
 		return
 	}
+	conn.SetDeadline(time.Time{})
 
 	userID, email, allowedSubdomain, plan, maxActiveTunnels := extractPermissions(sshConn.Permissions)
 
@@ -268,14 +260,19 @@ func (s *Server) handleConn(ctx context.Context, conn net.Conn) {
 	}
 	connLog.Info("ssh connection established", "authenticated", userID != "")
 
+	connectedAt := time.Now()
 	defer func() {
 		sess.Close()
 		s.untrackSession(sess)
 		if sub := sess.Subdomain(); sub != "" {
 			s.registry.MarkDisconnected(sub)
 			connLog.Info("tunnel disconnected", logging.FieldSubdomain, sub)
-			if userID != "" && s.sessionReporter != nil {
-				go s.sessionReporter.ReportDisconnected(context.Background(), userID, sub)
+			if s.sessionReporter != nil {
+				go s.sessionReporter.ReportDisconnected(
+					context.Background(),
+					userID, sess.DeviceID(), sub,
+					connectedAt,
+				)
 			}
 		}
 		sshConn.Close()
@@ -432,6 +429,20 @@ func (s *Server) handleSessionChannel(newCh ssh.NewChannel, sess *sshSession, lo
 		return
 	}
 
+	if sess.UserID() == "" && s.anonMaxDuration > 0 {
+		go func() {
+			timer := time.NewTimer(s.anonMaxDuration)
+			defer timer.Stop()
+			select {
+			case <-timer.C:
+				renderTerminalExpiry(ch, s)
+				time.Sleep(2 * time.Second)
+				sess.Close()
+			case <-sess.Done():
+			}
+		}()
+	}
+
 	<-sess.Done()
 }
 
@@ -464,14 +475,30 @@ func renderTerminalBanner(ch io.Writer, s *Server, sess *sshSession) {
 	fmt.Fprintf(ch, "  \033[90mForwarding\033[0m  \033[1;33m%s\033[0m\r\n", forwardTarget)
 	fmt.Fprintf(ch, "  \033[90mPublic URL\033[0m  \033[1;4;36m%s\033[0m\r\n", url)
 
+	if sess.UserID() == "" && s.anonMaxDuration > 0 {
+		hours := int(s.anonMaxDuration.Hours())
+		fmt.Fprintf(ch, "  \033[90mExpires\033[0m     \033[33m%d hours\033[0m (sign up for unlimited)\r\n", hours)
+	}
+
 	if sess.UserID() != "" && sess.AllowedSubdomain() == "" {
 		fmt.Fprintf(ch, "\r\n  \033[33m💡 Tip:\033[0m Reserve a custom domain at \033[4;34m%s\033[0m\r\n", homeURL)
 	} else if sess.UserID() == "" {
-		fmt.Fprintf(ch, "\r\n  \033[33m💡 Tip:\033[0m Log in to reserve a domain at \033[4;34m%s\033[0m\r\n", homeURL)
+		fmt.Fprintf(ch, "\r\n  \033[33m💡 Tip:\033[0m Sign up for unlimited tunnels at \033[4;34m%s\033[0m\r\n", homeURL)
 	}
 
 	fmt.Fprintf(ch, "  \033[90m──────────────────────────────────────────────────────────\033[0m\r\n")
 	fmt.Fprintf(ch, "  \033[90mPress \033[1;37mCtrl+C\033[0;90m or \033[1;37mCtrl+D\033[0;90m to stop the tunnel\033[0m\r\n\r\n")
+}
+
+func renderTerminalExpiry(ch io.Writer, s *Server) {
+	homeURL := fmt.Sprintf("%s://tunl.%s", s.tunnelScheme, s.baseDomain)
+	fmt.Fprintf(ch, "\r\n")
+	fmt.Fprintf(ch, "  \033[1;33m⏰ Session Expired\033[0m\r\n")
+	fmt.Fprintf(ch, "  \033[90m──────────────────────────────────────────────────────────\033[0m\r\n")
+	fmt.Fprintf(ch, "  \033[90mReason\033[0m     Anonymous tunnel time limit reached\r\n")
+	fmt.Fprintf(ch, "  \033[90mNext\033[0m       Reconnect to start a new session, or\r\n")
+	fmt.Fprintf(ch, "             sign up at \033[4;34m%s\033[0m for unlimited tunnels\r\n", homeURL)
+	fmt.Fprintf(ch, "  \033[90m──────────────────────────────────────────────────────────\033[0m\r\n\r\n")
 }
 
 func renderTerminalError(ch io.Writer, s *Server, errMsg string) {

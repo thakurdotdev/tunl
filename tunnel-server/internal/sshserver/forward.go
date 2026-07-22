@@ -130,8 +130,13 @@ func (s *Server) handleForwardRequest(_ context.Context, req *ssh.Request, sess 
 	req.Reply(true, ssh.Marshal(&reply))
 	sess.markReady()
 
-	if sess.UserID() != "" && s.sessionReporter != nil {
-		go s.sessionReporter.ReportConnected(context.Background(), sess.UserID(), sub, sess.RemoteIP())
+	if s.sessionReporter != nil {
+		plan := sess.Plan()
+		go s.sessionReporter.ReportConnected(
+			context.Background(),
+			sess.UserID(), sess.DeviceID(), sub, sess.RemoteIP(), plan,
+			time.Now(),
+		)
 	}
 }
 

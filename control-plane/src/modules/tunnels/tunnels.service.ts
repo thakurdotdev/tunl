@@ -4,6 +4,7 @@ import { plans, sshKeys, tunnels, users } from "../../db/schema.js";
 import { conflict, forbidden, notFound } from "../../platform/errors.js";
 import type { RedisClient } from "../../redis/client.js";
 import { redisKeys } from "../../redis/keys.js";
+import { reservedSubdomains } from "./constant.js";
 
 export const tunnelOutputSelect = {
   id: tunnels.id,
@@ -24,6 +25,9 @@ export async function listUserTunnels(db: Database, userId: string) {
 export async function createUserTunnel(db: Database, userId: string, subdomain: string) {
   try {
     return await db.transaction(async (tx) => {
+      if (reservedSubdomains.includes(subdomain)) {
+        throw conflict("subdomain is already reserved");
+      }
       await tx.execute(sql`select id from users where id = ${userId} for update`);
 
       const [user] = await tx

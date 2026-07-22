@@ -66,6 +66,7 @@ func main() {
 		SessionReporter:  ccClient,
 		SubdomainRetries: cfg.SubdomainRetries,
 		MaxConnsPerIP:    cfg.MaxConnsPerIP,
+		AnonMaxDuration:  cfg.AnonTunnelMaxDuration,
 		HostKey:          hostKey,
 		Logger:           logger,
 	})
@@ -79,6 +80,10 @@ func main() {
 
 	healthHandler := health.NewHandler(reg)
 
+	httpSrv := &http.Server{Addr: cfg.HTTPListenAddr, Handler: proxyHandler}
+	var httpsSrv *http.Server
+	healthSrv := &http.Server{Addr: cfg.HealthListenAddr, Handler: healthHandler}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -88,6 +93,14 @@ func main() {
 		<-sigCh
 		logger.Info("shutting down")
 		cancel()
+
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer shutdownCancel()
+		httpSrv.Shutdown(shutdownCtx)
+		if httpsSrv != nil {
+			httpsSrv.Shutdown(shutdownCtx)
+		}
+		healthSrv.Shutdown(shutdownCtx)
 	}()
 
 	go func() {
@@ -98,15 +111,16 @@ func main() {
 
 	go func() {
 		logger.Info("http proxy listening", "addr", cfg.HTTPListenAddr)
-		if err := http.ListenAndServe(cfg.HTTPListenAddr, proxyHandler); err != nil {
+		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Error("http proxy stopped", "error", err)
 		}
 	}()
 
 	if cfg.TLSCertPath != "" && cfg.TLSKeyPath != "" {
+		httpsSrv = &http.Server{Addr: cfg.HTTPSListenAddr, Handler: proxyHandler}
 		go func() {
 			logger.Info("https proxy listening", "addr", cfg.HTTPSListenAddr)
-			if err := http.ListenAndServeTLS(cfg.HTTPSListenAddr, cfg.TLSCertPath, cfg.TLSKeyPath, proxyHandler); err != nil {
+			if err := httpsSrv.ListenAndServeTLS(cfg.TLSCertPath, cfg.TLSKeyPath); err != nil && err != http.ErrServerClosed {
 				logger.Error("https proxy stopped", "error", err)
 			}
 		}()
@@ -114,7 +128,7 @@ func main() {
 
 	go func() {
 		logger.Info("health server listening", "addr", cfg.HealthListenAddr)
-		if err := http.ListenAndServe(cfg.HealthListenAddr, healthHandler); err != nil {
+		if err := healthSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Error("health server stopped", "error", err)
 		}
 	}()

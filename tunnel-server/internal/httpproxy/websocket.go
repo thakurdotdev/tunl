@@ -12,6 +12,8 @@ import (
 	"github.com/yourorg/tunnel-saas/tunnel-server/internal/registry"
 )
 
+const wsIdleTimeout = 15 * time.Minute
+
 func IsWebSocketUpgrade(r *http.Request) bool {
 	return strings.EqualFold(r.Header.Get("Upgrade"), "websocket") &&
 		strings.Contains(strings.ToLower(r.Header.Get("Connection")), "upgrade")
@@ -34,21 +36,18 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request, tunnel *registry.Tu
 	}
 	defer backend.Close()
 
-	// Write the original HTTP upgrade request to the backend so the
-	// upstream server actually sees the WebSocket handshake.
 	if err := r.Write(backend); err != nil {
 		http.Error(w, "bad gateway", http.StatusBadGateway)
 		return
 	}
 
-	// Read the backend's HTTP response (101 Switching Protocols) before
-	// hijacking, so we can forward it to the client.
 	backendBuf := bufio.NewReader(backend)
 	resp, err := http.ReadResponse(backendBuf, r)
 	if err != nil {
 		http.Error(w, "bad gateway", http.StatusBadGateway)
 		return
 	}
+	defer resp.Body.Close()
 
 	clientConn, _, err := hijacker.Hijack()
 	if err != nil {
@@ -56,31 +55,50 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request, tunnel *registry.Tu
 	}
 	defer clientConn.Close()
 
-	// Forward the backend's response (101) to the client.
 	if err := resp.Write(clientConn); err != nil {
 		return
 	}
 
-	// Any buffered data from the backend response reader needs to be
-	// drained through the splice too.
 	buffered := backendBuf.Buffered()
 	if buffered > 0 {
 		peek, _ := backendBuf.Peek(buffered)
 		clientConn.Write(peek)
 	}
 
-	splice(clientConn, backend)
+	splice(clientConn, backend, wsIdleTimeout)
 }
 
-func splice(client net.Conn, backend io.ReadWriteCloser) {
+// activityWriter wraps an io.Writer and calls onWrite after each successful
+// write, used to reset idle deadlines on WebSocket splicing.
+type activityWriter struct {
+	w       io.Writer
+	onWrite func()
+}
+
+func (a *activityWriter) Write(p []byte) (int, error) {
+	n, err := a.w.Write(p)
+	if n > 0 {
+		a.onWrite()
+	}
+	return n, err
+}
+
+func splice(client net.Conn, backend io.ReadWriteCloser, idleTimeout time.Duration) {
+	resetDeadline := func() {
+		client.SetDeadline(time.Now().Add(idleTimeout))
+	}
+	resetDeadline()
+
 	done := make(chan struct{}, 2)
 	go func() {
-		io.Copy(backend, client)
+		io.Copy(&activityWriter{w: backend, onWrite: resetDeadline}, client)
 		done <- struct{}{}
 	}()
 	go func() {
-		io.Copy(client, backend)
+		io.Copy(&activityWriter{w: client, onWrite: resetDeadline}, backend)
 		done <- struct{}{}
 	}()
 	<-done
+	client.Close()
+	backend.Close()
 }

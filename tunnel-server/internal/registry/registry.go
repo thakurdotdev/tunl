@@ -29,7 +29,7 @@ type Tunnel struct {
 	BindAddr         string // echoed in forwarded-tcpip; must match exactly what the client sent in tcpip-forward
 	BindPort         uint32
 	RemoteIP         string
-	MaxActiveTunnels int    // from plan; 0 means unlimited
+	MaxActiveTunnels int // from plan; 0 means unlimited
 	CreatedAt        time.Time
 	LastSeen         time.Time
 	Conn             TunnelConnection
@@ -51,8 +51,8 @@ type TunnelRegistry interface {
 
 var (
 	ErrSubdomainTaken         = fmt.Errorf("subdomain already registered")
-	ErrUserTunnelLimitReached  = fmt.Errorf("active tunnel limit reached for user")
-	ErrAnonymousTunnelExists   = fmt.Errorf("anonymous tunnel already active for this device")
+	ErrUserTunnelLimitReached = fmt.Errorf("active tunnel limit reached for user")
+	ErrAnonymousTunnelExists  = fmt.Errorf("anonymous tunnel already active for this device")
 )
 
 type entry struct {

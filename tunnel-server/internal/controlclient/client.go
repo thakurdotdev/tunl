@@ -49,7 +49,6 @@ type validateKeyResponse struct {
 	MaxActiveTunnels int     `json:"maxActiveTunnels"`
 }
 
-
 func (c *Client) ValidateKey(ctx context.Context, fingerprint string) (userID, email, allowedSubdomain, plan string, maxActiveTunnels int, ok bool) {
 	body, _ := json.Marshal(map[string]string{"fingerprint": fingerprint})
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
@@ -90,19 +89,63 @@ func optionalSubdomain(value *string) string {
 	return *value
 }
 
-type usageEvent struct {
-	TunnelID         string `json:"tunnelId"`
-	BytesTransferred int64  `json:"bytesTransferred"`
-	Timestamp        string `json:"timestamp"`
+func (c *Client) ReportConnected(ctx context.Context, userID, deviceID, subdomain, remoteIP, plan string, connectedAt time.Time) {
+	sessionType := "authenticated"
+	if userID == "" {
+		sessionType = "anonymous"
+	}
+
+	payload := map[string]any{
+		"anonymousId": deviceID,
+		"subdomain":   subdomain,
+		"remoteIp":    remoteIP,
+		"sessionType": sessionType,
+		"occurredAt":  connectedAt.UTC().Format(time.RFC3339Nano),
+		"eventId":     subdomain + ":" + connectedAt.UTC().Format(time.RFC3339Nano) + ":connected",
+	}
+	if userID != "" {
+		payload["userId"] = userID
+	}
+	if plan != "" {
+		payload["plan"] = plan
+	}
+
+	c.post(ctx, "/internal/tunnel-connected", payload, "tunnel-connected")
+}
+
+func (c *Client) ReportDisconnected(ctx context.Context, userID, deviceID, subdomain string, connectedAt time.Time) {
+	now := time.Now().UTC()
+	durationMs := now.Sub(connectedAt).Milliseconds()
+
+	payload := map[string]any{
+		"anonymousId":      deviceID,
+		"subdomain":        subdomain,
+		"durationMs":       durationMs,
+		"disconnectReason": "client_closed",
+		"occurredAt":       now.Format(time.RFC3339Nano),
+		"eventId":          subdomain + ":" + connectedAt.UTC().Format(time.RFC3339Nano) + ":disconnected",
+	}
+	if userID != "" {
+		payload["userId"] = userID
+	}
+
+	c.post(ctx, "/internal/tunnel-disconnected", payload, "tunnel-disconnected")
+}
+
+func (c *Client) ReportHeartbeat(ctx context.Context, userID, subdomain string) {
+	c.post(ctx, "/internal/tunnel-heartbeat", map[string]string{
+		"userId":    userID,
+		"subdomain": subdomain,
+	}, "tunnel-heartbeat")
 }
 
 func (c *Client) ReportUsage(ctx context.Context, tunnelID string, bytesTransferred int64) error {
-	ev := usageEvent{
-		TunnelID:         tunnelID,
-		BytesTransferred: bytesTransferred,
-		Timestamp:        time.Now().UTC().Format(time.RFC3339),
+	payload := map[string]any{
+		"tunnelId":         tunnelID,
+		"bytesTransferred": bytesTransferred,
+		"timestamp":        time.Now().UTC().Format(time.RFC3339),
 	}
-	body, _ := json.Marshal(ev)
+	body, _ := json.Marshal(payload)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
 		c.baseURL+"/internal/usage", bytes.NewReader(body))
 	if err != nil {
@@ -122,66 +165,18 @@ func (c *Client) ReportUsage(ctx context.Context, tunnelID string, bytesTransfer
 	return nil
 }
 
-func (c *Client) ReportConnected(ctx context.Context, userID, subdomain, remoteIP string) {
-	body, _ := json.Marshal(map[string]string{
-		"userId":    userID,
-		"subdomain": subdomain,
-		"remoteIp":  remoteIP,
-	})
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		c.baseURL+"/internal/tunnel-connected", bytes.NewReader(body))
+func (c *Client) post(ctx context.Context, path string, payload any, label string) {
+	body, _ := json.Marshal(payload)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+path, bytes.NewReader(body))
 	if err != nil {
-		c.log.Warn("tunnel-connected request build failed", "error", err)
+		c.log.Warn(label+" request build failed", "error", err)
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Internal-Token", c.sharedSecret)
-
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		c.log.Warn("tunnel-connected request failed", "error", err, "subdomain", subdomain)
-		return
-	}
-	resp.Body.Close()
-}
-
-func (c *Client) ReportDisconnected(ctx context.Context, userID, subdomain string) {
-	body, _ := json.Marshal(map[string]string{
-		"userId":    userID,
-		"subdomain": subdomain,
-	})
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		c.baseURL+"/internal/tunnel-disconnected", bytes.NewReader(body))
-	if err != nil {
-		c.log.Warn("tunnel-disconnected request build failed", "error", err)
-		return
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Internal-Token", c.sharedSecret)
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		c.log.Warn("tunnel-disconnected request failed", "error", err, "subdomain", subdomain)
-		return
-	}
-	resp.Body.Close()
-}
-
-func (c *Client) ReportHeartbeat(ctx context.Context, userID, subdomain string) {
-	body, _ := json.Marshal(map[string]string{
-		"userId":    userID,
-		"subdomain": subdomain,
-	})
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		c.baseURL+"/internal/tunnel-heartbeat", bytes.NewReader(body))
-	if err != nil {
-		return
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Internal-Token", c.sharedSecret)
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
+		c.log.Warn(label+" request failed", "error", err)
 		return
 	}
 	resp.Body.Close()

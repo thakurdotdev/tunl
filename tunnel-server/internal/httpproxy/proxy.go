@@ -1,7 +1,3 @@
-// proxy.go: the public-facing HTTP(S) listener. ONLY routes using the
-// registry — built on net/http + httputil.ReverseProxy, not raw TCP
-// splicing, so we get keep-alive/chunked encoding/header rewriting for
-// free. See plan section 1.3 step 6.
 package httpproxy
 
 import (
@@ -16,17 +12,22 @@ import (
 	"github.com/yourorg/tunnel-saas/tunnel-server/internal/registry"
 )
 
+type ctxKey string
+
+const tunnelCtxKey ctxKey = "tunnel"
+
 type Handler struct {
 	registry    registry.TunnelRegistry
 	baseDomain  string
 	dialTimeout time.Duration
 	log         *slog.Logger
+	proxy       *httputil.ReverseProxy
 }
 
 type Options struct {
 	Registry    registry.TunnelRegistry
 	BaseDomain  string
-	DialTimeout time.Duration // per-request timeout on the SSH-backed dial
+	DialTimeout time.Duration
 	Logger      *slog.Logger
 }
 
@@ -37,7 +38,32 @@ func NewHandler(opts Options) http.Handler {
 		dialTimeout: opts.DialTimeout,
 		log:         opts.Logger,
 	}
+	h.proxy = &httputil.ReverseProxy{
+		Director: func(req *http.Request) {
+			req.URL.Scheme = "http"
+			req.URL.Host = "tunnel"
+		},
+		Transport: &http.Transport{
+			DialContext:       h.dialTunnel,
+			DisableKeepAlives: true,
+		},
+		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
+			h.log.Warn("proxy error", "error", err)
+			http.Error(w, "bad gateway", http.StatusBadGateway)
+		},
+	}
 	return h
+}
+
+func (h *Handler) dialTunnel(ctx context.Context, _, _ string) (net.Conn, error) {
+	tunnel := ctx.Value(tunnelCtxKey).(*registry.Tunnel)
+	dialCtx, cancel := context.WithTimeout(ctx, h.dialTimeout)
+	defer cancel()
+	rwc, err := tunnel.Conn.Dial(dialCtx, tunnel.BindAddr, tunnel.BindPort)
+	if err != nil {
+		return nil, err
+	}
+	return wrapAsConn(rwc), nil
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -65,37 +91,19 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	h.registry.UpdateActivity(subdomain)
 
-	proxy := &httputil.ReverseProxy{
-		Director: func(req *http.Request) {
-			req.URL.Scheme = "http"
-			req.URL.Host = subdomain // arbitrary; DialContext ignores it and dials the tunnel instead
-		},
-		Transport: &http.Transport{
-			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-				dialCtx, cancel := context.WithTimeout(ctx, h.dialTimeout)
-				defer cancel()
-				rwc, err := tunnel.Conn.Dial(dialCtx, tunnel.BindAddr, tunnel.BindPort)
-				if err != nil {
-					return nil, err
-				}
-				return wrapAsConn(rwc), nil
-			},
-		},
-		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
-			h.log.Warn("proxy error", "subdomain", subdomain, "error", err)
-			http.Error(w, "bad gateway", http.StatusBadGateway)
-		},
-	}
-
-	proxy.ServeHTTP(w, r)
+	ctx := context.WithValue(r.Context(), tunnelCtxKey, tunnel)
+	h.proxy.ServeHTTP(w, r.WithContext(ctx))
 }
 
-// subdomainFromHost extracts "abc123" from "abc123.thakur.dev[:port]".
 func (h *Handler) subdomainFromHost(host string) string {
-	host = strings.Split(host, ":")[0] // strip port
+	host = strings.Split(host, ":")[0]
 	suffix := "." + h.baseDomain
 	if !strings.HasSuffix(host, suffix) {
 		return ""
 	}
-	return strings.TrimSuffix(host, suffix)
+	sub := strings.TrimSuffix(host, suffix)
+	if strings.Contains(sub, ".") {
+		return ""
+	}
+	return sub
 }

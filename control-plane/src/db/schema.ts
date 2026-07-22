@@ -4,6 +4,7 @@ import {
   check,
   index,
   integer,
+  jsonb,
   pgEnum,
   pgTable,
   text,
@@ -119,3 +120,47 @@ export const activeTunnelSessions = pgTable(
     uniqueIndex("active_tunnel_sessions_user_subdomain_uidx").on(table.userId, table.subdomain),
   ],
 );
+
+// Append-only analytics event log — never mutated after insert.
+// Covers both anonymous and authenticated sessions.
+// Properties JSONB keeps the schema stable as we track new fields over time.
+// Table is partition-ready (RANGE on occurred_at) if row volume warrants it.
+export const tunnelEventType = pgEnum("tunnel_event_type", [
+  "tunnel.connected",
+  "tunnel.disconnected",
+]);
+
+export const tunnelEvents = pgTable(
+  "tunnel_events",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    // Idempotency key: <sessionID>:<event_type> — safe to retry/replay.
+    eventId: text("event_id").notNull().unique(),
+    eventType: tunnelEventType("event_type").notNull(),
+    // Set for ALL sessions (anon + auth). Enables retroactive attribution
+    // when an anonymous user later signs up (see identity_links).
+    anonymousId: text("anonymous_id"),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    // Flexible bag for event-specific data (subdomain, remote_ip, plan,
+    // duration_ms, disconnect_reason, session_type, etc.).
+    properties: jsonb("properties").notNull().default({}),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+    receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("tunnel_events_occurred_at_idx").on(table.occurredAt),
+    index("tunnel_events_anonymous_id_idx").on(table.anonymousId),
+    index("tunnel_events_user_id_idx").on(table.userId),
+    index("tunnel_events_event_type_idx").on(table.eventType),
+  ],
+);
+
+// Links an anonymous device fingerprint to the user who signed up with it.
+// Written at signup time so all past anonymous sessions can be attributed.
+export const identityLinks = pgTable("identity_links", {
+  anonymousId: text("anonymous_id").primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  linkedAt: timestamp("linked_at", { withTimezone: true }).notNull().defaultNow(),
+});

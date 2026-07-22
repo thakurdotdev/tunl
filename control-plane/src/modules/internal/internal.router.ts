@@ -3,7 +3,15 @@ import { and, eq, lt, ne } from "drizzle-orm";
 import { Router } from "express";
 import { z } from "zod";
 import type { Database } from "../../db/client.js";
-import { activeTunnelSessions, plans, sshKeys, tunnels, users } from "../../db/schema.js";
+import {
+  activeTunnelSessions,
+  identityLinks,
+  plans,
+  sshKeys,
+  tunnelEvents,
+  tunnels,
+  users,
+} from "../../db/schema.js";
 import type { Config } from "../../platform/config.js";
 import { notFound, unauthorized } from "../../platform/errors.js";
 import { asyncRoute } from "../../platform/http.js";
@@ -17,13 +25,27 @@ const usageBody = z.object({
   timestamp: z.string().datetime(),
 });
 const sessionConnectedBody = z.object({
-  userId: z.uuid(),
+  userId: z.string().optional(),
+  anonymousId: z.string().min(1),
   subdomain: z.string().min(1),
   remoteIp: z.string().default(""),
+  plan: z.string().optional(),
+  sessionType: z.enum(["anonymous", "authenticated"]),
+  occurredAt: z.string().datetime(),
+  eventId: z.string().min(1),
 });
 const sessionDisconnectedBody = z.object({
-  userId: z.uuid(),
+  userId: z.string().optional(),
+  anonymousId: z.string().min(1),
   subdomain: z.string().min(1),
+  durationMs: z.number().int().nonnegative().optional(),
+  disconnectReason: z.string().optional(),
+  occurredAt: z.string().datetime(),
+  eventId: z.string().min(1),
+});
+const identityLinkBody = z.object({
+  anonymousId: z.string().min(1),
+  userId: z.uuid(),
 });
 
 function authorized(token: string | undefined, secret: string) {
@@ -77,63 +99,69 @@ export function internalRouter(db: Database, redis: RedisClient, config: Config)
   router.post(
     "/tunnel-connected",
     asyncRoute(async (req, res) => {
-      const { userId, subdomain, remoteIp } = sessionConnectedBody.parse(req.body);
+      const body = sessionConnectedBody.parse(req.body);
+      const { userId, anonymousId, subdomain, remoteIp, plan, sessionType, occurredAt, eventId } =
+        body;
 
-      // Resolve tunnelId if this subdomain matches a reservation for this user.
-      const [reservation] = await db
-        .select({ id: tunnels.id })
-        .from(tunnels)
-        .where(and(eq(tunnels.userId, userId), eq(tunnels.subdomain, subdomain)))
-        .limit(1);
+      // Analytics: fire-and-forget — must never block or fail the operational write.
+      db.insert(tunnelEvents)
+        .values({
+          eventId,
+          eventType: "tunnel.connected",
+          anonymousId,
+          userId: userId ?? null,
+          properties: { subdomain, remoteIp, plan: plan ?? null, sessionType },
+          occurredAt: new Date(occurredAt),
+        })
+        .onConflictDoNothing()
+        .catch((err: unknown) =>
+          console.error({ err, eventId }, "failed to write tunnel.connected event"),
+        );
 
-      // Sweep orphaned sessions for this user on different subdomains.
-      // These accumulate when ReportDisconnected is never called (server restart,
-      // network partition, pre-deploy connections). Safe to delete — if a session
-      // is alive the tunnel server will re-report it on the next keepalive cycle.
-      const orphans = await db
-        .delete(activeTunnelSessions)
-        .where(
-          and(
-            eq(activeTunnelSessions.userId, userId),
-            ne(activeTunnelSessions.subdomain, subdomain),
-          ),
-        )
-        .returning({ subdomain: activeTunnelSessions.subdomain, tunnelId: activeTunnelSessions.tunnelId });
+      // Operational session tracking — authenticated only.
+      if (userId && sessionType === "authenticated") {
+        const [reservation] = await db
+          .select({ id: tunnels.id })
+          .from(tunnels)
+          .where(and(eq(tunnels.userId, userId), eq(tunnels.subdomain, subdomain)))
+          .limit(1);
 
-      // Reset any reservations whose sessions we just wiped so they show as reserved not active.
-      for (const orphan of orphans) {
-        if (orphan.tunnelId) {
+        const orphans = await db
+          .delete(activeTunnelSessions)
+          .where(
+            and(
+              eq(activeTunnelSessions.userId, userId),
+              ne(activeTunnelSessions.subdomain, subdomain),
+            ),
+          )
+          .returning({
+            subdomain: activeTunnelSessions.subdomain,
+            tunnelId: activeTunnelSessions.tunnelId,
+          });
+
+        for (const orphan of orphans) {
+          if (orphan.tunnelId) {
+            await db
+              .update(tunnels)
+              .set({ status: "reserved", updatedAt: new Date() })
+              .where(eq(tunnels.id, orphan.tunnelId));
+          }
+        }
+
+        await db
+          .insert(activeTunnelSessions)
+          .values({ userId, tunnelId: reservation?.id ?? null, subdomain, remoteIp })
+          .onConflictDoUpdate({
+            target: [activeTunnelSessions.userId, activeTunnelSessions.subdomain],
+            set: { remoteIp, connectedAt: new Date(), lastSeenAt: new Date() },
+          });
+
+        if (reservation) {
           await db
             .update(tunnels)
-            .set({ status: "reserved", updatedAt: new Date() })
-            .where(eq(tunnels.id, orphan.tunnelId));
+            .set({ status: "active", lastConnectedAt: new Date(), updatedAt: new Date() })
+            .where(eq(tunnels.id, reservation.id));
         }
-      }
-
-      // Upsert on (userId, subdomain) — handles reconnects without duplicates.
-      await db
-        .insert(activeTunnelSessions)
-        .values({
-          userId,
-          tunnelId: reservation?.id ?? null,
-          subdomain,
-          remoteIp,
-        })
-        .onConflictDoUpdate({
-          target: [activeTunnelSessions.userId, activeTunnelSessions.subdomain],
-          set: {
-            remoteIp,
-            connectedAt: new Date(),
-            lastSeenAt: new Date(),
-          },
-        });
-
-      // Mark the reservation active if one exists.
-      if (reservation) {
-        await db
-          .update(tunnels)
-          .set({ status: "active", lastConnectedAt: new Date(), updatedAt: new Date() })
-          .where(eq(tunnels.id, reservation.id));
       }
 
       res.status(204).send();
@@ -143,29 +171,50 @@ export function internalRouter(db: Database, redis: RedisClient, config: Config)
   router.post(
     "/tunnel-disconnected",
     asyncRoute(async (req, res) => {
-      const { userId, subdomain } = sessionDisconnectedBody.parse(req.body);
+      const { userId, anonymousId, subdomain, durationMs, disconnectReason, occurredAt, eventId } =
+        sessionDisconnectedBody.parse(req.body);
 
-      await db
-        .delete(activeTunnelSessions)
-        .where(
-          and(
-            eq(activeTunnelSessions.userId, userId),
-            eq(activeTunnelSessions.subdomain, subdomain),
-          ),
+      // Analytics: fire-and-forget.
+      db.insert(tunnelEvents)
+        .values({
+          eventId,
+          eventType: "tunnel.disconnected",
+          anonymousId,
+          userId: userId ?? null,
+          properties: {
+            subdomain,
+            durationMs: durationMs ?? null,
+            disconnectReason: disconnectReason ?? "unknown",
+          },
+          occurredAt: new Date(occurredAt),
+        })
+        .onConflictDoNothing()
+        .catch((err: unknown) =>
+          console.error({ err, eventId }, "failed to write tunnel.disconnected event"),
         );
 
-      // Mark the reservation back to reserved (not deleted — the reservation persists).
-      const [reservation] = await db
-        .select({ id: tunnels.id })
-        .from(tunnels)
-        .where(and(eq(tunnels.userId, userId), eq(tunnels.subdomain, subdomain)))
-        .limit(1);
-
-      if (reservation) {
+      if (userId) {
         await db
-          .update(tunnels)
-          .set({ status: "reserved", updatedAt: new Date() })
-          .where(eq(tunnels.id, reservation.id));
+          .delete(activeTunnelSessions)
+          .where(
+            and(
+              eq(activeTunnelSessions.userId, userId),
+              eq(activeTunnelSessions.subdomain, subdomain),
+            ),
+          );
+
+        const [reservation] = await db
+          .select({ id: tunnels.id })
+          .from(tunnels)
+          .where(and(eq(tunnels.userId, userId), eq(tunnels.subdomain, subdomain)))
+          .limit(1);
+
+        if (reservation) {
+          await db
+            .update(tunnels)
+            .set({ status: "reserved", updatedAt: new Date() })
+            .where(eq(tunnels.id, reservation.id));
+        }
       }
 
       res.status(204).send();
@@ -175,7 +224,9 @@ export function internalRouter(db: Database, redis: RedisClient, config: Config)
   router.post(
     "/tunnel-heartbeat",
     asyncRoute(async (req, res) => {
-      const { userId, subdomain } = sessionDisconnectedBody.parse(req.body);
+      const { userId, subdomain } = z
+        .object({ userId: z.uuid(), subdomain: z.string().min(1) })
+        .parse(req.body);
 
       await db
         .update(activeTunnelSessions)
@@ -187,6 +238,17 @@ export function internalRouter(db: Database, redis: RedisClient, config: Config)
           ),
         );
 
+      res.status(204).send();
+    }),
+  );
+
+  // Called at signup when we know the user's anonymous device fingerprint.
+  // Links past anonymous sessions to the new user for conversion attribution.
+  router.post(
+    "/identity-link",
+    asyncRoute(async (req, res) => {
+      const { anonymousId, userId } = identityLinkBody.parse(req.body);
+      await db.insert(identityLinks).values({ anonymousId, userId }).onConflictDoNothing(); // device can only be linked once
       res.status(204).send();
     }),
   );
@@ -203,8 +265,6 @@ export function internalRouter(db: Database, redis: RedisClient, config: Config)
   return router;
 }
 
-// Purge sessions where lastSeenAt hasn't been updated in over 3 minutes
-// (6 missed keepalive intervals). Called once at startup; runs on a 60s cadence.
 export function startStaleSessionSweeper(db: Database) {
   const STALE_THRESHOLD_MS = 3 * 60 * 1000;
 

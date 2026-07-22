@@ -39,7 +39,6 @@ type Config struct {
 	ControlPlaneURL      string
 	InternalSharedSecret string
 
-
 	// SubdomainRetries is how many times to retry random subdomain generation
 	// on a Register collision before giving up (plan step 4).
 	SubdomainRetries int
@@ -50,6 +49,10 @@ type Config struct {
 
 	MaxConnsPerIP int
 
+	// AnonTunnelMaxDuration is the maximum duration an anonymous tunnel can
+	// stay connected before being force-closed.
+	AnonTunnelMaxDuration time.Duration
+
 	// ReservedSubdomains are existing subdomains that must never be assigned
 	// to tunnels (e.g. "blog,api,www" to protect blog.thakur.dev, etc.).
 	ReservedSubdomains map[string]struct{}
@@ -58,23 +61,25 @@ type Config struct {
 func Load() (*Config, error) {
 	loadDotEnv()
 	cfg := &Config{
-		BaseDomain:               getEnv("BASE_DOMAIN", "thakur.dev"),
-		TunnelURLScheme:          getEnv("TUNNEL_URL_SCHEME", "https"),
-		SSHListenAddr:            getEnv("SSH_LISTEN_ADDR", ":2222"),
-		HTTPListenAddr:           getEnv("HTTP_LISTEN_ADDR", ":8080"),
-		HTTPSListenAddr:          getEnv("HTTPS_LISTEN_ADDR", ":8443"),
-		TLSCertPath:              getEnv("TLS_CERT_PATH", ""),
-		TLSKeyPath:               getEnv("TLS_KEY_PATH", ""),
-		HealthListenAddr:         getEnv("HEALTH_LISTEN_ADDR", ":9090"),
-		ControlPlaneURL:          getEnv("CONTROL_PLANE_URL", "http://localhost:3001"),
-		InternalSharedSecret:     strings.TrimSpace(getEnv("INTERNAL_SHARED_SECRET", "changeme-shared-secret-at-least-16-chars")),
-		SubdomainRetries:         getEnvInt("SUBDOMAIN_RETRIES", 5),
-		MaxConnsPerIP:            getEnvInt("MAX_CONNS_PER_IP", 10),
+		BaseDomain:           getEnv("BASE_DOMAIN", "thakur.dev"),
+		TunnelURLScheme:      getEnv("TUNNEL_URL_SCHEME", "https"),
+		SSHListenAddr:        getEnv("SSH_LISTEN_ADDR", ":2222"),
+		HTTPListenAddr:       getEnv("HTTP_LISTEN_ADDR", ":8080"),
+		HTTPSListenAddr:      getEnv("HTTPS_LISTEN_ADDR", ":8443"),
+		TLSCertPath:          getEnv("TLS_CERT_PATH", ""),
+		TLSKeyPath:           getEnv("TLS_KEY_PATH", ""),
+		HealthListenAddr:     getEnv("HEALTH_LISTEN_ADDR", ":9090"),
+		ControlPlaneURL:      getEnv("CONTROL_PLANE_URL", "http://localhost:3001"),
+		InternalSharedSecret: strings.TrimSpace(getEnv("INTERNAL_SHARED_SECRET", "changeme-shared-secret-at-least-16-chars")),
+		SubdomainRetries:     getEnvInt("SUBDOMAIN_RETRIES", 5),
+		MaxConnsPerIP:        getEnvInt("MAX_CONNS_PER_IP", 10),
 	}
-
 
 	graceSeconds := getEnvInt("RECONNECT_GRACE_SECONDS", 12)
 	cfg.ReconnectGraceWindow = time.Duration(graceSeconds) * time.Second
+
+	anonMinutes := getEnvInt("ANON_TUNNEL_MAX_MINUTES", 240)
+	cfg.AnonTunnelMaxDuration = time.Duration(anonMinutes) * time.Minute
 
 	cfg.ReservedSubdomains = parseReservedSubdomains(getEnv("RESERVED_SUBDOMAINS", ""))
 
