@@ -109,8 +109,9 @@ func New(opts Options) *Server {
 	fps := &deviceFingerprintStore{}
 
 	cfg := &ssh.ServerConfig{
-		NoClientAuth:      true,
-		PublicKeyCallback: buildAuthCallback(kv, fps, log),
+		NoClientAuth:                false,
+		PublicKeyCallback:           buildPublicKeyCallback(kv, fps, log),
+		KeyboardInteractiveCallback: buildKeyboardInteractiveCallback(),
 	}
 	cfg.AddHostKey(opts.HostKey)
 
