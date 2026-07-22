@@ -1,8 +1,10 @@
 package sshserver
 
 import (
+	"fmt"
 	"log/slog"
 	"strconv"
+	"sync"
 
 	"golang.org/x/crypto/ssh"
 )
@@ -17,7 +19,26 @@ func (anonymousKeyValidator) ValidateKey(fingerprint string) (string, string, st
 	return "", "", "", "", 0, false
 }
 
-func buildAuthCallback(kv KeyValidator, log *slog.Logger) func(ssh.ConnMetadata, ssh.PublicKey) (*ssh.Permissions, error) {
+// deviceFingerprintStore captures the first SSH key fingerprint seen per
+// connection, keyed by RemoteAddr. This fingerprint serves as a device
+// identifier for anonymous tunnel deduplication.
+type deviceFingerprintStore struct {
+	m sync.Map
+}
+
+func (s *deviceFingerprintStore) store(remoteAddr, fingerprint string) {
+	s.m.LoadOrStore(remoteAddr, fingerprint)
+}
+
+func (s *deviceFingerprintStore) take(remoteAddr string) string {
+	v, ok := s.m.LoadAndDelete(remoteAddr)
+	if !ok {
+		return ""
+	}
+	return v.(string)
+}
+
+func buildAuthCallback(kv KeyValidator, fps *deviceFingerprintStore, log *slog.Logger) func(ssh.ConnMetadata, ssh.PublicKey) (*ssh.Permissions, error) {
 	return func(meta ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
 		fingerprint := ssh.FingerprintSHA256(key)
 		userID, email, allowedSubdomain, plan, maxActiveTunnels, ok := kv.ValidateKey(fingerprint)
@@ -25,7 +46,8 @@ func buildAuthCallback(kv KeyValidator, log *slog.Logger) func(ssh.ConnMetadata,
 			log.Info("ssh key validation check", "fingerprint", fingerprint, "valid", ok, "user_id", userID, "email", email)
 		}
 		if !ok {
-			return nil, nil
+			fps.store(meta.RemoteAddr().String(), fingerprint)
+			return nil, fmt.Errorf("unknown key")
 		}
 		return &ssh.Permissions{
 			Extensions: map[string]string{
@@ -38,4 +60,3 @@ func buildAuthCallback(kv KeyValidator, log *slog.Logger) func(ssh.ConnMetadata,
 		}, nil
 	}
 }
-

@@ -18,6 +18,7 @@ type sshSession struct {
 	plan             string
 	maxActiveTunnels int
 	remoteIP         string
+	deviceID         string
 	sshConn          *ssh.ServerConn
 	done             chan struct{}
 
@@ -39,7 +40,7 @@ type sshSession struct {
 	regErr    string
 }
 
-func newSSHSession(id, userID, email, allowedSubdomain, plan, remoteIP string, maxActiveTunnels int, conn *ssh.ServerConn) *sshSession {
+func newSSHSession(id, userID, email, allowedSubdomain, plan, remoteIP, deviceID string, maxActiveTunnels int, conn *ssh.ServerConn) *sshSession {
 	return &sshSession{
 		id:               id,
 		userID:           userID,
@@ -48,6 +49,7 @@ func newSSHSession(id, userID, email, allowedSubdomain, plan, remoteIP string, m
 		plan:             plan,
 		maxActiveTunnels: maxActiveTunnels,
 		remoteIP:         remoteIP,
+		deviceID:         deviceID,
 		sshConn:          conn,
 		done:             make(chan struct{}),
 		ready:            make(chan struct{}),
@@ -62,6 +64,7 @@ func (s *sshSession) Plan() string                 { return s.plan }
 func (s *sshSession) MaxActiveTunnels() int        { return s.maxActiveTunnels }
 func (s *sshSession) AllowedSubdomain() string     { return s.allowedSubdomain }
 func (s *sshSession) RemoteIP() string             { return s.remoteIP }
+func (s *sshSession) DeviceID() string             { return s.deviceID }
 func (s *sshSession) Done() <-chan struct{}        { return s.done }
 func (s *sshSession) tunnelReady() <-chan struct{} { return s.ready }
 func (s *sshSession) errorReady() <-chan struct{}  { return s.errReady }

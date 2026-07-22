@@ -31,6 +31,7 @@ func registerAnonymous(reg registry.TunnelRegistry, sess *sshSession, bindAddr s
 		t := &registry.Tunnel{
 			Subdomain:        sub,
 			UserID:           sess.UserID(),
+			DeviceID:         sess.DeviceID(),
 			Reserved:         false,
 			BindAddr:         bindAddr,
 			BindPort:         bindPort,
@@ -71,7 +72,7 @@ func registerReserved(reg registry.TunnelRegistry, sess *sshSession, bindAddr st
 	return "", registry.ErrSubdomainTaken
 }
 
-func (s *Server) handleForwardRequest(ctx context.Context, req *ssh.Request, sess *sshSession) {
+func (s *Server) handleForwardRequest(_ context.Context, req *ssh.Request, sess *sshSession) {
 	if !sess.markForwarded() {
 		s.log.Warn("duplicate tcpip-forward rejected", "session_id", sess.ID())
 		sess.setRegisterError("Only one port forwarding request is allowed per SSH session.")
@@ -101,6 +102,8 @@ func (s *Server) handleForwardRequest(ctx context.Context, req *ssh.Request, ses
 	if err != nil {
 		s.log.Error("subdomain registration failed", "error", err)
 		switch err {
+		case registry.ErrAnonymousTunnelExists:
+			sess.setRegisterError("You already have an active anonymous tunnel from this device. Disconnect it first or sign up for multiple tunnels.")
 		case registry.ErrUserTunnelLimitReached:
 			sess.setRegisterError(fmt.Sprintf("Active tunnel limit reached for your account (max %d).", sess.MaxActiveTunnels()))
 		case registry.ErrSubdomainTaken:

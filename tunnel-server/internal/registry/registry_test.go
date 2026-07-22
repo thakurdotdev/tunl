@@ -229,13 +229,54 @@ func TestRegister_UnlimitedWhenMaxActiveTunnelsZero(t *testing.T) {
 	}
 }
 
-func TestRegister_AnonymousTunnelsNotLimitedByIP(t *testing.T) {
+func TestRegister_AnonymousDuplicateDeviceRejected(t *testing.T) {
 	r := New(50*time.Millisecond, nil)
-	for i := 0; i < 5; i++ {
-		tn := &Tunnel{Subdomain: subdomainFor(i + 10), RemoteIP: "192.168.1.1", Conn: newFakeConn(subdomainFor(i+10), "")}
+	t1 := &Tunnel{Subdomain: "anon1", DeviceID: "SHA256:abc123", Conn: newFakeConn("1", "")}
+	t2 := &Tunnel{Subdomain: "anon2", DeviceID: "SHA256:abc123", Conn: newFakeConn("2", "")}
+
+	if err := r.Register(t1); err != nil {
+		t.Fatalf("first anonymous register should succeed, got %v", err)
+	}
+	if err := r.Register(t2); err != ErrAnonymousTunnelExists {
+		t.Fatalf("expected ErrAnonymousTunnelExists, got %v", err)
+	}
+}
+
+func TestRegister_AnonymousDifferentDevicesAllowed(t *testing.T) {
+	r := New(50*time.Millisecond, nil)
+	t1 := &Tunnel{Subdomain: "anon1", DeviceID: "SHA256:device1", Conn: newFakeConn("1", "")}
+	t2 := &Tunnel{Subdomain: "anon2", DeviceID: "SHA256:device2", Conn: newFakeConn("2", "")}
+
+	if err := r.Register(t1); err != nil {
+		t.Fatalf("first device register should succeed, got %v", err)
+	}
+	if err := r.Register(t2); err != nil {
+		t.Fatalf("different device register should succeed, got %v", err)
+	}
+}
+
+func TestRegister_AnonymousEmptyDeviceIDSkipsDedup(t *testing.T) {
+	r := New(50*time.Millisecond, nil)
+	for i := 0; i < 3; i++ {
+		tn := &Tunnel{Subdomain: subdomainFor(i + 10), Conn: newFakeConn(subdomainFor(i+10), "")}
 		if err := r.Register(tn); err != nil {
-			t.Fatalf("anonymous register %d from same IP should succeed, got %v", i, err)
+			t.Fatalf("anonymous register %d with no deviceID should succeed, got %v", i, err)
 		}
+	}
+}
+
+func TestRegister_AnonymousDeviceDedupIgnoresDisconnected(t *testing.T) {
+	r := New(200*time.Millisecond, nil)
+	t1 := &Tunnel{Subdomain: "anon1", DeviceID: "SHA256:samedev", Conn: newFakeConn("1", "")}
+	if err := r.Register(t1); err != nil {
+		t.Fatalf("first register should succeed, got %v", err)
+	}
+
+	r.MarkDisconnected("anon1")
+
+	t2 := &Tunnel{Subdomain: "anon2", DeviceID: "SHA256:samedev", Conn: newFakeConn("2", "")}
+	if err := r.Register(t2); err != nil {
+		t.Fatalf("register after disconnect should succeed, got %v", err)
 	}
 }
 

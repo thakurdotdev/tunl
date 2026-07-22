@@ -86,6 +86,7 @@ type Server struct {
 	subdomainMax    int
 	sshConfig       *ssh.ServerConfig
 	limiter         *connLimiter
+	deviceFingerprints *deviceFingerprintStore
 	log             *slog.Logger
 
 	sessMu   sync.Mutex
@@ -116,15 +117,11 @@ func New(opts Options) *Server {
 		log = slog.Default()
 	}
 
+	fps := &deviceFingerprintStore{}
+
 	cfg := &ssh.ServerConfig{
-		NoClientAuth:      false,
-		PublicKeyCallback: buildAuthCallback(kv, log),
-		PasswordCallback: func(meta ssh.ConnMetadata, password []byte) (*ssh.Permissions, error) {
-			return nil, fmt.Errorf("password auth disabled")
-		},
-		KeyboardInteractiveCallback: func(meta ssh.ConnMetadata, client ssh.KeyboardInteractiveChallenge) (*ssh.Permissions, error) {
-			return nil, fmt.Errorf("keyboard-interactive auth disabled")
-		},
+		NoClientAuth:      true,
+		PublicKeyCallback: buildAuthCallback(kv, fps, log),
 	}
 	cfg.AddHostKey(opts.HostKey)
 
@@ -139,17 +136,18 @@ func New(opts Options) *Server {
 	}
 
 	return &Server{
-		listenAddr:      opts.ListenAddr,
-		baseDomain:      opts.BaseDomain,
-		tunnelScheme:    scheme,
-		registry:        opts.Registry,
-		keyValidator:    kv,
-		sessionReporter: opts.SessionReporter,
-		subdomainMax:    opts.SubdomainRetries,
-		sshConfig:       cfg,
-		limiter:         newConnLimiter(maxPerIP),
-		log:             log,
-		sessions:        make(map[string]*sshSession),
+		listenAddr:         opts.ListenAddr,
+		baseDomain:         opts.BaseDomain,
+		tunnelScheme:       scheme,
+		registry:           opts.Registry,
+		keyValidator:       kv,
+		sessionReporter:    opts.SessionReporter,
+		subdomainMax:       opts.SubdomainRetries,
+		sshConfig:          cfg,
+		limiter:            newConnLimiter(maxPerIP),
+		deviceFingerprints: fps,
+		log:                log,
+		sessions:           make(map[string]*sshSession),
 	}
 }
 
@@ -244,7 +242,13 @@ func (s *Server) handleConn(ctx context.Context, conn net.Conn) {
 	}
 
 	userID, email, allowedSubdomain, plan, maxActiveTunnels := extractPermissions(sshConn.Permissions)
-	sess := newSSHSession(sessionID(), userID, email, allowedSubdomain, plan, remoteIP, maxActiveTunnels, sshConn)
+
+	deviceID := s.deviceFingerprints.take(conn.RemoteAddr().String())
+	if userID == "" && deviceID == "" {
+		deviceID = remoteIP
+	}
+
+	sess := newSSHSession(sessionID(), userID, email, allowedSubdomain, plan, remoteIP, deviceID, maxActiveTunnels, sshConn)
 
 	// Authenticated users are bounded by their plan's maxActiveTunnels,
 	// not the per-IP anonymous connection cap.

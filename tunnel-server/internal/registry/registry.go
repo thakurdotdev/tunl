@@ -22,16 +22,17 @@ type TunnelConnection interface {
 }
 
 type Tunnel struct {
-	Subdomain       string
-	UserID          string // empty for anonymous tunnels
-	Reserved        bool   // true if tied to a paid/authenticated reservation
-	BindAddr        string // echoed in forwarded-tcpip; must match exactly what the client sent in tcpip-forward
-	BindPort        uint32
-	RemoteIP        string
-	MaxActiveTunnels int   // from plan; 0 means unlimited
-	CreatedAt       time.Time
-	LastSeen        time.Time
-	Conn            TunnelConnection
+	Subdomain        string
+	UserID           string // empty for anonymous tunnels
+	DeviceID         string // SSH key fingerprint (or IP fallback) for anonymous dedup
+	Reserved         bool   // true if tied to a paid/authenticated reservation
+	BindAddr         string // echoed in forwarded-tcpip; must match exactly what the client sent in tcpip-forward
+	BindPort         uint32
+	RemoteIP         string
+	MaxActiveTunnels int    // from plan; 0 means unlimited
+	CreatedAt        time.Time
+	LastSeen         time.Time
+	Conn             TunnelConnection
 }
 
 type TunnelRegistry interface {
@@ -49,8 +50,9 @@ type TunnelRegistry interface {
 }
 
 var (
-	ErrSubdomainTaken            = fmt.Errorf("subdomain already registered")
-	ErrUserTunnelLimitReached    = fmt.Errorf("active tunnel limit reached for user")
+	ErrSubdomainTaken         = fmt.Errorf("subdomain already registered")
+	ErrUserTunnelLimitReached  = fmt.Errorf("active tunnel limit reached for user")
+	ErrAnonymousTunnelExists   = fmt.Errorf("anonymous tunnel already active for this device")
 )
 
 type entry struct {
@@ -92,6 +94,14 @@ func (r *InMemoryRegistry) Register(t *Tunnel) error {
 		}
 		if active >= t.MaxActiveTunnels {
 			return ErrUserTunnelLimitReached
+		}
+	}
+
+	if t.UserID == "" && t.DeviceID != "" {
+		for _, e := range r.entries {
+			if !e.disconnected && e.tunnel.UserID == "" && e.tunnel.DeviceID == t.DeviceID {
+				return ErrAnonymousTunnelExists
+			}
 		}
 	}
 
