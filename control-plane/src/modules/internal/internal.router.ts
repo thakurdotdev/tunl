@@ -29,21 +29,21 @@ export const sessionConnectedBody = z.object({
   remoteIp: z.string().default(""),
   plan: z.string().optional(),
   sessionType: z.enum(["anonymous", "authenticated"]),
-  occurredAt: z.string().datetime(),
+  occurredAt: z.string().min(1),
   eventId: z.string().min(1),
 });
 const usageBody = z.object({
   tunnelId: z.uuid(),
   bytesTransferred: z.number().int().nonnegative(),
-  timestamp: z.string().datetime(),
+  timestamp: z.string().min(1),
 });
 const sessionDisconnectedBody = z.object({
   userId: z.string().optional(),
   anonymousId: z.string().min(1),
   subdomain: z.string().min(1),
-  durationMs: z.number().int().nonnegative().optional(),
-  disconnectReason: z.string().optional(),
-  occurredAt: z.string().datetime(),
+  durationMs: z.number().int().nonnegative(),
+  disconnectReason: z.string().default("client_closed"),
+  occurredAt: z.string().min(1),
   eventId: z.string().min(1),
 });
 const identityLinkBody = z.object({

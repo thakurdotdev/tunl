@@ -204,7 +204,7 @@ func (c *Client) doPost(ctx context.Context, path string, payload any) error {
 	if err != nil {
 		return err
 	}
-	resp.Body.Close()
+	defer resp.Body.Close()
 	if resp.StatusCode >= 400 {
 		errBody, _ := io.ReadAll(resp.Body)
 		c.log.Error("control plane error response", "status", resp.StatusCode, "path", path, "body", string(errBody))

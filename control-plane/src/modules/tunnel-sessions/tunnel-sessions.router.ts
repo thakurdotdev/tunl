@@ -10,7 +10,6 @@ export function tunnelSessionsRouter(db: Database) {
     "/",
     asyncRoute(async (req, res) => {
       const sessions = await listActiveTunnelSessions(db, req.userId!);
-      console.log(`[v1/tunnel-sessions] userId=${req.userId} found=${sessions.length} session(s)`);
       res.json(sessions);
     }),
   );
