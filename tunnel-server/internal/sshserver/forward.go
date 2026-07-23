@@ -133,6 +133,18 @@ func (s *Server) resolveSubdomain(sess *sshSession, bindAddr string, bindPort ui
 		reservedList = []string{sess.AllowedSubdomain()}
 	}
 
+	reqSub := strings.ToLower(strings.TrimSpace(sess.RequestedSubdomain()))
+	if reqSub != "" && reqSub != "git" && reqSub != "root" && reqSub != "ssh" && reqSub != "tunl" && reqSub != "t" {
+		for _, sub := range reservedList {
+			if strings.EqualFold(sub, reqSub) {
+				if s.registry.IsActive(sub) {
+					return "", registry.ErrSubdomainTaken
+				}
+				return registerSpecificReserved(s.registry, sess, sub, bindAddr, bindPort)
+			}
+		}
+	}
+
 	// Filter reserved subdomains to find available (unconnected) ones
 	var available []string
 	for _, sub := range reservedList {

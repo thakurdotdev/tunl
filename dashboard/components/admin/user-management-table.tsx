@@ -101,8 +101,8 @@ export function UserManagementTable({
                       )}
                     </td>
                     <td className="px-3 py-3">
-                      <span className="border-primary/40 bg-primary/10 text-primary rounded border px-2 py-0.5 text-[10px] font-bold">
-                        {u.planName.toUpperCase()}
+                      <span className="border-primary/30 bg-primary/10 text-primary rounded-md border px-2 py-0.5 font-mono text-[11px] font-bold">
+                        {u.planName?.toUpperCase() ?? "DEFAULT"}
                       </span>
                     </td>
                     <td className="text-muted-foreground px-3 py-3">

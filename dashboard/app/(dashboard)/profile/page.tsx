@@ -11,9 +11,10 @@ import {
 import { ProfileInfoCard } from "@/components/profile/profile-info-card";
 import { TwoFactorCard } from "@/components/profile/two-factor-card";
 import { IpWhitelistCard } from "@/components/profile/ip-whitelist-card";
+import { AlertCircle, Loader2 } from "lucide-react";
 
 export default function ProfilePage() {
-  const { data: profile, isLoading } = useProfile();
+  const { data: profile, isLoading, error } = useProfile();
 
   const updateName = useUpdateProfileName();
   const setup2FA = useSetup2FA();
@@ -24,7 +25,24 @@ export default function ProfilePage() {
   if (isLoading) {
     return (
       <div className="text-muted-foreground flex h-64 items-center justify-center font-mono text-xs">
-        Loading profile details...
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading profile details...
+      </div>
+    );
+  }
+
+  if (error || !profile) {
+    return (
+      <div className="mx-auto max-w-4xl space-y-4 font-mono">
+        <div className="border-destructive/30 bg-destructive/10 text-destructive rounded-xl border p-6 text-xs">
+          <div className="flex items-center gap-2 text-sm font-bold">
+            <AlertCircle className="h-4 w-4" /> Unable to Load Profile
+          </div>
+          <p className="text-muted-foreground mt-1">
+            {(error as any)?.response?.data?.message ||
+              (error as any)?.message ||
+              "Please check your authentication session or reload."}
+          </p>
+        </div>
       </div>
     );
   }
@@ -40,7 +58,7 @@ export default function ProfilePage() {
 
       {/* User Information Card */}
       <ProfileInfoCard
-        key={profile?.name ?? "profile-name"}
+        key={profile.name ?? "profile-name"}
         profile={profile}
         onUpdateName={(name) => updateName.mutate(name)}
         isPending={updateName.isPending}
@@ -59,7 +77,7 @@ export default function ProfilePage() {
 
       {/* IP Whitelist Security Card */}
       <IpWhitelistCard
-        key={`${profile?.ipWhitelistEnabled}-${profile?.allowedIps?.join(",")}`}
+        key={`${profile.ipWhitelistEnabled}-${profile.allowedIps?.join(",")}`}
         profile={profile}
         onUpdateWhitelist={(params) => updateIpWhitelist.mutateAsync(params)}
         isPending={updateIpWhitelist.isPending}

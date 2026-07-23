@@ -70,7 +70,7 @@ export function ProfileInfoCard({ profile, onUpdateName, isPending }: ProfileInf
             </span>
             <span className="text-foreground mt-1 inline-flex items-center gap-1.5 text-xs font-bold">
               <ShieldCheck className="h-3.5 w-3.5 text-purple-400" />
-              {profile?.role.toUpperCase()}
+              {profile?.role?.toUpperCase() ?? "USER"}
             </span>
           </div>
 
@@ -79,7 +79,7 @@ export function ProfileInfoCard({ profile, onUpdateName, isPending }: ProfileInf
               Active Tier Plan
             </span>
             <span className="text-primary mt-1 block text-xs font-bold">
-              {profile?.planName.toUpperCase()}
+              {profile?.planName?.toUpperCase() ?? "DEFAULT"}
             </span>
           </div>
 

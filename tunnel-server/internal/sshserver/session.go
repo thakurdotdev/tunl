@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"sync"
+	"time"
 
 	"github.com/thakurdotdev/tunl/tunnel-server/internal/registry"
 	"golang.org/x/crypto/ssh"
@@ -22,6 +23,7 @@ type sshSession struct {
 	remoteIP           string
 	deviceID           string
 	sshConn            *ssh.ServerConn
+	permissions        *ssh.Permissions
 	done               chan struct{}
 
 	closeOnce sync.Once
@@ -45,6 +47,10 @@ type sshSession struct {
 }
 
 func newSSHSession(id, userID, email, allowedSubdomain string, reservedSubdomains []string, plan, remoteIP, deviceID string, maxActiveTunnels int, allowedIPs []string, conn *ssh.ServerConn) *sshSession {
+	var perms *ssh.Permissions
+	if conn != nil {
+		perms = conn.Permissions
+	}
 	return &sshSession{
 		id:                 id,
 		userID:             userID,
@@ -57,6 +63,7 @@ func newSSHSession(id, userID, email, allowedSubdomain string, reservedSubdomain
 		remoteIP:           remoteIP,
 		deviceID:           deviceID,
 		sshConn:            conn,
+		permissions:        perms,
 		done:               make(chan struct{}),
 		ready:              make(chan struct{}),
 		errReady:           make(chan struct{}),
@@ -70,6 +77,12 @@ func (s *sshSession) Plan() string                 { return s.plan }
 func (s *sshSession) MaxActiveTunnels() int        { return s.maxActiveTunnels }
 func (s *sshSession) ReservedSubdomains() []string { return s.reservedSubdomains }
 func (s *sshSession) AllowedSubdomain() string     { return s.allowedSubdomain }
+func (s *sshSession) RequestedSubdomain() string {
+	if s.permissions != nil {
+		return s.permissions.Extensions["requested_subdomain"]
+	}
+	return ""
+}
 func (s *sshSession) AllowedIPs() []string         { return s.allowedIPs }
 func (s *sshSession) RemoteIP() string             { return s.remoteIP }
 func (s *sshSession) DeviceID() string             { return s.deviceID }
@@ -119,6 +132,22 @@ func (s *sshSession) setTerminalWriter(w io.Writer) {
 	if rw, ok := w.(io.ReadWriter); ok {
 		s.termRW = rw
 	}
+}
+
+func (s *sshSession) waitForTerminalWriter(timeout time.Duration) io.Writer {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		s.mu.Lock()
+		w := s.termWriter
+		s.mu.Unlock()
+		if w != nil {
+			return w
+		}
+		time.Sleep(25 * time.Millisecond)
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.termWriter
 }
 
 func (s *sshSession) ReadTerminalInput(buf []byte) (int, error) {

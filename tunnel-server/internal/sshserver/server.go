@@ -398,6 +398,8 @@ func (s *Server) handleSessionChannel(newCh ssh.NewChannel, sess *sshSession, lo
 	}
 	defer ch.Close()
 
+	sess.setTerminalWriter(ch)
+
 	go func() {
 		for req := range reqs {
 			switch req.Type {
@@ -439,7 +441,6 @@ func (s *Server) handleSessionChannel(newCh ssh.NewChannel, sess *sshSession, lo
 
 	select {
 	case <-sess.tunnelReady():
-		sess.setTerminalWriter(ch)
 		renderTerminalBanner(ch, s, sess)
 	case <-sess.errorReady():
 		renderTerminalError(ch, s, sess.RegisterError())

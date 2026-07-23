@@ -51,8 +51,8 @@ function generateCurlCommand(req: CapturedRequest, subdomain: string): string {
 
   if (req.requestHeaders) {
     for (const [key, val] of Object.entries(req.requestHeaders)) {
-      if (key.toLowerCase() === "host") continue;
-      cmd += ` \\\n  -H "${key}: ${val.replace(/"/g, '\\"')}"`;
+      if (key?.toLowerCase() === "host") continue;
+      cmd += ` \\\n  -H "${key}: ${(val ?? "").replace(/"/g, '\\"')}"`;
     }
   }
 
@@ -99,9 +99,12 @@ export default function InspectPage() {
 
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        const pathMatch = r.path.toLowerCase().includes(q);
-        const methodMatch = r.method.toLowerCase().includes(q);
-        const statusMatch = String(r.statusCode).includes(q);
+        const pathMatch = r.path ? r.path.toLowerCase().includes(q) : false;
+        const methodMatch = r.method ? r.method.toLowerCase().includes(q) : false;
+        const statusMatch =
+          r.statusCode !== undefined && r.statusCode !== null
+            ? String(r.statusCode).includes(q)
+            : false;
         return pathMatch || methodMatch || statusMatch;
       }
       return true;

@@ -60,6 +60,7 @@ func buildPublicKeyCallback(kv KeyValidator, fps *deviceFingerprintStore, log *s
 			Extensions: map[string]string{
 				"user_id":             userID,
 				"email":               email,
+				"requested_subdomain": meta.User(),
 				"allowed_subdomain":   allowedSubdomain,
 				"reserved_subdomains": strings.Join(reservedSubdomains, ","),
 				"plan":                plan,

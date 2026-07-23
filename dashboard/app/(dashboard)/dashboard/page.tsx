@@ -113,8 +113,9 @@ export default function TunnelsPage() {
   const limitReached = currentTunnelsCount >= maxTunnels;
 
   const subdomainInput = watch("subdomain")?.trim();
-  const sshTargetHost = subdomainInput ? `${subdomainInput}@t.thakur.dev` : "t.thakur.dev";
-  const generatedSshCommand = `ssh -R 80:localhost:${customPort || "3000"} -p 2222 ${sshTargetHost}`;
+  const generatedSshCommand = subdomainInput
+    ? `ssh -R 80:localhost:${customPort || "3000"} -p 2222 ${subdomainInput}@t.thakur.dev`
+    : `ssh -t -R 80:localhost:${customPort || "3000"} -p 2222 t.thakur.dev`;
 
   return (
     <div className="flex flex-col gap-8 font-mono">

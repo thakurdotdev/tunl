@@ -82,9 +82,7 @@ func renderTerminalError(ch io.Writer, s *Server, errMsg string) {
 
 // promptSubdomainSelection renders the multi-subdomain selection menu over SSH TTY.
 func promptSubdomainSelection(sess *sshSession, available []string, baseDomain string) string {
-	sess.mu.Lock()
-	w := sess.termWriter
-	sess.mu.Unlock()
+	w := sess.waitForTerminalWriter(500 * time.Millisecond)
 
 	if w == nil {
 		return available[0]
