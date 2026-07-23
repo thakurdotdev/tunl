@@ -107,3 +107,20 @@ func (h *Handler) subdomainFromHost(host string) string {
 	}
 	return sub
 }
+
+// SubdomainExtractor returns a function that extracts the subdomain from an
+// HTTP Host header, given the base domain. Used by the capture middleware.
+func SubdomainExtractor(baseDomain string) func(string) string {
+	suffix := "." + baseDomain
+	return func(host string) string {
+		host = strings.Split(host, ":")[0]
+		if !strings.HasSuffix(host, suffix) {
+			return ""
+		}
+		sub := strings.TrimSuffix(host, suffix)
+		if strings.Contains(sub, ".") {
+			return ""
+		}
+		return sub
+	}
+}

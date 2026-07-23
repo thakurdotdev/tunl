@@ -10,6 +10,7 @@ import { requireAuth } from "./modules/auth/auth.middleware.js";
 import { authRouter } from "./modules/auth/auth.router.js";
 import { ResendAuthMailer } from "./modules/auth/mailer.js";
 import { internalRouter, startStaleSessionSweeper } from "./modules/internal/internal.router.js";
+import { inspectRouter } from "./modules/inspect/inspect.router.js";
 import { sshKeysRouter } from "./modules/ssh-keys/ssh-keys.router.js";
 import { tunnelsRouter } from "./modules/tunnels/tunnels.router.js";
 import { tunnelSessionsRouter } from "./modules/tunnel-sessions/tunnel-sessions.router.js";
@@ -42,6 +43,7 @@ export function createApp(db: Database, redis: RedisClient, config: Config) {
   app.use("/v1/ssh-keys", sshKeysRouter(db, redis));
   app.use("/v1/tunnels", tunnelsRouter(db, redis));
   app.use("/v1/tunnel-sessions", tunnelSessionsRouter(db));
+  app.use("/v1/inspect", inspectRouter(db, redis));
   app.use("/internal", internalRouter(db, redis, config));
   app.use(errorHandler);
 

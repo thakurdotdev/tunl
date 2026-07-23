@@ -119,49 +119,52 @@ export function internalRouter(db: Database, redis: RedisClient, config: Config)
         );
 
       // Operational session tracking — authenticated only.
+      // Wrapped in a transaction so orphan cleanup + session upsert are atomic.
       if (userId && sessionType === "authenticated") {
-        const [reservation] = await db
-          .select({ id: tunnels.id })
-          .from(tunnels)
-          .where(and(eq(tunnels.userId, userId), eq(tunnels.subdomain, subdomain)))
-          .limit(1);
+        await db.transaction(async (tx) => {
+          const [reservation] = await tx
+            .select({ id: tunnels.id })
+            .from(tunnels)
+            .where(and(eq(tunnels.userId, userId), eq(tunnels.subdomain, subdomain)))
+            .limit(1);
 
-        const orphans = await db
-          .delete(activeTunnelSessions)
-          .where(
-            and(
-              eq(activeTunnelSessions.userId, userId),
-              ne(activeTunnelSessions.subdomain, subdomain),
-            ),
-          )
-          .returning({
-            subdomain: activeTunnelSessions.subdomain,
-            tunnelId: activeTunnelSessions.tunnelId,
-          });
+          const orphans = await tx
+            .delete(activeTunnelSessions)
+            .where(
+              and(
+                eq(activeTunnelSessions.userId, userId),
+                ne(activeTunnelSessions.subdomain, subdomain),
+              ),
+            )
+            .returning({
+              subdomain: activeTunnelSessions.subdomain,
+              tunnelId: activeTunnelSessions.tunnelId,
+            });
 
-        for (const orphan of orphans) {
-          if (orphan.tunnelId) {
-            await db
-              .update(tunnels)
-              .set({ status: "reserved", updatedAt: new Date() })
-              .where(eq(tunnels.id, orphan.tunnelId));
+          for (const orphan of orphans) {
+            if (orphan.tunnelId) {
+              await tx
+                .update(tunnels)
+                .set({ status: "reserved", updatedAt: new Date() })
+                .where(eq(tunnels.id, orphan.tunnelId));
+            }
           }
-        }
 
-        await db
-          .insert(activeTunnelSessions)
-          .values({ userId, tunnelId: reservation?.id ?? null, subdomain, remoteIp })
-          .onConflictDoUpdate({
-            target: [activeTunnelSessions.userId, activeTunnelSessions.subdomain],
-            set: { remoteIp, connectedAt: new Date(), lastSeenAt: new Date() },
-          });
+          await tx
+            .insert(activeTunnelSessions)
+            .values({ userId, tunnelId: reservation?.id ?? null, subdomain, remoteIp })
+            .onConflictDoUpdate({
+              target: [activeTunnelSessions.userId, activeTunnelSessions.subdomain],
+              set: { remoteIp, connectedAt: new Date(), lastSeenAt: new Date() },
+            });
 
-        if (reservation) {
-          await db
-            .update(tunnels)
-            .set({ status: "active", lastConnectedAt: new Date(), updatedAt: new Date() })
-            .where(eq(tunnels.id, reservation.id));
-        }
+          if (reservation) {
+            await tx
+              .update(tunnels)
+              .set({ status: "active", lastConnectedAt: new Date(), updatedAt: new Date() })
+              .where(eq(tunnels.id, reservation.id));
+          }
+        });
       }
 
       res.status(204).send();
@@ -266,7 +269,7 @@ export function internalRouter(db: Database, redis: RedisClient, config: Config)
 }
 
 export function startStaleSessionSweeper(db: Database) {
-  const STALE_THRESHOLD_MS = 3 * 60 * 1000;
+  const STALE_THRESHOLD_MS = 5 * 60 * 1000;
 
   async function sweep() {
     const cutoff = new Date(Date.now() - STALE_THRESHOLD_MS);

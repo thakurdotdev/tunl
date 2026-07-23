@@ -128,16 +128,19 @@ func (s *Server) handleForwardRequest(_ context.Context, req *ssh.Request, sess 
 
 	reply := tcpipForwardReply{BoundPort: fwd.BindPort}
 	req.Reply(true, ssh.Marshal(&reply))
-	sess.markReady()
 
 	if s.sessionReporter != nil {
 		plan := sess.Plan()
-		go s.sessionReporter.ReportConnected(
+		if err := s.sessionReporter.ReportConnected(
 			context.Background(),
 			sess.UserID(), sess.DeviceID(), sub, sess.RemoteIP(), plan,
 			time.Now(),
-		)
+		); err != nil {
+			s.log.Warn("session report failed, dashboard may not show tunnel", "subdomain", sub, "error", err)
+		}
 	}
+
+	sess.markReady()
 }
 
 func closeGracefully(sess *sshSession) {

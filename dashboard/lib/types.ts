@@ -39,3 +39,19 @@ export type ApiError = {
     requestId: string;
   };
 };
+
+export type CapturedRequest = {
+  id: string;
+  timestamp: string;
+  method: string;
+  path: string;
+  statusCode: number;
+  durationMs: number;
+  requestSize: number;
+  responseSize: number;
+  requestHeaders: Record<string, string>;
+  responseHeaders: Record<string, string>;
+  requestBody?: string;
+  responseBody?: string;
+  clientIP: string;
+};

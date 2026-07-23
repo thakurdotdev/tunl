@@ -14,12 +14,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/yourorg/tunnel-saas/tunnel-server/internal/config"
 	"github.com/yourorg/tunnel-saas/tunnel-server/internal/controlclient"
 	"github.com/yourorg/tunnel-saas/tunnel-server/internal/health"
 	"github.com/yourorg/tunnel-saas/tunnel-server/internal/httpproxy"
 	"github.com/yourorg/tunnel-saas/tunnel-server/internal/logging"
 	"github.com/yourorg/tunnel-saas/tunnel-server/internal/registry"
+	"github.com/yourorg/tunnel-saas/tunnel-server/internal/requestlog"
 	"github.com/yourorg/tunnel-saas/tunnel-server/internal/sshserver"
 	"golang.org/x/crypto/ssh"
 )
@@ -78,9 +80,28 @@ func main() {
 		Logger:      logger,
 	})
 
+	// Wrap the proxy with request capture when Redis is available
+	var finalHandler http.Handler = proxyHandler
+	if cfg.RedisURL != "" && cfg.RequestLogEnabled {
+		opts, err := redis.ParseURL(cfg.RedisURL)
+		if err != nil {
+			logger.Error("invalid REDIS_URL", "error", err)
+			os.Exit(1)
+		}
+		rdb := redis.NewClient(opts)
+		if err := rdb.Ping(context.Background()).Err(); err != nil {
+			logger.Warn("redis not reachable, request logging disabled", "error", err)
+		} else {
+			publisher := requestlog.NewPublisher(rdb, cfg.RequestLogMaxBodySize, logger)
+			subdomainExtractor := httpproxy.SubdomainExtractor(cfg.BaseDomain)
+			finalHandler = httpproxy.CaptureMiddleware(proxyHandler, publisher, subdomainExtractor)
+			logger.Info("request inspector enabled", "maxBodySize", cfg.RequestLogMaxBodySize)
+		}
+	}
+
 	healthHandler := health.NewHandler(reg)
 
-	httpSrv := &http.Server{Addr: cfg.HTTPListenAddr, Handler: proxyHandler}
+	httpSrv := &http.Server{Addr: cfg.HTTPListenAddr, Handler: finalHandler}
 	var httpsSrv *http.Server
 	healthSrv := &http.Server{Addr: cfg.HealthListenAddr, Handler: healthHandler}
 
@@ -117,7 +138,7 @@ func main() {
 	}()
 
 	if cfg.TLSCertPath != "" && cfg.TLSKeyPath != "" {
-		httpsSrv = &http.Server{Addr: cfg.HTTPSListenAddr, Handler: proxyHandler}
+		httpsSrv = &http.Server{Addr: cfg.HTTPSListenAddr, Handler: finalHandler}
 		go func() {
 			logger.Info("https proxy listening", "addr", cfg.HTTPSListenAddr)
 			if err := httpsSrv.ListenAndServeTLS(cfg.TLSCertPath, cfg.TLSKeyPath); err != nil && err != http.ErrServerClosed {

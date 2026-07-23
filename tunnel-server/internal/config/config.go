@@ -12,50 +12,25 @@ import (
 )
 
 type Config struct {
-	// BaseDomain is the root domain tunnels are issued under, e.g. "thakur.dev".
-	BaseDomain string
-
-	// TunnelURLScheme is "https" (default) or "http", used when generating the
-	// tunnel URL shown to the user. Use "https" when Cloudflare/reverse-proxy
-	// terminates TLS in front of the tunnel server.
-	TunnelURLScheme string
-
-	// SSHListenAddr is where the tunnel SSH server listens.
-	// NOT port 22 — that's your own admin SSH. See plan's port-choice design note.
-	SSHListenAddr string
-
-	// HTTPListenAddr / HTTPSListenAddr are the public-facing proxy listeners.
-	HTTPListenAddr  string
-	HTTPSListenAddr string
-
-	// TLS: single wildcard cert for *.<BaseDomain>. ACME is out of scope for now.
-	TLSCertPath string
-	TLSKeyPath  string
-
-	// HealthListenAddr serves /health, /ready, /metrics.
-	HealthListenAddr string
-
-	// ControlPlaneURL is the NestJS internal API base, e.g. http://localhost:3001.
-	ControlPlaneURL      string
-	InternalSharedSecret string
-
-	// SubdomainRetries is how many times to retry random subdomain generation
-	// on a Register collision before giving up (plan step 4).
-	SubdomainRetries int
-
-	// ReconnectGraceWindow is how long a disconnected tunnel's subdomain stays
-	// reserved before being freed (plan's grace-window design note).
-	ReconnectGraceWindow time.Duration
-
-	MaxConnsPerIP int
-
-	// AnonTunnelMaxDuration is the maximum duration an anonymous tunnel can
-	// stay connected before being force-closed.
+	BaseDomain            string
+	TunnelURLScheme       string
+	SSHListenAddr         string
+	HTTPListenAddr        string
+	HTTPSListenAddr       string
+	TLSCertPath           string
+	TLSKeyPath            string
+	HealthListenAddr      string
+	ControlPlaneURL       string
+	InternalSharedSecret  string
+	SubdomainRetries      int
+	ReconnectGraceWindow  time.Duration
+	MaxConnsPerIP         int
 	AnonTunnelMaxDuration time.Duration
+	ReservedSubdomains    map[string]struct{}
 
-	// ReservedSubdomains are existing subdomains that must never be assigned
-	// to tunnels (e.g. "blog,api,www" to protect blog.thakur.dev, etc.).
-	ReservedSubdomains map[string]struct{}
+	RedisURL              string
+	RequestLogEnabled     bool
+	RequestLogMaxBodySize int
 }
 
 func Load() (*Config, error) {
@@ -82,6 +57,10 @@ func Load() (*Config, error) {
 	cfg.AnonTunnelMaxDuration = time.Duration(anonMinutes) * time.Minute
 
 	cfg.ReservedSubdomains = parseReservedSubdomains(getEnv("RESERVED_SUBDOMAINS", ""))
+
+	cfg.RedisURL = getEnv("REDIS_URL", "")
+	cfg.RequestLogEnabled = getEnv("REQUEST_LOG_ENABLED", "true") == "true"
+	cfg.RequestLogMaxBodySize = getEnvInt("REQUEST_LOG_MAX_BODY_SIZE", 16384)
 
 	if cfg.InternalSharedSecret == "" {
 		return nil, fmt.Errorf("INTERNAL_SHARED_SECRET is required")

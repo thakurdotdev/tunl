@@ -23,8 +23,9 @@ import {
 import { ApiClientError } from "@/lib/api-client";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format, formatDistanceToNow } from "date-fns";
-import { Calendar, CheckCircle2, Copy, Globe, Trash2, Wifi, WifiOff } from "lucide-react";
+import { Calendar, CheckCircle2, Copy, Eye, Globe, Trash2, Wifi, WifiOff } from "lucide-react";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -426,6 +427,7 @@ export default function TunnelsPage() {
                   <th className="p-4 font-semibold">Remote IP</th>
                   <th className="p-4 font-semibold">Type</th>
                   <th className="p-4 font-semibold">Connected Time</th>
+                  <th className="w-[80px] p-4 text-right font-semibold">Inspect</th>
                 </tr>
               </thead>
               <tbody>
@@ -450,6 +452,13 @@ export default function TunnelsPage() {
                     </td>
                     <td className="text-muted-foreground p-4 text-[11px]">
                       {formatDistanceToNow(new Date(session.connectedAt), { addSuffix: true })}
+                    </td>
+                    <td className="p-4 text-right">
+                      <Link href={`/inspect/${session.subdomain}`}>
+                        <Button variant="outline" size="icon-xs">
+                          <Eye className="h-3 w-3" />
+                        </Button>
+                      </Link>
                     </td>
                   </tr>
                 ))}

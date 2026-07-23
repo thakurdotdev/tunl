@@ -16,6 +16,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const navItems = [
     { href: "/dashboard", label: "0:tunnels", pathMatch: "/dashboard" },
     { href: "/keys", label: "1:ssh-keys", pathMatch: "/keys" },
+    { href: "/inspect", label: "2:inspect", pathMatch: "/inspect" },
   ];
 
   return (
@@ -30,7 +31,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <div className="bg-border/60 hidden h-4 w-px shrink-0 sm:block" />
               <nav className="no-scrollbar flex items-center gap-1 overflow-x-auto py-1 sm:gap-1.5">
                 {navItems.map((item) => {
-                  const isActive = pathname === item.pathMatch;
+                  const isActive = pathname.startsWith(item.pathMatch);
                   return (
                     <Link
                       key={item.href}

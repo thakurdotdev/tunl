@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	randv2 "math/rand/v2"
 	"net"
 	"sync"
 	"time"
@@ -58,7 +59,7 @@ func (l *connLimiter) release(ip string) {
 // the control plane can update operational state and analytics. Both methods
 // are fire-and-forget — a slow control plane must never stall a live tunnel.
 type SessionReporter interface {
-	ReportConnected(ctx context.Context, userID, deviceID, subdomain, remoteIP, plan string, connectedAt time.Time)
+	ReportConnected(ctx context.Context, userID, deviceID, subdomain, remoteIP, plan string, connectedAt time.Time) error
 	ReportDisconnected(ctx context.Context, userID, deviceID, subdomain string, connectedAt time.Time)
 	ReportHeartbeat(ctx context.Context, userID, subdomain string)
 }
@@ -283,7 +284,7 @@ func (s *Server) handleConn(ctx context.Context, conn net.Conn) {
 	defer cancelKeepalive()
 
 	go func() {
-		ticker := time.NewTicker(keepaliveInterval)
+		ticker := time.NewTicker(keepaliveInterval + time.Duration(randv2.IntN(3000))*time.Millisecond)
 		defer ticker.Stop()
 		for {
 			select {

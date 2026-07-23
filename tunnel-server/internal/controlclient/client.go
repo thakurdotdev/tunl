@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"math/rand/v2"
 	"net/http"
 	"time"
 )
@@ -89,7 +90,10 @@ func optionalSubdomain(value *string) string {
 	return *value
 }
 
-func (c *Client) ReportConnected(ctx context.Context, userID, deviceID, subdomain, remoteIP, plan string, connectedAt time.Time) {
+// ReportConnected reports a new tunnel session to the control plane.
+// Unlike other report methods, this uses retries because the dashboard
+// depends on the session row existing to show the tunnel as active.
+func (c *Client) ReportConnected(ctx context.Context, userID, deviceID, subdomain, remoteIP, plan string, connectedAt time.Time) error {
 	sessionType := "authenticated"
 	if userID == "" {
 		sessionType = "anonymous"
@@ -110,7 +114,7 @@ func (c *Client) ReportConnected(ctx context.Context, userID, deviceID, subdomai
 		payload["plan"] = plan
 	}
 
-	c.post(ctx, "/internal/tunnel-connected", payload, "tunnel-connected")
+	return c.postWithRetry(ctx, "/internal/tunnel-connected", payload, "tunnel-connected", 3)
 }
 
 func (c *Client) ReportDisconnected(ctx context.Context, userID, deviceID, subdomain string, connectedAt time.Time) {
@@ -165,19 +169,49 @@ func (c *Client) ReportUsage(ctx context.Context, tunnelID string, bytesTransfer
 	return nil
 }
 
-func (c *Client) post(ctx context.Context, path string, payload any, label string) {
+// postWithRetry sends a POST with exponential backoff (200ms base).
+func (c *Client) postWithRetry(ctx context.Context, path string, payload any, label string, maxRetries int) error {
+	var lastErr error
+	for attempt := range maxRetries {
+		if err := c.doPost(ctx, path, payload); err != nil {
+			lastErr = err
+			backoff := time.Duration(200<<uint(attempt)) * time.Millisecond
+			jitter := time.Duration(rand.IntN(100)) * time.Millisecond
+			c.log.Warn(label+" failed, retrying", "attempt", attempt+1, "error", err)
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(backoff + jitter):
+			}
+			continue
+		}
+		return nil
+	}
+	c.log.Error(label+" failed after retries", "error", lastErr)
+	return lastErr
+}
+
+func (c *Client) doPost(ctx context.Context, path string, payload any) error {
 	body, _ := json.Marshal(payload)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+path, bytes.NewReader(body))
 	if err != nil {
-		c.log.Warn(label+" request build failed", "error", err)
-		return
+		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Internal-Token", c.sharedSecret)
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		c.log.Warn(label+" request failed", "error", err)
-		return
+		return err
 	}
 	resp.Body.Close()
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("unexpected status %d", resp.StatusCode)
+	}
+	return nil
+}
+
+func (c *Client) post(ctx context.Context, path string, payload any, label string) {
+	if err := c.doPost(ctx, path, payload); err != nil {
+		c.log.Warn(label+" request failed", "error", err)
+	}
 }

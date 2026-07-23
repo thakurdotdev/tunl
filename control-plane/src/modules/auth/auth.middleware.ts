@@ -13,8 +13,16 @@ declare global {
 }
 export const requireAuth = (config: Config): RequestHandler =>
   asyncRoute(async (req, _res, next) => {
-    const value = req.header("authorization");
-    if (!value?.startsWith("Bearer ")) throw unauthorized();
-    req.userId = await verifyAccessToken(config, value.slice(7));
+    const headerValue = req.header("authorization");
+    let token: string | undefined;
+
+    if (headerValue?.startsWith("Bearer ")) {
+      token = headerValue.slice(7);
+    } else if (typeof req.query.token === "string") {
+      token = req.query.token;
+    }
+
+    if (!token) throw unauthorized();
+    req.userId = await verifyAccessToken(config, token);
     next();
   });
