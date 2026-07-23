@@ -62,6 +62,9 @@ jobs:
           script_stop: true
           script: |
             set -euo pipefail
+            export PNPM_HOME="$HOME/.local/share/pnpm"
+            export PATH="$PNPM_HOME:$HOME/.nvm/versions/node/$(ls $HOME/.nvm/versions/node 2>/dev/null | tail -n 1 2>/dev/null)/bin:/usr/local/go/bin:$PATH"
+
             cd /opt/tunl
 
             echo "── pulling latest code ──"
