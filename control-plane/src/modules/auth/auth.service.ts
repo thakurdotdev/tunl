@@ -12,11 +12,16 @@ export type PublicUser = {
   role: "user" | "admin";
   plan: { name: string; maxReservedSubdomains: number };
 };
+import { decryptSecret } from "../../lib/crypto.js";
+import { verify } from "otplib";
+
 type AuthRow = {
   id: string;
   email: string;
   passwordHash: string | null;
   role: "user" | "admin";
+  twoFactorEnabled: boolean;
+  twoFactorSecret: string | null;
   emailVerifiedAt: Date | null;
   planName: string;
   maxReservedSubdomains: number;
@@ -45,6 +50,8 @@ async function getUserByEmail(db: Database, email: string): Promise<AuthRow | un
       email: users.email,
       passwordHash: users.passwordHash,
       role: users.role,
+      twoFactorEnabled: users.twoFactorEnabled,
+      twoFactorSecret: users.twoFactorSecret,
       emailVerifiedAt: users.emailVerifiedAt,
       planName: plans.name,
       maxReservedSubdomains: plans.maxReservedSubdomains,
@@ -100,7 +107,13 @@ export async function signup(
   }
 }
 
-export async function login(db: Database, email: string, password: string): Promise<PublicUser> {
+export async function login(
+  db: Database,
+  email: string,
+  password: string,
+  totpCode?: string,
+  jwtSecret?: string,
+): Promise<{ user?: PublicUser; requires2FA?: boolean }> {
   const row = await getUserByEmail(db, email);
   if (!row?.passwordHash || !(await verifyPassword(row.passwordHash, password)))
     throw badRequest("Invalid email or password");
@@ -110,7 +123,30 @@ export async function login(db: Database, email: string, password: string): Prom
       "email_not_verified",
       "Your email address is not verified. Please check your inbox or request a new verification link.",
     );
-  return publicUser(row);
+
+  if (row.twoFactorEnabled && row.twoFactorSecret) {
+    if (!totpCode) {
+      return { requires2FA: true };
+    }
+
+    if (!jwtSecret) {
+      throw new Error("JWT secret required for 2FA decryption");
+    }
+
+    let plainSecret = "";
+    try {
+      plainSecret = decryptSecret(row.twoFactorSecret, jwtSecret);
+    } catch {
+      throw badRequest("Failed to decrypt 2FA secret");
+    }
+
+    const isValid = await verify({ token: totpCode.trim(), secret: plainSecret });
+    if (!isValid || !isValid.valid) {
+      throw badRequest("Invalid 2FA verification code");
+    }
+  }
+
+  return { user: publicUser(row) };
 }
 
 export async function getProfile(db: Database, userId: string): Promise<PublicUser> {
@@ -120,6 +156,8 @@ export async function getProfile(db: Database, userId: string): Promise<PublicUs
       email: users.email,
       passwordHash: users.passwordHash,
       role: users.role,
+      twoFactorEnabled: users.twoFactorEnabled,
+      twoFactorSecret: users.twoFactorSecret,
       emailVerifiedAt: users.emailVerifiedAt,
       planName: plans.name,
       maxReservedSubdomains: plans.maxReservedSubdomains,

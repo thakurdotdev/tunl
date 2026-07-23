@@ -18,6 +18,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { href: "/keys", label: "1:ssh-keys", pathMatch: "/keys" },
     { href: "/inspect", label: "2:inspect", pathMatch: "/inspect" },
     ...(user?.role === "admin" ? [{ href: "/admin", label: "3:admin", pathMatch: "/admin" }] : []),
+    { href: "/profile", label: "4:profile", pathMatch: "/profile" },
   ];
 
   return (
@@ -51,10 +52,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </nav>
             </div>
             <div className="flex shrink-0 items-center gap-2 text-xs sm:gap-3">
-              <div className="border-border bg-muted/40 hidden items-center gap-2 rounded-md border px-2.5 py-1 md:flex">
-                <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
-                <span className="text-muted-foreground font-mono text-[11px]">SSH:2222 READY</span>
-              </div>
               <span className="text-muted-foreground hidden font-mono text-xs lg:inline">
                 {user?.email}
               </span>

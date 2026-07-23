@@ -30,7 +30,8 @@ type Tunnel struct {
 	BindAddr         string // echoed in forwarded-tcpip; must match exactly what the client sent in tcpip-forward
 	BindPort         uint32
 	RemoteIP         string
-	MaxActiveTunnels int // from plan; 0 means unlimited
+	AllowedIPs       []string // optional IP whitelist (IPs or CIDRs) for restricted access
+	MaxActiveTunnels int      // from plan; 0 means unlimited
 	CreatedAt        time.Time
 	LastSeen         time.Time
 	Conn             TunnelConnection

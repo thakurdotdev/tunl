@@ -42,8 +42,16 @@ export const users = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     email: text("email").notNull(),
+    name: text("name"),
     passwordHash: text("password_hash"),
     role: userRole("role").notNull().default("user"),
+    twoFactorEnabled: boolean("two_factor_enabled").notNull().default(false),
+    twoFactorSecret: text("two_factor_secret"),
+    ipWhitelistEnabled: boolean("ip_whitelist_enabled").notNull().default(false),
+    allowedIps: text("allowed_ips")
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
     emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
     planId: uuid("plan_id")
       .notNull()

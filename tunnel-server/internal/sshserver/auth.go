@@ -11,13 +11,13 @@ import (
 )
 
 type KeyValidator interface {
-	ValidateKey(fingerprint string) (userID, email, allowedSubdomain string, reservedSubdomains []string, plan string, maxActiveTunnels int, ok bool)
+	ValidateKey(fingerprint string) (userID, email, allowedSubdomain string, reservedSubdomains []string, plan string, maxActiveTunnels int, allowedIPs []string, ok bool)
 }
 
 type anonymousKeyValidator struct{}
 
-func (anonymousKeyValidator) ValidateKey(fingerprint string) (string, string, string, []string, string, int, bool) {
-	return "", "", "", nil, "", 0, false
+func (anonymousKeyValidator) ValidateKey(fingerprint string) (string, string, string, []string, string, int, []string, bool) {
+	return "", "", "", nil, "", 0, nil, false
 }
 
 // deviceFingerprintStore captures the first SSH key fingerprint seen per
@@ -48,7 +48,7 @@ func (s *deviceFingerprintStore) take(remoteAddr string) string {
 func buildPublicKeyCallback(kv KeyValidator, fps *deviceFingerprintStore, log *slog.Logger) func(ssh.ConnMetadata, ssh.PublicKey) (*ssh.Permissions, error) {
 	return func(meta ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
 		fingerprint := ssh.FingerprintSHA256(key)
-		userID, email, allowedSubdomain, reservedSubdomains, plan, maxActiveTunnels, ok := kv.ValidateKey(fingerprint)
+		userID, email, allowedSubdomain, reservedSubdomains, plan, maxActiveTunnels, allowedIPs, ok := kv.ValidateKey(fingerprint)
 		if log != nil {
 			log.Info("ssh key validation", "fingerprint", fingerprint, "valid", ok)
 		}
@@ -64,6 +64,7 @@ func buildPublicKeyCallback(kv KeyValidator, fps *deviceFingerprintStore, log *s
 				"reserved_subdomains": strings.Join(reservedSubdomains, ","),
 				"plan":                plan,
 				"max_active_tunnels":  strconv.Itoa(maxActiveTunnels),
+				"allowed_ips":         strings.Join(allowedIPs, ","),
 			},
 		}, nil
 	}

@@ -32,6 +32,7 @@ const credentials = z.object({
 const loginCredentials = z.object({
   email: z.email().max(320),
   password: z.string().min(1, "Password is required"),
+  totpCode: z.string().optional(),
 });
 const emailInput = z.object({ email: z.email().max(320) });
 const tokenInput = z.object({ token: z.string().min(32).max(256) });
@@ -65,8 +66,20 @@ export function authRouter(
     rateLimit(rateLimitStore, "login", 10, 15 * 60 * 1000),
     asyncRoute(async (req, res) => {
       const input = loginCredentials.parse(req.body);
-      const user = await login(db, input.email, input.password);
-      res.json({ accessToken: await issueAccessToken(config, user.id), user });
+      const result = await login(
+        db,
+        input.email,
+        input.password,
+        input.totpCode,
+        config.JWT_SECRET,
+      );
+      if (result.requires2FA) {
+        return res.json({ requires2FA: true });
+      }
+      if (!result.user) {
+        throw new Error("Failed to authenticate user");
+      }
+      res.json({ accessToken: await issueAccessToken(config, result.user.id), user: result.user });
     }),
   );
   router.post(

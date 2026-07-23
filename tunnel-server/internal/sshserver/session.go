@@ -18,6 +18,7 @@ type sshSession struct {
 	reservedSubdomains []string
 	plan               string
 	maxActiveTunnels   int
+	allowedIPs         []string
 	remoteIP           string
 	deviceID           string
 	sshConn            *ssh.ServerConn
@@ -43,7 +44,7 @@ type sshSession struct {
 	termRW     io.ReadWriter
 }
 
-func newSSHSession(id, userID, email, allowedSubdomain string, reservedSubdomains []string, plan, remoteIP, deviceID string, maxActiveTunnels int, conn *ssh.ServerConn) *sshSession {
+func newSSHSession(id, userID, email, allowedSubdomain string, reservedSubdomains []string, plan, remoteIP, deviceID string, maxActiveTunnels int, allowedIPs []string, conn *ssh.ServerConn) *sshSession {
 	return &sshSession{
 		id:                 id,
 		userID:             userID,
@@ -52,6 +53,7 @@ func newSSHSession(id, userID, email, allowedSubdomain string, reservedSubdomain
 		reservedSubdomains: reservedSubdomains,
 		plan:               plan,
 		maxActiveTunnels:   maxActiveTunnels,
+		allowedIPs:         allowedIPs,
 		remoteIP:           remoteIP,
 		deviceID:           deviceID,
 		sshConn:            conn,
@@ -68,6 +70,7 @@ func (s *sshSession) Plan() string                 { return s.plan }
 func (s *sshSession) MaxActiveTunnels() int        { return s.maxActiveTunnels }
 func (s *sshSession) ReservedSubdomains() []string { return s.reservedSubdomains }
 func (s *sshSession) AllowedSubdomain() string     { return s.allowedSubdomain }
+func (s *sshSession) AllowedIPs() []string         { return s.allowedIPs }
 func (s *sshSession) RemoteIP() string             { return s.remoteIP }
 func (s *sshSession) DeviceID() string             { return s.deviceID }
 func (s *sshSession) Done() <-chan struct{}        { return s.done }

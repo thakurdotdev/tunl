@@ -33,7 +33,7 @@ type keyValidatorAdapter struct {
 	client *controlclient.Client
 }
 
-func (a *keyValidatorAdapter) ValidateKey(fingerprint string) (string, string, string, []string, string, int, bool) {
+func (a *keyValidatorAdapter) ValidateKey(fingerprint string) (string, string, string, []string, string, int, []string, bool) {
 	return a.client.ValidateKey(context.Background(), fingerprint)
 }
 

@@ -130,6 +130,14 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(tunnel.AllowedIPs) > 0 {
+		clientIP := getClientIP(r)
+		if !isIPAllowed(clientIP, tunnel.AllowedIPs) {
+			http.Error(w, "Access Forbidden: IP address not whitelisted", http.StatusForbidden)
+			return
+		}
+	}
+
 	if h.registry.IsDisconnected(subdomain) {
 		http.Error(w, "tunnel temporarily unavailable", http.StatusServiceUnavailable)
 		return
@@ -165,6 +173,50 @@ func (h *Handler) subdomainFromHost(host string) string {
 		return ""
 	}
 	return sub
+}
+
+func getClientIP(r *http.Request) string {
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		parts := strings.Split(xff, ",")
+		if len(parts) > 0 {
+			return strings.TrimSpace(parts[0])
+		}
+	}
+	if xri := r.Header.Get("X-Real-IP"); xri != "" {
+		return strings.TrimSpace(xri)
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return host
+}
+
+func isIPAllowed(clientIPStr string, allowedIPs []string) bool {
+	clientIP := net.ParseIP(clientIPStr)
+	if clientIP == nil {
+		return false
+	}
+
+	for _, entry := range allowedIPs {
+		entry = strings.TrimSpace(entry)
+		if entry == "" {
+			continue
+		}
+
+		// Exact IP match
+		if entry == clientIPStr {
+			return true
+		}
+
+		// Parse as CIDR block (e.g. 192.168.1.0/24)
+		_, cidrNet, err := net.ParseCIDR(entry)
+		if err == nil && cidrNet.Contains(clientIP) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // SubdomainExtractor returns a function that extracts the subdomain from an

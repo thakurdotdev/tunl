@@ -36,6 +36,7 @@ func registerAnonymous(reg registry.TunnelRegistry, sess *sshSession, bindAddr s
 			BindAddr:         bindAddr,
 			BindPort:         bindPort,
 			RemoteIP:         sess.RemoteIP(),
+			AllowedIPs:       sess.AllowedIPs(),
 			MaxActiveTunnels: sess.MaxActiveTunnels(),
 			Conn:             sess,
 		}
@@ -170,6 +171,7 @@ func registerSpecificReserved(reg registry.TunnelRegistry, sess *sshSession, sub
 		BindAddr:         bindAddr,
 		BindPort:         bindPort,
 		RemoteIP:         sess.RemoteIP(),
+		AllowedIPs:       sess.AllowedIPs(),
 		MaxActiveTunnels: sess.MaxActiveTunnels(),
 		Conn:             sess,
 	}

@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "ip_whitelist_enabled" boolean DEFAULT false NOT NULL;

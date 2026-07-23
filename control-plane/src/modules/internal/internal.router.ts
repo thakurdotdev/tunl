@@ -89,6 +89,8 @@ export function internalRouter(db: Database, redis: RedisClient, config: Config)
           email: users.email,
           plan: plans.name,
           maxActiveTunnels: plans.maxActiveTunnels,
+          allowedIps: users.allowedIps,
+          ipWhitelistEnabled: users.ipWhitelistEnabled,
         })
         .from(sshKeys)
         .innerJoin(users, eq(sshKeys.userId, users.id))
@@ -116,6 +118,7 @@ export function internalRouter(db: Database, redis: RedisClient, config: Config)
         allowedSubdomain,
         reservedSubdomains,
         maxActiveTunnels: userRow.maxActiveTunnels,
+        allowedIps: userRow.ipWhitelistEnabled ? (userRow.allowedIps ?? []) : [],
       };
 
       console.log(

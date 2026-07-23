@@ -50,6 +50,20 @@
       "when": 1784822252171,
       "tag": "0006_unusual_sunspot",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1784824179250,
+      "tag": "0007_previous_slapstick",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1784824878272,
+      "tag": "0008_mixed_leopardon",
+      "breakpoints": true
     }
   ]
 }

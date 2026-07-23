@@ -235,14 +235,14 @@ func (s *Server) handleConn(ctx context.Context, conn net.Conn) {
 	}
 	conn.SetDeadline(time.Time{})
 
-	userID, email, allowedSubdomain, reservedSubdomains, plan, maxActiveTunnels := extractPermissions(sshConn.Permissions)
+	userID, email, allowedSubdomain, reservedSubdomains, plan, maxActiveTunnels, allowedIPs := extractPermissions(sshConn.Permissions)
 
 	deviceID := s.deviceFingerprints.take(conn.RemoteAddr().String())
 	if deviceID == "" {
 		deviceID = remoteIP
 	}
 
-	sess := newSSHSession(sessionID(), userID, email, allowedSubdomain, reservedSubdomains, plan, remoteIP, deviceID, maxActiveTunnels, sshConn)
+	sess := newSSHSession(sessionID(), userID, email, allowedSubdomain, reservedSubdomains, plan, remoteIP, deviceID, maxActiveTunnels, allowedIPs, sshConn)
 
 	// Authenticated users are bounded by their plan's maxActiveTunnels,
 	// not the per-IP anonymous connection cap.
@@ -317,9 +317,9 @@ func (s *Server) handleConn(ctx context.Context, conn net.Conn) {
 	s.handleChannels(chans, sess, connLog)
 }
 
-func extractPermissions(perms *ssh.Permissions) (userID, email, allowedSubdomain string, reservedSubdomains []string, plan string, maxActiveTunnels int) {
+func extractPermissions(perms *ssh.Permissions) (userID, email, allowedSubdomain string, reservedSubdomains []string, plan string, maxActiveTunnels int, allowedIPs []string) {
 	if perms == nil || perms.Extensions == nil {
-		return "", "", "", nil, "", 0
+		return "", "", "", nil, "", 0, nil
 	}
 	max := 0
 	if v, ok := perms.Extensions["max_active_tunnels"]; ok {
@@ -334,7 +334,16 @@ func extractPermissions(perms *ssh.Permissions) (userID, email, allowedSubdomain
 			}
 		}
 	}
-	return perms.Extensions["user_id"], perms.Extensions["email"], perms.Extensions["allowed_subdomain"], res, perms.Extensions["plan"], max
+	var ips []string
+	if raw, ok := perms.Extensions["allowed_ips"]; ok && raw != "" {
+		for _, s := range strings.Split(raw, ",") {
+			s = strings.TrimSpace(s)
+			if s != "" {
+				ips = append(ips, s)
+			}
+		}
+	}
+	return perms.Extensions["user_id"], perms.Extensions["email"], perms.Extensions["allowed_subdomain"], res, perms.Extensions["plan"], max, ips
 }
 
 func extractIP(addr net.Addr) string {
