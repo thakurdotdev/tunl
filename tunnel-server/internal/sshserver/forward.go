@@ -48,30 +48,6 @@ func registerAnonymous(reg registry.TunnelRegistry, sess *sshSession, bindAddr s
 	return "", lastErr
 }
 
-// registerReserved tries to register (or reclaim during grace window) the
-// authenticated user's reserved subdomain from the control plane.
-func registerReserved(reg registry.TunnelRegistry, sess *sshSession, bindAddr string, bindPort uint32) (string, error) {
-	sub := sess.AllowedSubdomain()
-	t := &registry.Tunnel{
-		Subdomain:        sub,
-		UserID:           sess.UserID(),
-		Reserved:         true,
-		BindAddr:         bindAddr,
-		BindPort:         bindPort,
-		RemoteIP:         sess.RemoteIP(),
-		MaxActiveTunnels: sess.MaxActiveTunnels(),
-		Conn:             sess,
-	}
-	if err := reg.Register(t); err == nil {
-		return sub, nil
-	}
-	// Entry exists — try to reclaim if it's disconnected (grace window reconnect).
-	if err := reg.Reclaim(sub, sess, bindAddr, bindPort); err == nil {
-		return sub, nil
-	}
-	return "", registry.ErrSubdomainTaken
-}
-
 func (s *Server) handleForwardRequest(_ context.Context, req *ssh.Request, sess *sshSession) {
 	if !sess.markForwarded() {
 		s.log.Warn("duplicate tcpip-forward rejected", "session_id", sess.ID())
@@ -92,13 +68,9 @@ func (s *Server) handleForwardRequest(_ context.Context, req *ssh.Request, sess 
 
 	sess.setBindInfo(fwd.BindAddr, fwd.BindPort)
 
-	var sub string
-	var err error
-	if sess.AllowedSubdomain() != "" {
-		sub, err = registerReserved(s.registry, sess, fwd.BindAddr, fwd.BindPort)
-	} else {
-		sub, err = registerAnonymous(s.registry, sess, fwd.BindAddr, fwd.BindPort, s.subdomainMax)
-	}
+	sess.setBindInfo(fwd.BindAddr, fwd.BindPort)
+
+	sub, err := s.resolveSubdomain(sess, fwd.BindAddr, fwd.BindPort)
 	if err != nil {
 		s.log.Error("subdomain registration failed", "error", err)
 		switch err {
@@ -148,4 +120,64 @@ func closeGracefully(sess *sshSession) {
 		time.Sleep(1 * time.Second)
 		sess.Close()
 	}()
+}
+
+func (s *Server) resolveSubdomain(sess *sshSession, bindAddr string, bindPort uint32) (string, error) {
+	if sess.UserID() == "" {
+		return registerAnonymous(s.registry, sess, bindAddr, bindPort, s.subdomainMax)
+	}
+
+	reservedList := sess.ReservedSubdomains()
+	if len(reservedList) == 0 && sess.AllowedSubdomain() != "" {
+		reservedList = []string{sess.AllowedSubdomain()}
+	}
+
+	// Filter reserved subdomains to find available (unconnected) ones
+	var available []string
+	for _, sub := range reservedList {
+		if !s.registry.IsActive(sub) {
+			available = append(available, sub)
+		}
+	}
+
+	// Case 1: No reserved subdomains available -> fallback to random anonymous/ephemeral
+	if len(available) == 0 {
+		return registerAnonymous(s.registry, sess, bindAddr, bindPort, s.subdomainMax)
+	}
+
+	// Case 2: Exactly 1 available -> auto assign
+	if len(available) == 1 {
+		return registerSpecificReserved(s.registry, sess, available[0], bindAddr, bindPort)
+	}
+
+	// Case 3: Multiple available -> Interactive Terminal Selection Menu
+	selected := promptSubdomainSelection(sess, available, s.baseDomain)
+	if selected == "" {
+		selected = available[0]
+	}
+	if selected == "__random__" {
+		return registerAnonymous(s.registry, sess, bindAddr, bindPort, s.subdomainMax)
+	}
+
+	return registerSpecificReserved(s.registry, sess, selected, bindAddr, bindPort)
+}
+
+func registerSpecificReserved(reg registry.TunnelRegistry, sess *sshSession, sub string, bindAddr string, bindPort uint32) (string, error) {
+	t := &registry.Tunnel{
+		Subdomain:        sub,
+		UserID:           sess.UserID(),
+		Reserved:         true,
+		BindAddr:         bindAddr,
+		BindPort:         bindPort,
+		RemoteIP:         sess.RemoteIP(),
+		MaxActiveTunnels: sess.MaxActiveTunnels(),
+		Conn:             sess,
+	}
+	if err := reg.Register(t); err == nil {
+		return sub, nil
+	}
+	if err := reg.Reclaim(sub, sess, bindAddr, bindPort); err == nil {
+		return sub, nil
+	}
+	return "", registry.ErrSubdomainTaken
 }

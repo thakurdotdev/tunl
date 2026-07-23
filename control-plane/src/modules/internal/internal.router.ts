@@ -83,31 +83,46 @@ export function internalRouter(db: Database, redis: RedisClient, config: Config)
         return res.json(JSON.parse(cached));
       }
 
-      const [row] = await db
+      const [userRow] = await db
         .select({
           userId: users.id,
           email: users.email,
           plan: plans.name,
-          allowedSubdomain: tunnels.subdomain,
           maxActiveTunnels: plans.maxActiveTunnels,
         })
         .from(sshKeys)
         .innerJoin(users, eq(sshKeys.userId, users.id))
         .innerJoin(plans, eq(users.planId, plans.id))
-        .leftJoin(tunnels, eq(tunnels.userId, users.id))
         .where(eq(sshKeys.fingerprint, fingerprint))
         .limit(1);
 
-      if (!row) {
+      if (!userRow) {
         console.warn(`[internal-api] /validate-key not found for fingerprint=${fingerprint}`);
         throw notFound("SSH key not found");
       }
 
+      const userTunnels = await db
+        .select({ subdomain: tunnels.subdomain })
+        .from(tunnels)
+        .where(eq(tunnels.userId, userRow.userId));
+
+      const reservedSubdomains = userTunnels.map((t) => t.subdomain);
+      const allowedSubdomain = reservedSubdomains[0] ?? null;
+
+      const result = {
+        userId: userRow.userId,
+        email: userRow.email,
+        plan: userRow.plan,
+        allowedSubdomain,
+        reservedSubdomains,
+        maxActiveTunnels: userRow.maxActiveTunnels,
+      };
+
       console.log(
-        `[internal-api] /validate-key found user=${row.email} allowedSubdomain=${row.allowedSubdomain}`,
+        `[internal-api] /validate-key found user=${result.email} reservedSubdomains=[${reservedSubdomains.join(", ")}]`,
       );
-      await redis.set(cacheKey, JSON.stringify(row), { EX: 300 });
-      res.json(row);
+      await redis.set(cacheKey, JSON.stringify(result), { EX: 300 });
+      res.json(result);
     }),
   );
 

@@ -11,16 +11,17 @@ import (
 )
 
 type sshSession struct {
-	id               string
-	userID           string
-	email            string
-	allowedSubdomain string
-	plan             string
-	maxActiveTunnels int
-	remoteIP         string
-	deviceID         string
-	sshConn          *ssh.ServerConn
-	done             chan struct{}
+	id                 string
+	userID             string
+	email              string
+	allowedSubdomain   string
+	reservedSubdomains []string
+	plan               string
+	maxActiveTunnels   int
+	remoteIP           string
+	deviceID           string
+	sshConn            *ssh.ServerConn
+	done               chan struct{}
 
 	closeOnce sync.Once
 	closeErr  error
@@ -39,22 +40,24 @@ type sshSession struct {
 	forwarded  bool
 	regErr     string
 	termWriter io.Writer
+	termRW     io.ReadWriter
 }
 
-func newSSHSession(id, userID, email, allowedSubdomain, plan, remoteIP, deviceID string, maxActiveTunnels int, conn *ssh.ServerConn) *sshSession {
+func newSSHSession(id, userID, email, allowedSubdomain string, reservedSubdomains []string, plan, remoteIP, deviceID string, maxActiveTunnels int, conn *ssh.ServerConn) *sshSession {
 	return &sshSession{
-		id:               id,
-		userID:           userID,
-		email:            email,
-		allowedSubdomain: allowedSubdomain,
-		plan:             plan,
-		maxActiveTunnels: maxActiveTunnels,
-		remoteIP:         remoteIP,
-		deviceID:         deviceID,
-		sshConn:          conn,
-		done:             make(chan struct{}),
-		ready:            make(chan struct{}),
-		errReady:         make(chan struct{}),
+		id:                 id,
+		userID:             userID,
+		email:              email,
+		allowedSubdomain:   allowedSubdomain,
+		reservedSubdomains: reservedSubdomains,
+		plan:               plan,
+		maxActiveTunnels:   maxActiveTunnels,
+		remoteIP:           remoteIP,
+		deviceID:           deviceID,
+		sshConn:            conn,
+		done:               make(chan struct{}),
+		ready:              make(chan struct{}),
+		errReady:           make(chan struct{}),
 	}
 }
 
@@ -63,6 +66,7 @@ func (s *sshSession) UserID() string               { return s.userID }
 func (s *sshSession) Email() string                { return s.email }
 func (s *sshSession) Plan() string                 { return s.plan }
 func (s *sshSession) MaxActiveTunnels() int        { return s.maxActiveTunnels }
+func (s *sshSession) ReservedSubdomains() []string { return s.reservedSubdomains }
 func (s *sshSession) AllowedSubdomain() string     { return s.allowedSubdomain }
 func (s *sshSession) RemoteIP() string             { return s.remoteIP }
 func (s *sshSession) DeviceID() string             { return s.deviceID }
@@ -109,6 +113,19 @@ func (s *sshSession) setTerminalWriter(w io.Writer) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.termWriter = w
+	if rw, ok := w.(io.ReadWriter); ok {
+		s.termRW = rw
+	}
+}
+
+func (s *sshSession) ReadTerminalInput(buf []byte) (int, error) {
+	s.mu.Lock()
+	rw := s.termRW
+	s.mu.Unlock()
+	if rw == nil {
+		return 0, io.EOF
+	}
+	return rw.Read(buf)
 }
 
 func (s *sshSession) WriteTerminalLog(line string) {

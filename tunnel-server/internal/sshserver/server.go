@@ -4,10 +4,10 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
-	"io"
 	"log/slog"
 	randv2 "math/rand/v2"
 	"net"
+	"strings"
 	"sync"
 	"time"
 
@@ -235,14 +235,14 @@ func (s *Server) handleConn(ctx context.Context, conn net.Conn) {
 	}
 	conn.SetDeadline(time.Time{})
 
-	userID, email, allowedSubdomain, plan, maxActiveTunnels := extractPermissions(sshConn.Permissions)
+	userID, email, allowedSubdomain, reservedSubdomains, plan, maxActiveTunnels := extractPermissions(sshConn.Permissions)
 
 	deviceID := s.deviceFingerprints.take(conn.RemoteAddr().String())
 	if deviceID == "" {
 		deviceID = remoteIP
 	}
 
-	sess := newSSHSession(sessionID(), userID, email, allowedSubdomain, plan, remoteIP, deviceID, maxActiveTunnels, sshConn)
+	sess := newSSHSession(sessionID(), userID, email, allowedSubdomain, reservedSubdomains, plan, remoteIP, deviceID, maxActiveTunnels, sshConn)
 
 	// Authenticated users are bounded by their plan's maxActiveTunnels,
 	// not the per-IP anonymous connection cap.
@@ -317,15 +317,24 @@ func (s *Server) handleConn(ctx context.Context, conn net.Conn) {
 	s.handleChannels(chans, sess, connLog)
 }
 
-func extractPermissions(perms *ssh.Permissions) (userID, email, allowedSubdomain, plan string, maxActiveTunnels int) {
+func extractPermissions(perms *ssh.Permissions) (userID, email, allowedSubdomain string, reservedSubdomains []string, plan string, maxActiveTunnels int) {
 	if perms == nil || perms.Extensions == nil {
-		return "", "", "", "", 0
+		return "", "", "", nil, "", 0
 	}
 	max := 0
 	if v, ok := perms.Extensions["max_active_tunnels"]; ok {
 		fmt.Sscanf(v, "%d", &max)
 	}
-	return perms.Extensions["user_id"], perms.Extensions["email"], perms.Extensions["allowed_subdomain"], perms.Extensions["plan"], max
+	var res []string
+	if raw, ok := perms.Extensions["reserved_subdomains"]; ok && raw != "" {
+		for _, s := range strings.Split(raw, ",") {
+			s = strings.TrimSpace(s)
+			if s != "" {
+				res = append(res, s)
+			}
+		}
+	}
+	return perms.Extensions["user_id"], perms.Extensions["email"], perms.Extensions["allowed_subdomain"], res, perms.Extensions["plan"], max
 }
 
 func extractIP(addr net.Addr) string {
@@ -449,71 +458,6 @@ func (s *Server) handleSessionChannel(newCh ssh.NewChannel, sess *sshSession, lo
 	}
 
 	<-sess.Done()
-}
-
-func renderTerminalBanner(ch io.Writer, s *Server, sess *sshSession) {
-	url := sess.TunnelURL()
-	homeURL := fmt.Sprintf("%s://tunl.%s", s.tunnelScheme, s.baseDomain)
-
-	targetHost := sess.BindAddr()
-	if targetHost == "" || targetHost == "0.0.0.0" || targetHost == "127.0.0.1" {
-		targetHost = "localhost"
-	}
-	forwardTarget := fmt.Sprintf("http://%s", targetHost)
-	if sess.BindPort() != 80 && sess.BindPort() != 443 {
-		forwardTarget = fmt.Sprintf("http://%s:%d", targetHost, sess.BindPort())
-	}
-
-	accountStr := "\033[90mAnonymous\033[0m"
-	if sess.UserID() != "" {
-		planStr := sess.Plan()
-		if planStr == "" {
-			planStr = "standard"
-		}
-		accountStr = fmt.Sprintf("\033[1;37m%s\033[0m \033[36m(%s plan)\033[0m", sess.Email(), planStr)
-	}
-
-	fmt.Fprintf(ch, "\r\n")
-	fmt.Fprintf(ch, "  \033[1;36m⚡ TUNL\033[0m  \033[90m•\033[0m  \033[1;32m● Online\033[0m\r\n")
-	fmt.Fprintf(ch, "  \033[90m──────────────────────────────────────────────────────────\033[0m\r\n")
-	fmt.Fprintf(ch, "  \033[90mAccount\033[0m     %s\r\n", accountStr)
-	fmt.Fprintf(ch, "  \033[90mForwarding\033[0m  \033[1;33m%s\033[0m\r\n", forwardTarget)
-	fmt.Fprintf(ch, "  \033[90mPublic URL\033[0m  \033[1;4;36m%s\033[0m\r\n", url)
-
-	if sess.UserID() == "" && s.anonMaxDuration > 0 {
-		hours := int(s.anonMaxDuration.Hours())
-		fmt.Fprintf(ch, "  \033[90mExpires\033[0m     \033[33m%d hours\033[0m (sign up for unlimited)\r\n", hours)
-	}
-
-	if sess.UserID() != "" && sess.AllowedSubdomain() == "" {
-		fmt.Fprintf(ch, "\r\n  \033[33m💡 Tip:\033[0m Reserve a custom domain at \033[4;34m%s\033[0m\r\n", homeURL)
-	} else if sess.UserID() == "" {
-		fmt.Fprintf(ch, "\r\n  \033[33m💡 Tip:\033[0m Sign up for unlimited tunnels at \033[4;34m%s\033[0m\r\n", homeURL)
-	}
-
-	fmt.Fprintf(ch, "  \033[90m──────────────────────────────────────────────────────────\033[0m\r\n")
-	fmt.Fprintf(ch, "  \033[90mPress \033[1;37mCtrl+C\033[0;90m or \033[1;37mCtrl+D\033[0;90m to stop the tunnel\033[0m\r\n\r\n")
-}
-
-func renderTerminalExpiry(ch io.Writer, s *Server) {
-	homeURL := fmt.Sprintf("%s://tunl.%s", s.tunnelScheme, s.baseDomain)
-	fmt.Fprintf(ch, "\r\n")
-	fmt.Fprintf(ch, "  \033[1;33m⏰ Session Expired\033[0m\r\n")
-	fmt.Fprintf(ch, "  \033[90m──────────────────────────────────────────────────────────\033[0m\r\n")
-	fmt.Fprintf(ch, "  \033[90mReason\033[0m     Anonymous tunnel time limit reached\r\n")
-	fmt.Fprintf(ch, "  \033[90mNext\033[0m       Reconnect to start a new session, or\r\n")
-	fmt.Fprintf(ch, "             sign up at \033[4;34m%s\033[0m for unlimited tunnels\r\n", homeURL)
-	fmt.Fprintf(ch, "  \033[90m──────────────────────────────────────────────────────────\033[0m\r\n\r\n")
-}
-
-func renderTerminalError(ch io.Writer, s *Server, errMsg string) {
-	homeURL := fmt.Sprintf("%s://tunl.%s", s.tunnelScheme, s.baseDomain)
-	fmt.Fprintf(ch, "\r\n")
-	fmt.Fprintf(ch, "  \033[1;31m✖ Tunnel Error\033[0m\r\n")
-	fmt.Fprintf(ch, "  \033[90m──────────────────────────────────────────────────────────\033[0m\r\n")
-	fmt.Fprintf(ch, "  \033[90mReason\033[0m     %s\r\n", errMsg)
-	fmt.Fprintf(ch, "  \033[90mDashboard\033[0m  \033[4;34m%s\033[0m\r\n", homeURL)
-	fmt.Fprintf(ch, "  \033[90m──────────────────────────────────────────────────────────\033[0m\r\n\r\n")
 }
 
 func sessionID() string {

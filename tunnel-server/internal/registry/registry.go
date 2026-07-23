@@ -40,6 +40,7 @@ type TunnelRegistry interface {
 	Register(t *Tunnel) error
 	Reclaim(subdomain string, conn TunnelConnection, bindAddr string, bindPort uint32) error
 	Lookup(subdomain string) (*Tunnel, bool)
+	IsActive(subdomain string) bool
 	IsDisconnected(subdomain string) bool
 	UpdateActivity(subdomain string)
 	Unregister(subdomain string)
@@ -129,6 +130,13 @@ func (r *InMemoryRegistry) Lookup(subdomain string) (*Tunnel, bool) {
 		return nil, false
 	}
 	return e.tunnel, true
+}
+
+func (r *InMemoryRegistry) IsActive(subdomain string) bool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	e, ok := r.entries[subdomain]
+	return ok && !e.disconnected
 }
 
 func (r *InMemoryRegistry) IsDisconnected(subdomain string) bool {

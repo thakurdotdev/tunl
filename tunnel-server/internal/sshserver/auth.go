@@ -4,19 +4,20 @@ import (
 	"fmt"
 	"log/slog"
 	"strconv"
+	"strings"
 	"sync"
 
 	"golang.org/x/crypto/ssh"
 )
 
 type KeyValidator interface {
-	ValidateKey(fingerprint string) (userID, email, allowedSubdomain, plan string, maxActiveTunnels int, ok bool)
+	ValidateKey(fingerprint string) (userID, email, allowedSubdomain string, reservedSubdomains []string, plan string, maxActiveTunnels int, ok bool)
 }
 
 type anonymousKeyValidator struct{}
 
-func (anonymousKeyValidator) ValidateKey(fingerprint string) (string, string, string, string, int, bool) {
-	return "", "", "", "", 0, false
+func (anonymousKeyValidator) ValidateKey(fingerprint string) (string, string, string, []string, string, int, bool) {
+	return "", "", "", nil, "", 0, false
 }
 
 // deviceFingerprintStore captures the first SSH key fingerprint seen per
@@ -47,7 +48,7 @@ func (s *deviceFingerprintStore) take(remoteAddr string) string {
 func buildPublicKeyCallback(kv KeyValidator, fps *deviceFingerprintStore, log *slog.Logger) func(ssh.ConnMetadata, ssh.PublicKey) (*ssh.Permissions, error) {
 	return func(meta ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
 		fingerprint := ssh.FingerprintSHA256(key)
-		userID, email, allowedSubdomain, plan, maxActiveTunnels, ok := kv.ValidateKey(fingerprint)
+		userID, email, allowedSubdomain, reservedSubdomains, plan, maxActiveTunnels, ok := kv.ValidateKey(fingerprint)
 		if log != nil {
 			log.Info("ssh key validation", "fingerprint", fingerprint, "valid", ok)
 		}
@@ -57,11 +58,12 @@ func buildPublicKeyCallback(kv KeyValidator, fps *deviceFingerprintStore, log *s
 		}
 		return &ssh.Permissions{
 			Extensions: map[string]string{
-				"user_id":            userID,
-				"email":              email,
-				"allowed_subdomain":  allowedSubdomain,
-				"plan":               plan,
-				"max_active_tunnels": strconv.Itoa(maxActiveTunnels),
+				"user_id":             userID,
+				"email":               email,
+				"allowed_subdomain":   allowedSubdomain,
+				"reserved_subdomains": strings.Join(reservedSubdomains, ","),
+				"plan":                plan,
+				"max_active_tunnels":  strconv.Itoa(maxActiveTunnels),
 			},
 		}, nil
 	}
