@@ -48,11 +48,16 @@ export function subscribeLiveRequests(
   const channel = LIVE_CHANNEL_PREFIX + subdomain;
   const subscriber = redis.duplicate();
 
-  subscriber.connect().then(() => {
-    subscriber.subscribe(channel, (_message, data) => {
-      onMessage(data);
+  subscriber
+    .connect()
+    .then(() => {
+      subscriber.subscribe(channel, (message) => {
+        onMessage(message);
+      });
+    })
+    .catch((err: unknown) => {
+      console.error(`[inspect-sse] redis subscribe error for channel=${channel}:`, err);
     });
-  });
 
   return () => {
     subscriber.unsubscribe(channel).catch(() => {});
