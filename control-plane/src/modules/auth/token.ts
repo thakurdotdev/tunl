@@ -10,7 +10,7 @@ export async function issueAccessToken(config: Config, userId: string) {
     .setIssuer(config.JWT_ISSUER)
     .setAudience(config.JWT_AUDIENCE)
     .setIssuedAt()
-    .setExpirationTime("1h")
+    .setExpirationTime("30d")
     .sign(keyFor(config));
 }
 export async function verifyAccessToken(config: Config, token: string) {

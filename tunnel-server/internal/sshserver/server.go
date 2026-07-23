@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/yourorg/tunnel-saas/tunnel-server/internal/logging"
-	"github.com/yourorg/tunnel-saas/tunnel-server/internal/registry"
+	"github.com/thakurdotdev/tunl/tunnel-server/internal/logging"
+	"github.com/thakurdotdev/tunl/tunnel-server/internal/registry"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -421,6 +421,7 @@ func (s *Server) handleSessionChannel(newCh ssh.NewChannel, sess *sshSession, lo
 
 	select {
 	case <-sess.tunnelReady():
+		sess.setTerminalWriter(ch)
 		renderTerminalBanner(ch, s, sess)
 	case <-sess.errorReady():
 		renderTerminalError(ch, s, sess.RegisterError())

@@ -2,6 +2,7 @@ package httpproxy
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
@@ -9,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yourorg/tunnel-saas/tunnel-server/internal/registry"
+	"github.com/thakurdotdev/tunl/tunnel-server/internal/registry"
 )
 
 type ctxKey string
@@ -66,6 +67,56 @@ func (h *Handler) dialTunnel(ctx context.Context, _, _ string) (net.Conn, error)
 	return wrapAsConn(rwc), nil
 }
 
+type statusWriter struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func (s *statusWriter) WriteHeader(code int) {
+	s.statusCode = code
+	s.ResponseWriter.WriteHeader(code)
+}
+
+func formatTerminalLog(now time.Time, method, path string, statusCode int, duration time.Duration) string {
+	var methodColor, statusColor string
+
+	switch method {
+	case "GET":
+		methodColor = "\033[1;32m" // Green
+	case "POST":
+		methodColor = "\033[1;34m" // Blue
+	case "PUT", "PATCH":
+		methodColor = "\033[1;33m" // Yellow
+	case "DELETE":
+		methodColor = "\033[1;31m" // Red
+	default:
+		methodColor = "\033[1;35m" // Purple
+	}
+
+	if statusCode < 300 {
+		statusColor = "\033[1;32m" // Green
+	} else if statusCode < 400 {
+		statusColor = "\033[1;36m" // Cyan
+	} else if statusCode < 500 {
+		statusColor = "\033[1;33m" // Yellow
+	} else {
+		statusColor = "\033[1;31m" // Red
+	}
+
+	timeStr := now.Format("15:04:05")
+	if len(path) > 30 {
+		path = path[:27] + "..."
+	}
+
+	statusText := http.StatusText(statusCode)
+	if statusText == "" {
+		statusText = "Unknown"
+	}
+
+	return fmt.Sprintf("  \033[90m%s\033[0m  %s%-6s\033[0m  \033[1;37m%-30s\033[0m  %s%-3d %-15s\033[0m  \033[90m%dms\033[0m",
+		timeStr, methodColor, method, path, statusColor, statusCode, statusText, duration.Milliseconds())
+}
+
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	subdomain := h.subdomainFromHost(r.Host)
 	if subdomain == "" {
@@ -91,8 +142,16 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	h.registry.UpdateActivity(subdomain)
 
+	sw := &statusWriter{ResponseWriter: w, statusCode: 200}
+	start := time.Now()
+
 	ctx := context.WithValue(r.Context(), tunnelCtxKey, tunnel)
-	h.proxy.ServeHTTP(w, r.WithContext(ctx))
+	h.proxy.ServeHTTP(sw, r.WithContext(ctx))
+
+	if tunnel.Conn != nil {
+		logLine := formatTerminalLog(start, r.Method, r.URL.RequestURI(), sw.statusCode, time.Since(start))
+		tunnel.Conn.WriteTerminalLog(logLine)
+	}
 }
 
 func (h *Handler) subdomainFromHost(host string) string {

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yourorg/tunnel-saas/tunnel-server/internal/registry"
+	"github.com/thakurdotdev/tunl/tunnel-server/internal/registry"
 	"golang.org/x/crypto/ssh"
 )
 

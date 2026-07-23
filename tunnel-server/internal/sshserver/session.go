@@ -6,7 +6,7 @@ import (
 	"io"
 	"sync"
 
-	"github.com/yourorg/tunnel-saas/tunnel-server/internal/registry"
+	"github.com/thakurdotdev/tunl/tunnel-server/internal/registry"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -31,13 +31,14 @@ type sshSession struct {
 	errOnce  sync.Once
 	errReady chan struct{}
 
-	mu        sync.Mutex
-	subdomain string
-	bindAddr  string
-	bindPort  uint32
-	tunnelURL string
-	forwarded bool
-	regErr    string
+	mu         sync.Mutex
+	subdomain  string
+	bindAddr   string
+	bindPort   uint32
+	tunnelURL  string
+	forwarded  bool
+	regErr     string
+	termWriter io.Writer
 }
 
 func newSSHSession(id, userID, email, allowedSubdomain, plan, remoteIP, deviceID string, maxActiveTunnels int, conn *ssh.ServerConn) *sshSession {
@@ -102,6 +103,21 @@ func (s *sshSession) TunnelURL() string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.tunnelURL
+}
+
+func (s *sshSession) setTerminalWriter(w io.Writer) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.termWriter = w
+}
+
+func (s *sshSession) WriteTerminalLog(line string) {
+	s.mu.Lock()
+	w := s.termWriter
+	s.mu.Unlock()
+	if w != nil {
+		fmt.Fprintf(w, "%s\r\n", line)
+	}
 }
 
 func (s *sshSession) setTunnelInfo(sub, url string) {

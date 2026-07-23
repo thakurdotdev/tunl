@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yourorg/tunnel-saas/tunnel-server/internal/requestlog"
+	"github.com/thakurdotdev/tunl/tunnel-server/internal/requestlog"
 )
 
 type responseCapture struct {

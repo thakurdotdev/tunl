@@ -8,7 +8,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/yourorg/tunnel-saas/tunnel-server/internal/registry"
+	"github.com/thakurdotdev/tunl/tunnel-server/internal/registry"
 )
 
 func NewHandler(reg registry.TunnelRegistry) http.Handler {

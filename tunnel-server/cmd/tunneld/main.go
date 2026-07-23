@@ -15,14 +15,14 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
-	"github.com/yourorg/tunnel-saas/tunnel-server/internal/config"
-	"github.com/yourorg/tunnel-saas/tunnel-server/internal/controlclient"
-	"github.com/yourorg/tunnel-saas/tunnel-server/internal/health"
-	"github.com/yourorg/tunnel-saas/tunnel-server/internal/httpproxy"
-	"github.com/yourorg/tunnel-saas/tunnel-server/internal/logging"
-	"github.com/yourorg/tunnel-saas/tunnel-server/internal/registry"
-	"github.com/yourorg/tunnel-saas/tunnel-server/internal/requestlog"
-	"github.com/yourorg/tunnel-saas/tunnel-server/internal/sshserver"
+	"github.com/thakurdotdev/tunl/tunnel-server/internal/config"
+	"github.com/thakurdotdev/tunl/tunnel-server/internal/controlclient"
+	"github.com/thakurdotdev/tunl/tunnel-server/internal/health"
+	"github.com/thakurdotdev/tunl/tunnel-server/internal/httpproxy"
+	"github.com/thakurdotdev/tunl/tunnel-server/internal/logging"
+	"github.com/thakurdotdev/tunl/tunnel-server/internal/registry"
+	"github.com/thakurdotdev/tunl/tunnel-server/internal/requestlog"
+	"github.com/thakurdotdev/tunl/tunnel-server/internal/sshserver"
 	"golang.org/x/crypto/ssh"
 )
 

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yourorg/tunnel-saas/tunnel-server/internal/registry"
+	"github.com/thakurdotdev/tunl/tunnel-server/internal/registry"
 )
 
 const wsIdleTimeout = 15 * time.Minute

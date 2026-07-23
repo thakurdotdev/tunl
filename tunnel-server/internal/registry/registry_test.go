@@ -18,10 +18,11 @@ func newFakeConn(id, userID string) *fakeConn {
 	return &fakeConn{id: id, userID: userID, done: make(chan struct{})}
 }
 
-func (f *fakeConn) ID() string            { return f.id }
-func (f *fakeConn) UserID() string        { return f.userID }
-func (f *fakeConn) Done() <-chan struct{} { return f.done }
-func (f *fakeConn) Close() error          { close(f.done); return nil }
+func (f *fakeConn) ID() string                   { return f.id }
+func (f *fakeConn) UserID() string               { return f.userID }
+func (f *fakeConn) Done() <-chan struct{}        { return f.done }
+func (f *fakeConn) Close() error                 { close(f.done); return nil }
+func (f *fakeConn) WriteTerminalLog(line string) {}
 func (f *fakeConn) Dial(ctx context.Context, addr string, port uint32) (io.ReadWriteCloser, error) {
 	return nil, nil
 }

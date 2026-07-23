@@ -19,6 +19,7 @@ type TunnelConnection interface {
 	Done() <-chan struct{} // closed when the underlying connection ends
 	Dial(ctx context.Context, remoteAddr string, remotePort uint32) (io.ReadWriteCloser, error)
 	Close() error
+	WriteTerminalLog(line string)
 }
 
 type Tunnel struct {
