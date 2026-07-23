@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"math/rand/v2"
 	"net/http"
@@ -205,7 +206,9 @@ func (c *Client) doPost(ctx context.Context, path string, payload any) error {
 	}
 	resp.Body.Close()
 	if resp.StatusCode >= 400 {
-		return fmt.Errorf("unexpected status %d", resp.StatusCode)
+		errBody, _ := io.ReadAll(resp.Body)
+		c.log.Error("control plane error response", "status", resp.StatusCode, "path", path, "body", string(errBody))
+		return fmt.Errorf("unexpected status %d: %s", resp.StatusCode, string(errBody))
 	}
 	return nil
 }

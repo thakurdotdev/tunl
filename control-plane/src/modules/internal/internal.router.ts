@@ -1,5 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
-import { and, eq, lt, ne } from "drizzle-orm";
+import { and, eq, lt } from "drizzle-orm";
 import { Router } from "express";
 import { z } from "zod";
 import type { Database } from "../../db/client.js";
@@ -18,13 +18,11 @@ import { asyncRoute } from "../../platform/http.js";
 import type { RedisClient } from "../../redis/client.js";
 import { redisKeys } from "../../redis/keys.js";
 
-const validateKeyBody = z.object({ fingerprint: z.string().regex(/^SHA256:[A-Za-z0-9+/=]+$/) });
-const usageBody = z.object({
-  tunnelId: z.uuid(),
-  bytesTransferred: z.number().int().nonnegative(),
-  timestamp: z.string().datetime(),
+export const validateKeyBody = z.object({
+  fingerprint: z.string().min(1),
 });
-const sessionConnectedBody = z.object({
+
+export const sessionConnectedBody = z.object({
   userId: z.string().optional(),
   anonymousId: z.string().min(1),
   subdomain: z.string().min(1),
@@ -33,6 +31,11 @@ const sessionConnectedBody = z.object({
   sessionType: z.enum(["anonymous", "authenticated"]),
   occurredAt: z.string().datetime(),
   eventId: z.string().min(1),
+});
+const usageBody = z.object({
+  tunnelId: z.uuid(),
+  bytesTransferred: z.number().int().nonnegative(),
+  timestamp: z.string().datetime(),
 });
 const sessionDisconnectedBody = z.object({
   userId: z.string().optional(),
@@ -57,11 +60,16 @@ function authorized(token: string | undefined, secret: string) {
 
 export function internalRouter(db: Database, redis: RedisClient, config: Config) {
   const router = Router();
-  router.use((req, _res, next) =>
-    authorized(req.header("x-internal-token"), config.INTERNAL_SHARED_SECRET)
-      ? next()
-      : next(unauthorized()),
-  );
+  router.use((req, _res, next) => {
+    const token = req.header("x-internal-token");
+    if (!authorized(token, config.INTERNAL_SHARED_SECRET)) {
+      console.warn(
+        `[internal-api] unauthorized request to ${req.path} (x-internal-token match: false)`,
+      );
+      return next(unauthorized());
+    }
+    next();
+  });
 
   router.post(
     "/validate-key",
@@ -71,6 +79,7 @@ export function internalRouter(db: Database, redis: RedisClient, config: Config)
       const cached = await redis.get(cacheKey);
 
       if (cached) {
+        console.log(`[internal-api] /validate-key cache hit for fingerprint=${fingerprint}`);
         return res.json(JSON.parse(cached));
       }
 
@@ -89,8 +98,14 @@ export function internalRouter(db: Database, redis: RedisClient, config: Config)
         .where(eq(sshKeys.fingerprint, fingerprint))
         .limit(1);
 
-      if (!row) throw notFound("SSH key not found");
+      if (!row) {
+        console.warn(`[internal-api] /validate-key not found for fingerprint=${fingerprint}`);
+        throw notFound("SSH key not found");
+      }
 
+      console.log(
+        `[internal-api] /validate-key found user=${row.email} allowedSubdomain=${row.allowedSubdomain}`,
+      );
       await redis.set(cacheKey, JSON.stringify(row), { EX: 300 });
       res.json(row);
     }),
@@ -102,6 +117,10 @@ export function internalRouter(db: Database, redis: RedisClient, config: Config)
       const body = sessionConnectedBody.parse(req.body);
       const { userId, anonymousId, subdomain, remoteIp, plan, sessionType, occurredAt, eventId } =
         body;
+
+      console.log(
+        `[internal-api] /tunnel-connected userId=${userId ?? "none"} subdomain=${subdomain} sessionType=${sessionType}`,
+      );
 
       // Analytics: fire-and-forget — must never block or fail the operational write.
       db.insert(tunnelEvents)
@@ -130,12 +149,7 @@ export function internalRouter(db: Database, redis: RedisClient, config: Config)
 
           const orphans = await tx
             .delete(activeTunnelSessions)
-            .where(
-              and(
-                eq(activeTunnelSessions.userId, userId),
-                ne(activeTunnelSessions.subdomain, subdomain),
-              ),
-            )
+            .where(eq(activeTunnelSessions.userId, userId))
             .returning({
               subdomain: activeTunnelSessions.subdomain,
               tunnelId: activeTunnelSessions.tunnelId,
@@ -150,13 +164,12 @@ export function internalRouter(db: Database, redis: RedisClient, config: Config)
             }
           }
 
-          await tx
-            .insert(activeTunnelSessions)
-            .values({ userId, tunnelId: reservation?.id ?? null, subdomain, remoteIp })
-            .onConflictDoUpdate({
-              target: [activeTunnelSessions.userId, activeTunnelSessions.subdomain],
-              set: { remoteIp, connectedAt: new Date(), lastSeenAt: new Date() },
-            });
+          await tx.insert(activeTunnelSessions).values({
+            userId,
+            tunnelId: reservation?.id ?? null,
+            subdomain,
+            remoteIp,
+          });
 
           if (reservation) {
             await tx

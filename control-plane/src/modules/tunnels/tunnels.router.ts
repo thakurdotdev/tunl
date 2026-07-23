@@ -23,6 +23,7 @@ export function tunnelsRouter(db: Database, redis: RedisClient) {
     "/",
     asyncRoute(async (req, res) => {
       const tunnelsList = await listUserTunnels(db, req.userId!);
+      console.log(`[v1/tunnels] userId=${req.userId} found=${tunnelsList.length} tunnel(s)`);
       res.json(tunnelsList);
     }),
   );
