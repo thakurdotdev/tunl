@@ -398,6 +398,7 @@ func (s *Server) handleSessionChannel(newCh ssh.NewChannel, sess *sshSession, lo
 	}
 	defer ch.Close()
 
+	fmt.Fprintf(ch, "  \033[90m⚡ Connecting & resolving subdomains...\033[0m\r")
 	sess.setTerminalWriter(ch)
 
 	go func() {

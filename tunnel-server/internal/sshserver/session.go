@@ -35,15 +35,17 @@ type sshSession struct {
 	errOnce  sync.Once
 	errReady chan struct{}
 
-	mu         sync.Mutex
-	subdomain  string
-	bindAddr   string
-	bindPort   uint32
-	tunnelURL  string
-	forwarded  bool
-	regErr     string
-	termWriter io.Writer
-	termRW     io.ReadWriter
+	mu              sync.Mutex
+	subdomain       string
+	bindAddr        string
+	bindPort        uint32
+	tunnelURL       string
+	forwarded       bool
+	regErr          string
+	termWriter      io.Writer
+	termRW          io.ReadWriter
+	termWriterReady chan struct{}
+	termWriterOnce  sync.Once
 }
 
 func newSSHSession(id, userID, email, allowedSubdomain string, reservedSubdomains []string, plan, remoteIP, deviceID string, maxActiveTunnels int, allowedIPs []string, conn *ssh.ServerConn) *sshSession {
@@ -67,6 +69,7 @@ func newSSHSession(id, userID, email, allowedSubdomain string, reservedSubdomain
 		done:               make(chan struct{}),
 		ready:              make(chan struct{}),
 		errReady:           make(chan struct{}),
+		termWriterReady:    make(chan struct{}),
 	}
 }
 
@@ -127,27 +130,27 @@ func (s *sshSession) TunnelURL() string {
 
 func (s *sshSession) setTerminalWriter(w io.Writer) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.termWriter = w
 	if rw, ok := w.(io.ReadWriter); ok {
 		s.termRW = rw
 	}
+	s.mu.Unlock()
+	s.termWriterOnce.Do(func() {
+		close(s.termWriterReady)
+	})
 }
 
 func (s *sshSession) waitForTerminalWriter(timeout time.Duration) io.Writer {
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
+	select {
+	case <-s.termWriterReady:
 		s.mu.Lock()
-		w := s.termWriter
-		s.mu.Unlock()
-		if w != nil {
-			return w
-		}
-		time.Sleep(25 * time.Millisecond)
+		defer s.mu.Unlock()
+		return s.termWriter
+	case <-time.After(timeout):
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		return s.termWriter
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.termWriter
 }
 
 func (s *sshSession) ReadTerminalInput(buf []byte) (int, error) {

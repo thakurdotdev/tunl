@@ -167,7 +167,12 @@ export function internalRouter(db: Database, redis: RedisClient, config: Config)
 
           const orphans = await tx
             .delete(activeTunnelSessions)
-            .where(eq(activeTunnelSessions.userId, userId))
+            .where(
+              and(
+                eq(activeTunnelSessions.userId, userId),
+                eq(activeTunnelSessions.subdomain, subdomain),
+              ),
+            )
             .returning({
               subdomain: activeTunnelSessions.subdomain,
               tunnelId: activeTunnelSessions.tunnelId,

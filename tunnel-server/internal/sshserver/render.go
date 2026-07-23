@@ -7,71 +7,44 @@ import (
 	"time"
 )
 
-// renderTerminalBanner outputs the primary TUNL startup banner when a tunnel is ready.
 func renderTerminalBanner(ch io.Writer, s *Server, sess *sshSession) {
-	url := sess.TunnelURL()
-	subdomain := sess.Subdomain()
-	homeURL := fmt.Sprintf("%s://tunl.%s", s.tunnelScheme, s.baseDomain)
-	inspectURL := fmt.Sprintf("%s://tunl.%s/inspect/%s", s.tunnelScheme, s.baseDomain, subdomain)
-
-	targetHost := sess.BindAddr()
-	if targetHost == "" || targetHost == "0.0.0.0" || targetHost == "127.0.0.1" {
-		targetHost = "localhost"
+	accountStr := sess.Email()
+	if accountStr == "" {
+		accountStr = "Anonymous Device"
 	}
-	forwardTarget := fmt.Sprintf("http://%s", targetHost)
-	if sess.BindPort() != 80 && sess.BindPort() != 443 {
-		forwardTarget = fmt.Sprintf("http://%s:%d", targetHost, sess.BindPort())
+	plan := sess.Plan()
+	if plan != "" {
+		accountStr = fmt.Sprintf("%s (%s plan)", accountStr, plan)
 	}
 
-	accountStr := "\033[90mAnonymous\033[0m"
-	if sess.UserID() != "" {
-		planStr := sess.Plan()
-		if planStr == "" {
-			planStr = "standard"
-		}
-		accountStr = fmt.Sprintf("\033[1;37m%s\033[0m \033[36m(%s plan)\033[0m", sess.Email(), planStr)
+	localTarget := "http://localhost"
+	if sess.BindPort() != 0 && sess.BindPort() != 80 {
+		localTarget = fmt.Sprintf("http://localhost:%d", sess.BindPort())
 	}
 
-	fmt.Fprintf(ch, "\r\n")
+	inspectorURL := fmt.Sprintf("%s://%s/inspect/%s", s.tunnelScheme, s.baseDomain, sess.Subdomain())
+
 	fmt.Fprintf(ch, "  \033[1;36m⚡ TUNL\033[0m  \033[90m•\033[0m  \033[1;32m● Online\033[0m\r\n")
 	fmt.Fprintf(ch, "  \033[90m──────────────────────────────────────────────────────────\033[0m\r\n")
-	fmt.Fprintf(ch, "  \033[90mAccount\033[0m     %s\r\n", accountStr)
-	fmt.Fprintf(ch, "  \033[90mForwarding\033[0m  \033[1;33m%s\033[0m\r\n", forwardTarget)
-	fmt.Fprintf(ch, "  \033[90mPublic URL\033[0m  \033[1;4;36m%s\033[0m\r\n", url)
-	if sess.UserID() != "" {
-		fmt.Fprintf(ch, "  \033[90mInspector\033[0m   \033[4;34m%s\033[0m\r\n", inspectURL)
-	}
-
-	if sess.UserID() == "" && s.anonMaxDuration > 0 {
-		hours := int(s.anonMaxDuration.Hours())
-		fmt.Fprintf(ch, "  \033[90mExpires\033[0m     \033[33m%d hours\033[0m (sign up for unlimited)\r\n", hours)
-	}
-
-	if sess.UserID() != "" && sess.AllowedSubdomain() == "" {
-		fmt.Fprintf(ch, "\r\n  \033[33m💡 Tip:\033[0m Reserve a custom domain at \033[4;34m%s\033[0m\r\n", homeURL)
-	} else if sess.UserID() == "" {
-		fmt.Fprintf(ch, "\r\n  \033[33m💡 Tip:\033[0m Sign up for unlimited tunnels at \033[4;34m%s\033[0m\r\n", homeURL)
-	}
-
+	fmt.Fprintf(ch, "  \033[90mAccount    \033[0m \033[1;37m%s\033[0m\r\n", accountStr)
+	fmt.Fprintf(ch, "  \033[90mForwarding \033[0m \033[1;33m%s\033[0m\r\n", localTarget)
+	fmt.Fprintf(ch, "  \033[90mPublic URL \033[0m \033[4;34m%s\033[0m\r\n", sess.TunnelURL())
+	fmt.Fprintf(ch, "  \033[90mInspector  \033[0m \033[4;34m%s\033[0m\r\n", inspectorURL)
 	fmt.Fprintf(ch, "  \033[90m──────────────────────────────────────────────────────────\033[0m\r\n")
-	fmt.Fprintf(ch, "  \033[90mPress \033[1;37mCtrl+C\033[0;90m or \033[1;37mCtrl+D\033[0;90m to stop the tunnel\033[0m\r\n\r\n")
+	fmt.Fprintf(ch, "  \033[90mPress \033[1;37mCtrl+C\033[0m \033[90mor\033[0m \033[1;37mCtrl+D\033[0m \033[90mto stop the tunnel\033[0m\r\n\r\n")
 }
 
-// renderTerminalExpiry handles session expiration banners.
 func renderTerminalExpiry(ch io.Writer, s *Server) {
-	homeURL := fmt.Sprintf("%s://tunl.%s", s.tunnelScheme, s.baseDomain)
+	homeURL := fmt.Sprintf("%s://%s", s.tunnelScheme, s.baseDomain)
 	fmt.Fprintf(ch, "\r\n")
-	fmt.Fprintf(ch, "  \033[1;33m⏰ Session Expired\033[0m\r\n")
+	fmt.Fprintf(ch, "  \033[1;33m⏱ Anonymous Session Limit Reached (%v max)\033[0m\r\n", s.anonMaxDuration)
 	fmt.Fprintf(ch, "  \033[90m──────────────────────────────────────────────────────────\033[0m\r\n")
-	fmt.Fprintf(ch, "  \033[90mReason\033[0m     Anonymous tunnel time limit reached\r\n")
-	fmt.Fprintf(ch, "  \033[90mNext\033[0m       Reconnect to start a new session, or\r\n")
-	fmt.Fprintf(ch, "             sign up at \033[4;34m%s\033[0m for unlimited tunnels\r\n", homeURL)
+	fmt.Fprintf(ch, "  Sign up at \033[4;34m%s\033[0m for persistent tunnels & custom subdomains.\r\n", homeURL)
 	fmt.Fprintf(ch, "  \033[90m──────────────────────────────────────────────────────────\033[0m\r\n\r\n")
 }
 
-// renderTerminalError handles connection error banners.
 func renderTerminalError(ch io.Writer, s *Server, errMsg string) {
-	homeURL := fmt.Sprintf("%s://tunl.%s", s.tunnelScheme, s.baseDomain)
+	homeURL := fmt.Sprintf("%s://%s", s.tunnelScheme, s.baseDomain)
 	fmt.Fprintf(ch, "\r\n")
 	fmt.Fprintf(ch, "  \033[1;31m✖ Tunnel Error\033[0m\r\n")
 	fmt.Fprintf(ch, "  \033[90m──────────────────────────────────────────────────────────\033[0m\r\n")
@@ -82,12 +55,13 @@ func renderTerminalError(ch io.Writer, s *Server, errMsg string) {
 
 // promptSubdomainSelection renders the multi-subdomain selection menu over SSH TTY.
 func promptSubdomainSelection(sess *sshSession, available []string, baseDomain string) string {
-	w := sess.waitForTerminalWriter(500 * time.Millisecond)
+	w := sess.waitForTerminalWriter(300 * time.Millisecond)
 
 	if w == nil {
 		return available[0]
 	}
 
+	fmt.Fprintf(w, "\r\033[K") // Clear instant status line
 	fmt.Fprintf(w, "\r\n")
 	fmt.Fprintf(w, "  \033[1;36m⚡ TUNL\033[0m  \033[90m•\033[0m  \033[1;33mSelect Reserved Subdomain\033[0m\r\n")
 	fmt.Fprintf(w, "  \033[90m──────────────────────────────────────────────────────────\033[0m\r\n")
@@ -98,7 +72,7 @@ func promptSubdomainSelection(sess *sshSession, available []string, baseDomain s
 	}
 	randomIdx := len(available) + 1
 	fmt.Fprintf(w, "    \033[1;30m[%d]\033[0m \033[90m(Use random ephemeral subdomain)\033[0m\r\n\r\n", randomIdx)
-	fmt.Fprintf(w, "  Select subdomain [1-%d] (default 1): ", randomIdx)
+	fmt.Fprintf(w, "  \033[1;36mSelect subdomain [1-%d] (default 1):\033[0m ", randomIdx)
 
 	inputCh := make(chan string, 1)
 	go func() {
@@ -111,22 +85,31 @@ func promptSubdomainSelection(sess *sshSession, available []string, baseDomain s
 		inputCh <- strings.TrimSpace(string(buf[:n]))
 	}()
 
+	var chosen string
 	select {
 	case choice := <-inputCh:
-		fmt.Fprintf(w, "\r\n\r\n")
 		if choice == "" || choice == "1" || choice == "\r" || choice == "\n" {
-			return available[0]
+			chosen = available[0]
+		} else if choice == fmt.Sprintf("%d", randomIdx) {
+			chosen = "__random__"
+		} else {
+			var idx int
+			if n, _ := fmt.Sscanf(choice, "%d", &idx); n == 1 && idx >= 1 && idx <= len(available) {
+				chosen = available[idx-1]
+			} else {
+				chosen = available[0]
+			}
 		}
-		if choice == fmt.Sprintf("%d", randomIdx) {
-			return "__random__"
-		}
-		var idx int
-		if n, _ := fmt.Sscanf(choice, "%d", &idx); n == 1 && idx >= 1 && idx <= len(available) {
-			return available[idx-1]
-		}
-		return available[0]
 	case <-time.After(15 * time.Second):
-		fmt.Fprintf(w, " 1 (timeout)\r\n\r\n")
-		return available[0]
+		fmt.Fprintf(w, "1 (timeout)")
+		chosen = available[0]
 	}
+
+	if chosen == "__random__" {
+		fmt.Fprintf(w, "\r\n  \033[1;32m✔ Selected:\033[0m \033[1;37mRandom Ephemeral Subdomain\033[0m\r\n\r\n")
+	} else {
+		fmt.Fprintf(w, "\r\n  \033[1;32m✔ Selected:\033[0m \033[1;37m%s.%s\033[0m\r\n\r\n", chosen, baseDomain)
+	}
+
+	return chosen
 }
