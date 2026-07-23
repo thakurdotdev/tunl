@@ -5,12 +5,57 @@ on:
   push:
     branches: [main]
 
-jobs:
-  # ─── CI: runs on every PR and push ───────────────────────────────────────────
-  check:
-    name: Check
-    runs-on: ubuntu-latest
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
+jobs:
+  # ─── CI: Parallel verification jobs ──────────────────────────────────────────
+  check-js:
+    name: JS/TS Checks & Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Format check (TS/JS)
+        run: pnpm run format:check
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Run unit tests
+        run: pnpm run test
+
+  check-go:
+    name: Go Checks & Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: tunnel-server/go.mod
+          cache-dependency-path: tunnel-server/go.sum
+
+      - name: Go format check
+        run: test -z "$(find tunnel-server -type f -name '*.go' -print0 | xargs -0 gofmt -l)"
+
+      - name: Go vet + tests
+        run: cd tunnel-server && go vet ./... && go test -race ./...
+
+  build:
+    name: Build Verification
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -26,20 +71,16 @@ jobs:
           go-version-file: tunnel-server/go.mod
           cache-dependency-path: tunnel-server/go.sum
 
+      - name: Restore Next.js build cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/dashboard/.next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/pnpm-lock.yaml') }}-${{ hashFiles('dashboard/**/*.[jt]s*', 'dashboard/**/*.[jt]sx*') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('**/pnpm-lock.yaml') }}-
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
-      - name: Format check (TS/JS)
-        run: pnpm run format:check
-
-      - name: Lint
-        run: pnpm run lint
-
-      - name: Go format check
-        run: pnpm run go:format:check
-
-      - name: Go vet + tests
-        run: pnpm run go:check
 
       - name: Build (validate compile)
         run: pnpm run build
@@ -48,7 +89,7 @@ jobs:
   deploy:
     name: Deploy
     runs-on: ubuntu-latest
-    needs: check
+    needs: [check-js, check-go, build]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
@@ -73,16 +114,11 @@ jobs:
             echo "── installing node dependencies ──"
             pnpm install --frozen-lockfile
 
-            echo "── building control-plane ──"
-            pnpm --filter control-plane build
-
-            echo "── building dashboard ──"
-            pnpm --filter dashboard build
-
-            echo "── building tunnel-server ──"
-            cd tunnel-server
-            go build -o bin/tunneld ./cmd/tunneld
-            cd ..
+            echo "── building services in parallel ──"
+            pnpm --filter control-plane build &
+            pnpm --filter dashboard build &
+            (cd tunnel-server && go build -o bin/tunneld ./cmd/tunneld) &
+            wait
 
             echo "── running database migrations ──"
             pnpm run db:migrate

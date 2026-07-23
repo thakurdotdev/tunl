@@ -14,7 +14,8 @@
     "go:format": "find tunnel-server -type f -name '*.go' -print0 | xargs -0 gofmt -w",
     "go:format:check": "test -z \"$(find tunnel-server -type f -name '*.go' -print0 | xargs -0 gofmt -l)\"",
     "go:check": "cd tunnel-server && go vet ./... && go test -race ./...",
-    "check": "pnpm run format:check && pnpm run lint && pnpm run go:format:check && pnpm run go:check"
+    "test": "pnpm --filter control-plane test",
+    "check": "pnpm run format:check && pnpm run lint && pnpm run test && pnpm run go:format:check && pnpm run go:check"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
