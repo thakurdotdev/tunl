@@ -85,7 +85,7 @@ export function internalRouter(db: Database, redis: RedisClient, config: Config)
         .from(sshKeys)
         .innerJoin(users, eq(sshKeys.userId, users.id))
         .innerJoin(plans, eq(users.planId, plans.id))
-        .leftJoin(tunnels, and(eq(tunnels.userId, users.id), eq(tunnels.status, "reserved")))
+        .leftJoin(tunnels, eq(tunnels.userId, users.id))
         .where(eq(sshKeys.fingerprint, fingerprint))
         .limit(1);
 
@@ -165,6 +165,14 @@ export function internalRouter(db: Database, redis: RedisClient, config: Config)
               .where(eq(tunnels.id, reservation.id));
           }
         });
+
+        const keys = await db
+          .select({ fingerprint: sshKeys.fingerprint })
+          .from(sshKeys)
+          .where(eq(sshKeys.userId, userId));
+        for (const k of keys) {
+          await redis.del(redisKeys.validateKey(k.fingerprint));
+        }
       }
 
       res.status(204).send();
@@ -217,6 +225,14 @@ export function internalRouter(db: Database, redis: RedisClient, config: Config)
             .update(tunnels)
             .set({ status: "reserved", updatedAt: new Date() })
             .where(eq(tunnels.id, reservation.id));
+        }
+
+        const keys = await db
+          .select({ fingerprint: sshKeys.fingerprint })
+          .from(sshKeys)
+          .where(eq(sshKeys.userId, userId));
+        for (const k of keys) {
+          await redis.del(redisKeys.validateKey(k.fingerprint));
         }
       }
 

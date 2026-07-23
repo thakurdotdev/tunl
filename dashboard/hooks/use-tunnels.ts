@@ -9,6 +9,7 @@ export function useTunnelsQuery() {
       const { data } = await client.get<Tunnel[]>("/v1/tunnels");
       return data;
     },
+    refetchInterval: 3_000,
   });
 }
 
@@ -19,7 +20,7 @@ export function useTunnelSessionsQuery() {
       const { data } = await client.get<TunnelSession[]>("/v1/tunnel-sessions");
       return data;
     },
-    refetchInterval: 30_000,
+    refetchInterval: 3_000,
   });
 }
 
