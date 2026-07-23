@@ -9,6 +9,7 @@ import {
   Globe,
   Loader2,
   Plus,
+  Save,
   Shield,
   Trash2,
 } from "lucide-react";
@@ -67,11 +68,11 @@ export function IpWhitelistCard({ profile, onUpdateWhitelist, isPending }: IpWhi
             <div className="flex items-center gap-2">
               <h2 className="text-base font-bold">IP Whitelist Security Rules</h2>
               {enabled ? (
-                <span className="flex items-center gap-1 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-bold text-cyan-400">
+                <span className="flex items-center gap-1 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-0.5 text-[10px] font-bold text-cyan-400">
                   <CheckCircle2 className="h-3 w-3" /> RESTRICTIONS ACTIVE
                 </span>
               ) : (
-                <span className="border-border bg-muted/40 text-muted-foreground rounded-full border px-2 py-0.5 text-[10px]">
+                <span className="border-border bg-muted/40 text-muted-foreground rounded-full border px-2.5 py-0.5 text-[10px]">
                   WHITELIST DISABLED
                 </span>
               )}
@@ -98,7 +99,9 @@ export function IpWhitelistCard({ profile, onUpdateWhitelist, isPending }: IpWhi
               <Check className="mr-1.5 h-3.5 w-3.5 text-emerald-400" /> Whitelist Saved!
             </>
           ) : (
-            "Save Rules"
+            <>
+              <Save className="mr-1.5 h-3.5 w-3.5" /> Save Rules
+            </>
           )}
         </Button>
       </div>
@@ -147,7 +150,7 @@ export function IpWhitelistCard({ profile, onUpdateWhitelist, isPending }: IpWhi
           size="sm"
           className="border-border h-8 shrink-0 text-xs"
         >
-          <Plus className="mr-1 h-3.5 w-3.5" /> Add IP
+          <Plus className="mr-1 h-3.5 w-3.5" /> Add IP Rule
         </Button>
       </form>
 

@@ -75,7 +75,7 @@ export function TwoFactorCard({
   return (
     <>
       <div className="bg-card border-border/80 rounded-xl border p-6 font-mono shadow-xs">
-        <div className="border-border/60 flex items-center justify-between border-b pb-4">
+        <div className="border-border/60 flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full border border-purple-500/30 bg-purple-500/10">
               <KeyRound className="h-5 w-5 text-purple-400" />
@@ -84,11 +84,11 @@ export function TwoFactorCard({
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-bold">Two-Factor Authentication (2FA)</h2>
                 {profile?.twoFactorEnabled ? (
-                  <span className="flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-400">
+                  <span className="flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-bold text-emerald-400">
                     <CheckCircle2 className="h-3 w-3" /> ENABLED
                   </span>
                 ) : (
-                  <span className="border-border bg-muted/40 text-muted-foreground rounded-full border px-2 py-0.5 text-[10px]">
+                  <span className="border-border bg-muted/40 text-muted-foreground rounded-full border px-2.5 py-0.5 text-[10px]">
                     DISABLED
                   </span>
                 )}

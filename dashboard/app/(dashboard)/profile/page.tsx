@@ -40,6 +40,7 @@ export default function ProfilePage() {
 
       {/* User Information Card */}
       <ProfileInfoCard
+        key={profile?.name ?? "profile-name"}
         profile={profile}
         onUpdateName={(name) => updateName.mutate(name)}
         isPending={updateName.isPending}
@@ -58,6 +59,7 @@ export default function ProfilePage() {
 
       {/* IP Whitelist Security Card */}
       <IpWhitelistCard
+        key={`${profile?.ipWhitelistEnabled}-${profile?.allowedIps?.join(",")}`}
         profile={profile}
         onUpdateWhitelist={(params) => updateIpWhitelist.mutateAsync(params)}
         isPending={updateIpWhitelist.isPending}

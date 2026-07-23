@@ -30,7 +30,7 @@ export function createProfileRouter(db: Database, jwtSecret: string): Router {
   router.get(
     "/",
     asyncRoute(async (req: Request, res: Response) => {
-      const userId = (req as any).user.userId;
+      const userId = req.userId!;
       const profile = await getUserProfile(db, userId);
       res.json(profile);
     }),
@@ -39,7 +39,7 @@ export function createProfileRouter(db: Database, jwtSecret: string): Router {
   router.patch(
     "/",
     asyncRoute(async (req: Request, res: Response) => {
-      const userId = (req as any).user.userId;
+      const userId = req.userId!;
       const { name } = updateNameSchema.parse(req.body);
       const updated = await updateUserProfileName(db, userId, name);
       res.json(updated);
@@ -49,7 +49,7 @@ export function createProfileRouter(db: Database, jwtSecret: string): Router {
   router.post(
     "/2fa/setup",
     asyncRoute(async (req: Request, res: Response) => {
-      const userId = (req as any).user.userId;
+      const userId = req.userId!;
       const result = await setup2FA(db, userId, jwtSecret);
       res.json(result);
     }),
@@ -58,7 +58,7 @@ export function createProfileRouter(db: Database, jwtSecret: string): Router {
   router.post(
     "/2fa/verify",
     asyncRoute(async (req: Request, res: Response) => {
-      const userId = (req as any).user.userId;
+      const userId = req.userId!;
       const { code } = codeSchema.parse(req.body);
       const result = await verify2FA(db, userId, code, jwtSecret);
       res.json(result);
@@ -68,7 +68,7 @@ export function createProfileRouter(db: Database, jwtSecret: string): Router {
   router.post(
     "/2fa/disable",
     asyncRoute(async (req: Request, res: Response) => {
-      const userId = (req as any).user.userId;
+      const userId = req.userId!;
       const { code } = codeSchema.parse(req.body);
       const result = await disable2FA(db, userId, code, jwtSecret);
       res.json(result);
@@ -78,7 +78,7 @@ export function createProfileRouter(db: Database, jwtSecret: string): Router {
   router.patch(
     "/ip-whitelist",
     asyncRoute(async (req: Request, res: Response) => {
-      const userId = (req as any).user.userId;
+      const userId = req.userId!;
       const { allowedIps, enabled } = ipWhitelistSchema.parse(req.body);
       const updated = await updateAllowedIps(db, userId, allowedIps, enabled);
       res.json(updated);
