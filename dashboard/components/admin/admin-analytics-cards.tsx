@@ -1,5 +1,5 @@
 import type { AdminAnalytics } from "@/lib/types";
-import { Globe, Layers, Radio, Users } from "lucide-react";
+import { Activity, Globe, Radio, Users } from "lucide-react";
 
 interface AdminAnalyticsCardsProps {
   analytics: AdminAnalytics | undefined;
@@ -44,20 +44,13 @@ export function AdminAnalyticsCards({ analytics, isLoading }: AdminAnalyticsCard
 
       <div className="bg-card border-border/80 rounded-lg border p-4">
         <div className="text-muted-foreground flex items-center justify-between">
-          <span className="font-mono text-xs font-medium">System Plan Tiers</span>
-          <Layers className="h-4 w-4 text-purple-400" />
+          <span className="font-mono text-xs font-medium">Total Audit Events</span>
+          <Activity className="h-4 w-4 text-purple-400" />
         </div>
-        <div className="mt-2 flex flex-wrap items-center gap-1.5 font-mono">
-          {analytics?.planDistribution.map((pd) => (
-            <span
-              key={pd.planName}
-              className="bg-muted/50 border-border text-foreground rounded border px-2 py-0.5 text-xs"
-            >
-              {pd.planName}: <strong className="text-primary">{pd.userCount}</strong>
-            </span>
-          ))}
+        <div className="mt-2 font-mono text-2xl font-bold text-purple-400">
+          {isLoading ? "..." : (analytics?.totalEvents ?? 0)}
         </div>
-        <span className="text-muted-foreground text-[11px]">Plan distribution</span>
+        <span className="text-muted-foreground text-[11px]">Connection / disconnect logs</span>
       </div>
     </div>
   );

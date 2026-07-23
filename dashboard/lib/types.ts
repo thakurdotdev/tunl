@@ -9,14 +9,34 @@ export type User = {
   };
 };
 
+export type ActiveSessionItem = {
+  id: string;
+  subdomain: string;
+  remoteIp: string;
+  connectedAt: string;
+  userEmail: string | null;
+};
+
+export type TunnelEventItem = {
+  id: string;
+  eventType: string;
+  subdomain: string | null;
+  remoteIp: string | null;
+  occurredAt: string;
+  userEmail: string | null;
+};
+
 export type AdminAnalytics = {
   totalUsers: number;
   totalActiveSessions: number;
   totalTunnels: number;
+  totalEvents: number;
   planDistribution: Array<{
     planName: string;
     userCount: number;
   }>;
+  activeSessionsList: ActiveSessionItem[];
+  recentEventsList: TunnelEventItem[];
 };
 
 export type AdminUser = {
@@ -27,7 +47,7 @@ export type AdminUser = {
   planId: string;
   createdAt: string;
   sshKeyCount: number;
-  reservedSubdomainsCount: number;
+  reservedSubdomains: string[];
 };
 
 export type AdminPlan = {

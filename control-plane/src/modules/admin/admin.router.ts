@@ -14,7 +14,7 @@ import {
 } from "./admin.service.js";
 
 const updatePlanSchema = z.object({
-  planName: z.string().min(1),
+  planId: z.uuid("Invalid planId format"),
 });
 
 const updateRoleSchema = z.object({
@@ -56,9 +56,9 @@ export function createAdminRouter(db: Database): Router {
   router.patch(
     "/users/:userId/plan",
     asyncRoute(async (req: Request, res: Response) => {
-      const { planName } = updatePlanSchema.parse(req.body);
+      const { planId } = updatePlanSchema.parse(req.body);
       const userId = Array.isArray(req.params.userId) ? req.params.userId[0] : req.params.userId;
-      const result = await updateUserPlan(db, userId, planName);
+      const result = await updateUserPlan(db, userId, planId);
       res.json(result);
     }),
   );

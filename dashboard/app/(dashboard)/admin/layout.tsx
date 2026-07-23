@@ -51,7 +51,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold tracking-tight">Admin Console</h1>
-            <span className="flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-medium text-emerald-400">
+            <span className="border-primary/40 bg-primary/10 text-primary flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-bold">
               <ShieldCheck className="h-3 w-3" /> ADMIN GRANTED
             </span>
           </div>
@@ -61,8 +61,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
 
         <Link href="/admin/plans/new">
-          <Button size="sm" className="text-xs">
-            <Plus className="mr-1.5 h-3.5 w-3.5" /> Create Plan
+          <Button size="sm" variant="default" className="h-8 text-xs font-semibold">
+            <Plus className="mr-1.5 h-3.5 w-3.5" /> Create Plan Tier
           </Button>
         </Link>
       </div>

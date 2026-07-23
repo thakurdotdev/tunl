@@ -30,16 +30,17 @@ export default function AdminUsersPage() {
         onSearchChange={setSearch}
         onSelectUserForPlan={setSelectedUserForPlan}
         onToggleUserRole={(userId, role) => updateUserRole.mutate({ userId, role })}
+        isRolePending={updateUserRole.isPending}
       />
 
       <AssignPlanModal
         user={selectedUserForPlan}
         plans={plansList}
         onClose={() => setSelectedUserForPlan(null)}
-        onSelectPlan={(planName) => {
+        onSelectPlan={(planId) => {
           if (selectedUserForPlan) {
             updateUserPlan.mutate(
-              { userId: selectedUserForPlan.id, planName },
+              { userId: selectedUserForPlan.id, planId },
               { onSuccess: () => setSelectedUserForPlan(null) },
             );
           }

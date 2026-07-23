@@ -37,9 +37,9 @@ export function useAdminPlans() {
 export function useUpdateUserPlan() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ userId, planName }: { userId: string; planName: string }) => {
+    mutationFn: async ({ userId, planId }: { userId: string; planId: string }) => {
       const { data } = await client.patch<{ success: boolean }>(`/v1/admin/users/${userId}/plan`, {
-        planName,
+        planId,
       });
       return data;
     },

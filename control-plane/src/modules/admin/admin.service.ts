@@ -1,29 +1,83 @@
 import { count, eq, ilike, sql } from "drizzle-orm";
 import type { Database } from "../../db/client.js";
-import { activeTunnelSessions, plans, sshKeys, tunnels, users } from "../../db/schema.js";
+import {
+  activeTunnelSessions,
+  plans,
+  sshKeys,
+  tunnelEvents,
+  tunnels,
+  users,
+} from "../../db/schema.js";
 import { badRequest, conflict, notFound } from "../../platform/errors.js";
 
 export async function getAdminAnalytics(db: Database) {
-  const [[{ totalUsers }], [{ totalActiveSessions }], [{ totalTunnels }], planDistribution] =
-    await Promise.all([
-      db.select({ totalUsers: count() }).from(users),
-      db.select({ totalActiveSessions: count() }).from(activeTunnelSessions),
-      db.select({ totalTunnels: count() }).from(tunnels),
-      db
-        .select({
-          planName: plans.name,
-          userCount: count(users.id),
-        })
-        .from(plans)
-        .leftJoin(users, eq(users.planId, plans.id))
-        .groupBy(plans.name),
-    ]);
+  const [
+    [{ totalUsers }],
+    [{ totalActiveSessions }],
+    [{ totalTunnels }],
+    [{ totalEvents }],
+    planDistribution,
+    activeSessionsList,
+    recentEventsList,
+  ] = await Promise.all([
+    db.select({ totalUsers: count() }).from(users),
+    db.select({ totalActiveSessions: count() }).from(activeTunnelSessions),
+    db.select({ totalTunnels: count() }).from(tunnels),
+    db.select({ totalEvents: count() }).from(tunnelEvents),
+    db
+      .select({
+        planName: plans.name,
+        userCount: count(users.id),
+      })
+      .from(plans)
+      .leftJoin(users, eq(users.planId, plans.id))
+      .groupBy(plans.name),
+    db
+      .select({
+        id: activeTunnelSessions.id,
+        subdomain: activeTunnelSessions.subdomain,
+        remoteIp: activeTunnelSessions.remoteIp,
+        connectedAt: activeTunnelSessions.connectedAt,
+        userEmail: users.email,
+      })
+      .from(activeTunnelSessions)
+      .leftJoin(users, eq(activeTunnelSessions.userId, users.id))
+      .orderBy(sql`${activeTunnelSessions.connectedAt} DESC`)
+      .limit(20),
+    db
+      .select({
+        id: tunnelEvents.id,
+        eventType: tunnelEvents.eventType,
+        properties: tunnelEvents.properties,
+        occurredAt: tunnelEvents.occurredAt,
+        userEmail: users.email,
+      })
+      .from(tunnelEvents)
+      .leftJoin(users, eq(tunnelEvents.userId, users.id))
+      .orderBy(sql`${tunnelEvents.occurredAt} DESC`)
+      .limit(20),
+  ]);
+
+  const mappedRecentEvents = recentEventsList.map((e) => {
+    const props = (e.properties as Record<string, any>) || {};
+    return {
+      id: e.id,
+      eventType: e.eventType,
+      subdomain: props.subdomain ? String(props.subdomain) : null,
+      remoteIp: props.remote_ip ? String(props.remote_ip) : null,
+      occurredAt: e.occurredAt,
+      userEmail: e.userEmail,
+    };
+  });
 
   return {
     totalUsers,
     totalActiveSessions,
     totalTunnels,
+    totalEvents,
     planDistribution,
+    activeSessionsList,
+    recentEventsList: mappedRecentEvents,
   };
 }
 
@@ -53,33 +107,31 @@ export async function getAdminUsers(db: Database, search?: string) {
     return [];
   }
 
-  const [sshCounts, tunnelCounts] = await Promise.all([
+  const [sshCounts, userTunnels] = await Promise.all([
     db.select({ userId: sshKeys.userId, keyCount: count() }).from(sshKeys).groupBy(sshKeys.userId),
-    db
-      .select({ userId: tunnels.userId, tunnelCount: count() })
-      .from(tunnels)
-      .groupBy(tunnels.userId),
+    db.select({ userId: tunnels.userId, subdomain: tunnels.subdomain }).from(tunnels),
   ]);
 
   const sshMap = new Map(sshCounts.map((s) => [s.userId, s.keyCount]));
-  const tunnelMap = new Map(tunnelCounts.map((t) => [t.userId, t.tunnelCount]));
+  const tunnelMap = new Map<string, string[]>();
+  for (const t of userTunnels) {
+    const list = tunnelMap.get(t.userId) ?? [];
+    list.push(t.subdomain);
+    tunnelMap.set(t.userId, list);
+  }
 
   return rows.map((u) => ({
     ...u,
     sshKeyCount: sshMap.get(u.id) ?? 0,
-    reservedSubdomainsCount: tunnelMap.get(u.id) ?? 0,
+    reservedSubdomains: tunnelMap.get(u.id) ?? [],
   }));
 }
 
-export async function updateUserPlan(db: Database, userId: string, planNameOrId: string) {
-  const [targetPlan] = await db
-    .select()
-    .from(plans)
-    .where(sql`${plans.name} = ${planNameOrId} OR ${plans.id} = ${planNameOrId}`)
-    .limit(1);
+export async function updateUserPlan(db: Database, userId: string, planId: string) {
+  const [targetPlan] = await db.select().from(plans).where(eq(plans.id, planId)).limit(1);
 
   if (!targetPlan) {
-    throw badRequest(`Plan '${planNameOrId}' does not exist`);
+    throw badRequest(`Plan with ID '${planId}' does not exist`);
   }
 
   const [updatedUser] = await db
