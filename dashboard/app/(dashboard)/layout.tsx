@@ -16,7 +16,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const navItems = [
     { href: "/dashboard", label: "0:tunnels", pathMatch: "/dashboard" },
     { href: "/keys", label: "1:ssh-keys", pathMatch: "/keys" },
-    { href: "/docs", label: "2:docs", pathMatch: "/docs" },
   ];
 
   return (
@@ -24,19 +23,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div className="bg-background flex min-h-screen flex-col font-mono">
         <header className="border-border bg-card/90 sticky top-0 z-50 border-b backdrop-blur-xs">
           <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
-            <div className="flex items-center gap-3 sm:gap-6 overflow-hidden">
-              <Link href="/dashboard" className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-3 overflow-hidden sm:gap-6">
+              <Link href="/dashboard" className="flex shrink-0 items-center gap-2">
                 <Logo />
               </Link>
-              <div className="bg-border/60 hidden h-4 w-px sm:block shrink-0" />
-              <nav className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto py-1 no-scrollbar">
+              <div className="bg-border/60 hidden h-4 w-px shrink-0 sm:block" />
+              <nav className="no-scrollbar flex items-center gap-1 overflow-x-auto py-1 sm:gap-1.5">
                 {navItems.map((item) => {
                   const isActive = pathname === item.pathMatch;
                   return (
                     <Link
                       key={item.href}
                       href={item.href}
-                      className={`flex items-center rounded-md px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs font-mono transition-all whitespace-nowrap ${
+                      className={`flex items-center rounded-md px-2 py-1 font-mono text-[11px] whitespace-nowrap transition-all sm:px-2.5 sm:text-xs ${
                         isActive
                           ? "bg-primary/15 text-primary border-primary/30 border font-semibold"
                           : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
@@ -49,9 +48,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 })}
               </nav>
             </div>
-            <div className="flex items-center gap-2 sm:gap-3 text-xs shrink-0">
+            <div className="flex shrink-0 items-center gap-2 text-xs sm:gap-3">
               <div className="border-border bg-muted/40 hidden items-center gap-2 rounded-md border px-2.5 py-1 md:flex">
-                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
                 <span className="text-muted-foreground font-mono text-[11px]">SSH:2222 READY</span>
               </div>
               <span className="text-muted-foreground hidden font-mono text-xs lg:inline">
@@ -62,7 +61,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 [exit]
               </Button>
             </div>
-
           </div>
         </header>
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">{children}</main>
@@ -70,4 +68,3 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     </RouteGuard>
   );
 }
-

@@ -131,6 +131,31 @@
   html {
     @apply font-mono;
   }
+
+  /* Custom sleek dark scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: oklch(0.28 0.03 240);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: oklch(0.48 0.18 150);
+  }
+}
+
+/* No-scrollbar utilities */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 @keyframes terminalBlink {
@@ -158,4 +183,5 @@
   background: linear-gradient(90deg, transparent, var(--primary), transparent);
   opacity: 0.4;
 }
+
 
