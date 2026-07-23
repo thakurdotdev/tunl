@@ -22,11 +22,12 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             <TerminalDemo />
             <div className="auth-brand-text">
               <div className="flex items-center gap-2">
-                <span className="text-primary font-bold text-lg">{">"}</span>
+                <span className="text-primary text-lg font-bold">{">"}</span>
                 <h2>Instant SSH Tunnels to Localhost</h2>
               </div>
               <p>
-                Zero binaries to install. Expose local web applications to the internet instantly using standard OpenSSH built into your terminal.
+                Zero binaries to install. Expose local web applications to the internet instantly
+                using standard OpenSSH built into your terminal.
               </p>
             </div>
           </div>
@@ -35,5 +36,3 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     </GuestGuard>
   );
 }
-
-

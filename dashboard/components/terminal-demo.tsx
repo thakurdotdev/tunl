@@ -84,24 +84,24 @@ export function TerminalDemo() {
     <div className="border-border bg-card/90 overflow-hidden rounded-lg border font-mono shadow-2xl backdrop-blur-md">
       <div className="border-border bg-muted/60 flex items-center justify-between border-b px-4 py-2 text-xs">
         <div className="flex items-center gap-2">
-          <span className="h-2.5 w-2.5 rounded-full bg-rose-500 inline-block" />
-          <span className="h-2.5 w-2.5 rounded-full bg-amber-500 inline-block" />
-          <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 inline-block" />
+          <span className="inline-block h-2.5 w-2.5 rounded-full bg-rose-500" />
+          <span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-500" />
+          <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500" />
           <span className="text-muted-foreground ml-2 font-mono text-[11px]">
             bash — tunl-ssh-session
           </span>
         </div>
-        <span className="text-emerald-400 font-bold text-[10px] uppercase tracking-wider">
+        <span className="text-[10px] font-bold tracking-wider text-emerald-400 uppercase">
           LIVE DEMO
         </span>
       </div>
 
-      <div className="flex flex-col gap-2 p-4 text-xs font-mono min-h-[260px] justify-start select-none">
-        <div className="flex items-center gap-2 text-foreground">
+      <div className="flex min-h-[260px] flex-col justify-start gap-2 p-4 font-mono text-xs select-none">
+        <div className="text-foreground flex items-center gap-2">
           <span className="text-primary font-bold">$</span>
           <span className="text-foreground">{typedCommand}</span>
           <span
-            className={`inline-block w-2 h-4 bg-primary ${
+            className={`bg-primary inline-block h-4 w-2 ${
               isTyping ? "animate-pulse" : "animate-terminal-blink"
             }`}
           />
@@ -118,13 +118,13 @@ export function TerminalDemo() {
           }
           if (log.type === "success") {
             return (
-              <div key={idx} className="text-emerald-400 font-bold text-[12px] py-1">
+              <div key={idx} className="py-1 text-[12px] font-bold text-emerald-400">
                 {log.text}
               </div>
             );
           }
           return (
-            <div key={idx} className="text-cyan-400/90 text-[11px] flex items-center gap-2">
+            <div key={idx} className="flex items-center gap-2 text-[11px] text-cyan-400/90">
               <span className="text-emerald-500/70">▶</span>
               <span>{log.text}</span>
             </div>
@@ -134,4 +134,3 @@ export function TerminalDemo() {
     </div>
   );
 }
-
