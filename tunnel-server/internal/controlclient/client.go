@@ -118,7 +118,7 @@ func (c *Client) ReportConnected(ctx context.Context, userID, deviceID, subdomai
 	return c.postWithRetry(ctx, "/internal/tunnel-connected", payload, "tunnel-connected", 3)
 }
 
-func (c *Client) ReportDisconnected(ctx context.Context, userID, deviceID, subdomain string, connectedAt time.Time) {
+func (c *Client) ReportDisconnected(ctx context.Context, userID, deviceID, subdomain string, connectedAt time.Time) error {
 	now := time.Now().UTC()
 	durationMs := now.Sub(connectedAt).Milliseconds()
 
@@ -134,7 +134,7 @@ func (c *Client) ReportDisconnected(ctx context.Context, userID, deviceID, subdo
 		payload["userId"] = userID
 	}
 
-	c.post(ctx, "/internal/tunnel-disconnected", payload, "tunnel-disconnected")
+	return c.postWithRetry(ctx, "/internal/tunnel-disconnected", payload, "tunnel-disconnected", 3)
 }
 
 func (c *Client) ReportHeartbeat(ctx context.Context, userID, subdomain string) {

@@ -60,7 +60,7 @@ func (l *connLimiter) release(ip string) {
 // are fire-and-forget — a slow control plane must never stall a live tunnel.
 type SessionReporter interface {
 	ReportConnected(ctx context.Context, userID, deviceID, subdomain, remoteIP, plan string, connectedAt time.Time) error
-	ReportDisconnected(ctx context.Context, userID, deviceID, subdomain string, connectedAt time.Time)
+	ReportDisconnected(ctx context.Context, userID, deviceID, subdomain string, connectedAt time.Time) error
 	ReportHeartbeat(ctx context.Context, userID, subdomain string)
 }
 
@@ -270,11 +270,13 @@ func (s *Server) handleConn(ctx context.Context, conn net.Conn) {
 			s.registry.MarkDisconnected(sub)
 			connLog.Info("tunnel disconnected", logging.FieldSubdomain, sub)
 			if s.sessionReporter != nil {
-				go s.sessionReporter.ReportDisconnected(
+				if err := s.sessionReporter.ReportDisconnected(
 					context.Background(),
 					userID, sess.DeviceID(), sub,
 					connectedAt,
-				)
+				); err != nil {
+					connLog.Warn("failed to report disconnect to control plane", "error", err)
+				}
 			}
 		}
 		sshConn.Close()
