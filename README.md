@@ -1,84 +1,147 @@
-# tunnel-saas
+# tunl
 
-Reverse SSH tunnel SaaS — `ssh -R 80:localhost:3000 sub@thakur.dev`, no client
-binary. This repository contains the complete implementation across control plane, dashboard, and tunnel server services.
+Expose local HTTP services to the internet via SSH port forwarding (`ssh -R 80:localhost:3000 t.thakur.dev`). No client installation required.
 
-## Layout
+`tunl` is an open-source reverse tunnel platform consisting of an OpenSSH-compatible tunnel daemon, a control plane, and a web dashboard.
+
+---
+
+## Architecture
 
 ```
-/tunnel-server   Go — SSH server + HTTP(S) reverse proxy (the tunnel core)
-/control-plane   Express + Postgres — accounts, SSH keys, reserved subdomains
-/dashboard       Next.js — signup/login, manage keys and tunnels
-/shared          openapi.yaml (Go<->Express contract), nginx.conf
-/ecosystem.config.cjs PM2 process manager configuration
+                       +----------------------+
+                       |  HTTP / SSH Clients  |
+                       +----------------------+
+                                  |
+                                  v
++-------------------------------------------------------------------+
+|                        tunnel-server (Go)                         |
+|  - SSH Server (:2222)           - HTTP Proxy (:80/:443)           |
+|  - Subdomain Router             - CIDR IP Whitelist Enforcement   |
++-------------------------------------------------------------------+
+             |                                          |
+    Key Validation & Config                     Session Activity
+             |                                          |
+             v                                          v
++-------------------------------------------------------------------+
+|                       control-plane (Express)                     |
+|  - REST API & Auth              - AES-256-GCM TOTP Storage        |
+|  - PostgreSQL (Drizzle)         - Redis Session Cache             |
++-------------------------------------------------------------------+
+                                  ^
+                          API / Session State
+                                  |
++-------------------------------------------------------------------+
+|                        dashboard (Next.js)                        |
+|  - Subdomain Reservations       - Live Traffic Inspector (SSE)    |
+|  - Profile & Security           - Admin Console                   |
++-------------------------------------------------------------------+
 ```
 
-## Running & Deployment
+---
 
-### Local Dev
-Run services concurrently (requires local Postgres on 5432 & Redis on 6379):
+## Features
+
+- **Zero Client Dependencies**: Uses standard OpenSSH (`ssh -R`). No custom CLI or binary installation needed.
+- **Subdomain Routing & Selection**:
+  - Direct subdomain targeting: `ssh -R 80:localhost:3000 app@t.thakur.dev`
+  - Interactive selection menu: `ssh -t -R 80:localhost:3000 t.thakur.dev`
+- **Security & Access Control**:
+  - Two-Factor Authentication (2FA) with TOTP authenticator apps. Secrets are encrypted using AES-256-GCM prior to storage.
+  - Per-user IP whitelisting with IPv4/IPv6 CIDR evaluation (`192.168.1.100`, `10.0.0.0/8`).
+- **Live Traffic Inspector**: Stream request headers and body payloads over SSE (`/inspect/[subdomain]`) with cURL exporting.
+- **Operational Controls**:
+  - Live active tunnel tracking and audit event logs (`tunnel.connected`, `tunnel.disconnected`).
+  - Automatic stale session reclamation.
+
+---
+
+## Quickstart
+
+### Prerequisites
+
+- Node.js (v20+) & `pnpm`
+- Go (v1.22+)
+- PostgreSQL (v14+)
+- Redis (v7+)
+
+### Installation & Local Run
+
 ```bash
+# 1. Install dependencies
+pnpm install
+
+# 2. Run database migrations
+pnpm --filter control-plane exec drizzle-kit migrate
+
+# 3. Start development servers
 pnpm dev
 ```
 
-### Production (PM2)
-Build all production assets and manage services via PM2:
+---
+
+## Usage Examples
+
+### 1. Basic Anonymous / Ephemeral Tunnel
+
 ```bash
-pnpm build
-pnpm pm2:start
+ssh -R 80:localhost:3000 t.thakur.dev
 ```
 
-PM2 control commands:
+### 2. Interactive Reserved Subdomain Selection
+
 ```bash
-pnpm pm2:stop
-pnpm pm2:restart
-pnpm pm2:reload
+ssh -t -R 80:localhost:3000 t.thakur.dev
+```
+
+### 3. Connect to a Specific Reserved Subdomain
+
+```bash
+ssh -R 80:localhost:3000 myapp@t.thakur.dev
+```
+
+---
+
+## Verification & Testing
+
+The workspace includes type checking, Vitest unit specs, and Go race detector verification.
+
+```bash
+# Run full workspace validation suite
+pnpm run check
+
+# Go tests & race detector
+cd tunnel-server && go test -race ./...
+
+# Control plane unit tests
+pnpm --filter control-plane test
+
+# TypeScript type check
+pnpm --filter control-plane exec tsc --noEmit
+pnpm --filter dashboard exec tsc --noEmit
+```
+
+---
+
+## Repository Layout
+
+```text
+/tunnel-server   Go tunnel daemon: SSH server, HTTP proxy, CIDR evaluator
+/control-plane   Node.js Express API: Postgres (Drizzle), Redis, AES-256-GCM crypto
+/dashboard       Next.js 15 App Router interface: Inspector, Admin, Profile
+/drizzle         PostgreSQL migration files
+```
+
+---
+
+## Production Deployment
+
+```bash
+# Build assets
+pnpm build
+
+# Process management via PM2
+pnpm pm2:start
+pnpm pm2:status
 pnpm pm2:logs
 ```
-
-## Build order (matches the plan's suggested agent build order)
-
-1. Go `config` → `logging` → `registry` (+ tests) → `sshserver`
-   (anonymous-only) → `httpproxy` → `controlclient` (stub validator) →
-   `health` → wire `cmd/tunneld/main.go`
-2. Nest `auth` + `users` → `ssh-keys` → `tunnels` → `internal` endpoints
-3. Go: wire `controlclient.ValidateKey` to the real `/internal/validate-key`
-   call, replacing the anonymous-only stub
-4. Dashboard: auth pages → keys page → tunnels page
-5. End-to-end manual test: dashboard signup → add key → reserve subdomain →
-   `ssh -R` using that key → confirm routing
-
-## What's stubbed vs. what's real here
-
-**Real / working:**
-- `tunnel-server/internal/registry` — full implementation + passing unit
-  tests (`go test -race ./...`), including the reconnect grace window
-- Postgres schema (`control-plane/migrations/001_init.sql`) matches the plan
-  exactly, including all the constraints/indexes called out in its design
-  notes
-- NestJS `auth`, `users`, `ssh-keys`, `tunnels`, `internal` modules have real
-  service logic (signup/login, plan-limit enforcement, shared-secret guard)
-  and starter unit tests
-- `docker-compose.yml`, both `Dockerfile`s, `openapi.yaml`
-
-**Stubbed — needs real implementation (search for `TODO` comments):**
-- `tunnel-server/internal/sshserver` — the actual `tcpip-forward` /
-  `forwarded-tcpip` channel handling (plan steps 4–5) is the hardest part of
-  this whole project and is left as scaffolding + design-note comments, not
-  working code
-- `httpproxy`'s `io.ReadWriteCloser` → `net.Conn` adapter is a rough
-  best-effort wrapper — revisit once real SSH channels are flowing through it
-- `ssh-keys.service.ts`'s fingerprint computation is a placeholder hash, not
-  real OpenSSH key parsing — flagged inline
-- Dashboard pages render forms but don't yet wire up the httpOnly-cookie
-  session flow (route handler not created yet)
-- Everything under "explicitly deferred" in the plan (Redis, ACME, TCP
-  tunnels, billing, rate limiting) — folders exist where called for, no logic
-
-## Testing
-
-- Go: `go test -race ./...` (registry has real tests today; add more as
-  other packages get filled in)
-- Nest: `npm test` for unit specs, `npm run test:e2e` against a running test
-  Postgres
-- Dashboard: manual QA for v1, per the plan
