@@ -43,6 +43,13 @@
       "when": 1784699292336,
       "tag": "0005_analytics_events",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1784822252171,
+      "tag": "0006_unusual_sunspot",
+      "breakpoints": true
     }
   ]
 }

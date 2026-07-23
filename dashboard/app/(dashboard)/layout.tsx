@@ -17,6 +17,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { href: "/dashboard", label: "0:tunnels", pathMatch: "/dashboard" },
     { href: "/keys", label: "1:ssh-keys", pathMatch: "/keys" },
     { href: "/inspect", label: "2:inspect", pathMatch: "/inspect" },
+    ...(user?.role === "admin" ? [{ href: "/admin", label: "3:admin", pathMatch: "/admin" }] : []),
   ];
 
   return (

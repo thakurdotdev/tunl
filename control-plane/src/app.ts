@@ -14,6 +14,7 @@ import { inspectRouter } from "./modules/inspect/inspect.router.js";
 import { sshKeysRouter } from "./modules/ssh-keys/ssh-keys.router.js";
 import { tunnelsRouter } from "./modules/tunnels/tunnels.router.js";
 import { tunnelSessionsRouter } from "./modules/tunnel-sessions/tunnel-sessions.router.js";
+import { createAdminRouter } from "./modules/admin/admin.router.js";
 import { usersRouter } from "./modules/users/users.router.js";
 import cors from "cors";
 
@@ -40,6 +41,7 @@ export function createApp(db: Database, redis: RedisClient, config: Config) {
   );
   app.use("/v1", requireAuth(config));
   app.use("/v1", usersRouter(db));
+  app.use("/v1/admin", createAdminRouter(db));
   app.use("/v1/ssh-keys", sshKeysRouter(db, redis));
   app.use("/v1/tunnels", tunnelsRouter(db, redis));
   app.use("/v1/tunnel-sessions", tunnelSessionsRouter(db));

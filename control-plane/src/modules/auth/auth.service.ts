@@ -9,12 +9,14 @@ export type PublicUser = {
   id: string;
   email: string;
   emailVerified: boolean;
+  role: "user" | "admin";
   plan: { name: string; maxReservedSubdomains: number };
 };
 type AuthRow = {
   id: string;
   email: string;
   passwordHash: string | null;
+  role: "user" | "admin";
   emailVerifiedAt: Date | null;
   planName: string;
   maxReservedSubdomains: number;
@@ -32,6 +34,7 @@ const publicUser = (row: AuthRow): PublicUser => ({
   id: row.id,
   email: row.email,
   emailVerified: row.emailVerifiedAt !== null,
+  role: row.role,
   plan: { name: row.planName, maxReservedSubdomains: row.maxReservedSubdomains },
 });
 
@@ -41,6 +44,7 @@ async function getUserByEmail(db: Database, email: string): Promise<AuthRow | un
       id: users.id,
       email: users.email,
       passwordHash: users.passwordHash,
+      role: users.role,
       emailVerifiedAt: users.emailVerifiedAt,
       planName: plans.name,
       maxReservedSubdomains: plans.maxReservedSubdomains,
@@ -115,6 +119,7 @@ export async function getProfile(db: Database, userId: string): Promise<PublicUs
       id: users.id,
       email: users.email,
       passwordHash: users.passwordHash,
+      role: users.role,
       emailVerifiedAt: users.emailVerifiedAt,
       planName: plans.name,
       maxReservedSubdomains: plans.maxReservedSubdomains,

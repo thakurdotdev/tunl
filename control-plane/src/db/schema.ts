@@ -14,6 +14,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 export const tunnelStatus = pgEnum("tunnel_status", ["reserved", "active", "inactive"]);
+export const userRole = pgEnum("user_role", ["user", "admin"]);
 export const accountTokenType = pgEnum("account_token_type", [
   "email_verification",
   "password_reset",
@@ -42,6 +43,7 @@ export const users = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     email: text("email").notNull(),
     passwordHash: text("password_hash"),
+    role: userRole("role").notNull().default("user"),
     emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
     planId: uuid("plan_id")
       .notNull()
