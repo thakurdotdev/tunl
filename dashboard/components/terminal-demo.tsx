@@ -73,7 +73,7 @@ export function TerminalDemo() {
       trafficCounter++;
       setVisibleLogs((prev) => {
         const updated: LogEntry[] = [...prev, { text: logText, type: "traffic" }];
-        return updated.slice(-8);
+        return updated.slice(-3);
       });
     }, 2000);
 
@@ -81,12 +81,12 @@ export function TerminalDemo() {
   }, [visibleLogs.length]);
 
   return (
-    <div className="border-border bg-card/90 overflow-hidden rounded-lg border font-mono shadow-2xl backdrop-blur-md">
-      <div className="border-border bg-muted/60 flex items-center justify-between border-b px-4 py-2 text-xs">
+    <div className="border-border/60 bg-card/90 overflow-hidden rounded-xl border font-mono shadow-xs backdrop-blur-xs">
+      <div className="border-border/60 bg-muted/30 flex items-center justify-between border-b px-5 py-3 text-xs">
         <div className="flex items-center gap-2">
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-rose-500" />
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-500" />
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500" />
+          <span className="inline-block h-2.5 w-2.5 rounded-full bg-rose-500/80" />
+          <span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-500/80" />
+          <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500/80" />
           <span className="text-muted-foreground ml-2 font-mono text-[11px]">
             bash — tunl-ssh-session
           </span>

@@ -16,9 +16,68 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "tunl — Instant SSH tunnels",
+  metadataBase: new URL("https://tunl.thakur.dev"),
+  title: {
+    default: "tunl — Zero-Install OpenSSH Reverse Tunneling Platform",
+    template: "%s | tunl",
+  },
   description:
-    "Expose your local server to the internet with a single SSH command. No client binary required.",
+    "Expose localhost web servers, APIs, WebSockets, and webhooks to the public internet via standard OpenSSH. No CLI binary downloads required.",
+  keywords: [
+    "ssh tunnel",
+    "localhost https",
+    "ngrok alternative",
+    "openSSH reverse proxy",
+    "webhook testing",
+    "dev tunnels",
+    "custom subdomains",
+    "localtunnel alternative",
+    "secure HTTP tunnel",
+  ],
+  authors: [{ name: "tunl team" }],
+  creator: "tunl",
+  publisher: "tunl",
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "https://tunl.thakur.dev",
+    siteName: "tunl",
+    title: "tunl — Zero-Install OpenSSH Reverse Tunneling Platform",
+    description:
+      "Expose localhost web servers, APIs, WebSockets, and webhooks to the public internet via standard OpenSSH.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "tunl — Zero-Install OpenSSH Reverse Tunneling Platform",
+    description:
+      "Expose localhost web servers, APIs, WebSockets, and webhooks to the public internet via standard OpenSSH.",
+  },
+};
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "tunl",
+  applicationCategory: "DeveloperApplication",
+  operatingSystem: "macOS, Linux, Windows",
+  description:
+    "Zero-install reverse tunneling platform powered by standard OpenSSH. Expose local servers to the internet instantly.",
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "USD",
+  },
 };
 
 export default function RootLayout({
@@ -33,6 +92,10 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="flex min-h-full flex-col font-sans">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
         <Providers>
           {children}
           <Toaster position="bottom-right" />

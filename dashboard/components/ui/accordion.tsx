@@ -3,7 +3,11 @@ import { Accordion as AccordionPrimitive } from "@base-ui/react/accordion";
 import { cn } from "@/lib/utils";
 import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 
-function Accordion({ className, ...props }: AccordionPrimitive.Root.Props) {
+interface AccordionProps extends AccordionPrimitive.Root.Props {
+  collapsible?: boolean | string;
+}
+
+function Accordion({ className, ...props }: AccordionProps) {
   return (
     <AccordionPrimitive.Root
       data-slot="accordion"
@@ -67,4 +71,4 @@ function AccordionContent({ className, children, ...props }: AccordionPrimitive.
   );
 }
 
-export { Accordion, AccordionItem, AccordionTrigger, AccordionContent };
+export { Accordion, AccordionContent, AccordionItem, AccordionTrigger };
