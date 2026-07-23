@@ -238,7 +238,7 @@ func (s *Server) handleConn(ctx context.Context, conn net.Conn) {
 	userID, email, allowedSubdomain, plan, maxActiveTunnels := extractPermissions(sshConn.Permissions)
 
 	deviceID := s.deviceFingerprints.take(conn.RemoteAddr().String())
-	if userID == "" && deviceID == "" {
+	if deviceID == "" {
 		deviceID = remoteIP
 	}
 

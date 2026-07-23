@@ -24,7 +24,7 @@ export const validateKeyBody = z.object({
 
 export const sessionConnectedBody = z.object({
   userId: z.string().optional(),
-  anonymousId: z.string().min(1),
+  anonymousId: z.string().default(""),
   subdomain: z.string().min(1),
   remoteIp: z.string().default(""),
   plan: z.string().optional(),
@@ -39,7 +39,7 @@ const usageBody = z.object({
 });
 const sessionDisconnectedBody = z.object({
   userId: z.string().optional(),
-  anonymousId: z.string().min(1),
+  anonymousId: z.string().default(""),
   subdomain: z.string().min(1),
   durationMs: z.number().int().nonnegative(),
   disconnectReason: z.string().default("client_closed"),
