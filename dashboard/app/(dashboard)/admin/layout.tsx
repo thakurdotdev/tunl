@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
-import { ShieldAlert, ShieldCheck, BarChart3, Users, Layers, Plus } from "lucide-react";
+import { ShieldAlert, ShieldCheck, BarChart3, Users, Activity, Layers, Plus } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -41,6 +41,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const adminTabs = [
     { href: "/admin", label: "Overview", icon: BarChart3, exact: true },
     { href: "/admin/users", label: "User Directory", icon: Users },
+    { href: "/admin/audit", label: "Audit Stream", icon: Activity },
     { href: "/admin/plans", label: "Plan Tiers", icon: Layers },
   ];
 

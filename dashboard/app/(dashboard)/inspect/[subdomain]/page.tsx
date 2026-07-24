@@ -3,7 +3,6 @@
 import { Button } from "@/components/ui/button";
 import { useInspectorSSE, useRecentRequests } from "@/hooks/use-inspector";
 import { type CapturedRequest } from "@/lib/types";
-import { formatDistanceToNow } from "date-fns";
 import {
   ArrowLeft,
   Check,
@@ -61,6 +60,19 @@ function generateCurlCommand(req: CapturedRequest, subdomain: string): string {
   }
 
   return cmd;
+}
+
+function formatShortRelativeTime(date: Date | string): string {
+  const ms = Date.now() - new Date(date).getTime();
+  const seconds = Math.floor(Math.max(0, ms) / 1000);
+  if (seconds < 10) return "just now";
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
 }
 
 type DetailTab = "general" | "req-headers" | "res-headers" | "req-body" | "res-body" | "curl";
@@ -220,11 +232,11 @@ export default function InspectPage() {
         >
           {/* Table Header */}
           <div className="border-border/60 bg-muted/30 text-muted-foreground flex items-center border-b px-3 py-2 text-[10px] font-bold tracking-wider uppercase">
-            <span className="w-14 sm:w-16">Method</span>
+            <span className="w-14 shrink-0 sm:w-16">Method</span>
             <span className="flex-1 truncate">Path</span>
-            <span className="w-12 text-right sm:w-14">Status</span>
-            <span className="w-14 text-right sm:w-16">Time</span>
-            <span className="hidden w-20 text-right sm:inline-block">When</span>
+            <span className="w-12 shrink-0 text-right sm:w-14">Status</span>
+            <span className="w-16 shrink-0 text-right sm:w-20">Time</span>
+            <span className="w-20 shrink-0 text-right sm:w-24">When</span>
           </div>
 
           {/* Request Rows */}
@@ -283,13 +295,11 @@ export default function InspectPage() {
                       {req.statusCode}
                     </span>
                   </span>
-                  <span className="text-muted-foreground w-14 shrink-0 text-right text-[11px] sm:w-16">
+                  <span className="text-muted-foreground w-16 shrink-0 text-right font-mono text-[11px] sm:w-20">
                     {req.durationMs}ms
                   </span>
-                  <span className="text-muted-foreground hidden w-20 shrink-0 truncate text-right text-[10px] sm:inline-block">
-                    {formatDistanceToNow(new Date(req.timestamp), {
-                      addSuffix: true,
-                    })}
+                  <span className="text-muted-foreground w-20 shrink-0 text-right font-mono text-[10px] whitespace-nowrap sm:w-24">
+                    {formatShortRelativeTime(req.timestamp)}
                   </span>
                 </button>
               ))
