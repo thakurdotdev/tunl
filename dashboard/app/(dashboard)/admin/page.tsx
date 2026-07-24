@@ -222,14 +222,14 @@ export default function AdminOverviewPage() {
 
               {/* Audit Table */}
               <div className="mt-4 overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="border-border/50 bg-muted/20 text-muted-foreground border-b font-medium">
+                <table className="w-full text-left text-[11px]">
+                  <thead className="border-border/50 bg-muted/20 text-muted-foreground border-b text-[10px] font-medium tracking-wider uppercase">
                     <tr>
-                      <th className="px-3 py-2.5">Event</th>
-                      <th className="px-3 py-2.5">Subdomain</th>
-                      <th className="px-3 py-2.5">User</th>
-                      <th className="px-3 py-2.5">Remote IP</th>
-                      <th className="px-3 py-2.5 text-right">Time</th>
+                      <th className="px-2 py-2">Event</th>
+                      <th className="px-2 py-2">Subdomain</th>
+                      <th className="px-2 py-2">User</th>
+                      <th className="px-2 py-2">Remote IP</th>
+                      <th className="px-2 py-2 text-right">Time</th>
                     </tr>
                   </thead>
                   <tbody className="divide-border/30 divide-y">
@@ -251,41 +251,55 @@ export default function AdminOverviewPage() {
                         </td>
                       </tr>
                     ) : (
-                      paginatedEvents.map((evt) => (
-                        <tr key={evt.id} className="hover:bg-muted/20 transition-colors">
-                          <td className="px-3 py-2.5">
-                            <span
-                              className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-semibold ${
-                                evt.eventType === "tunnel.connected"
-                                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-                                  : "border-rose-500/30 bg-rose-500/10 text-rose-400"
-                              }`}
-                            >
-                              {evt.eventType}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2.5">
-                            {evt.subdomain ? (
-                              <span className="inline-flex items-center gap-1 font-mono text-[11px] text-cyan-400">
-                                <Globe className="h-3 w-3 opacity-70" /> {evt.subdomain}
+                      paginatedEvents.map((evt) => {
+                        const isConnected = evt.eventType === "tunnel.connected";
+                        return (
+                          <tr key={evt.id} className="hover:bg-muted/20 transition-colors">
+                            <td className="px-2 py-2">
+                              <span
+                                className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
+                                  isConnected
+                                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                                    : "border-rose-500/30 bg-rose-500/10 text-rose-400"
+                                }`}
+                              >
+                                <span
+                                  className={`h-1.5 w-1.5 rounded-full ${
+                                    isConnected ? "animate-pulse bg-emerald-400" : "bg-rose-400"
+                                  }`}
+                                />
+                                {isConnected ? "connected" : "disconnected"}
                               </span>
-                            ) : (
-                              <span className="text-muted-foreground/40">-</span>
-                            )}
-                          </td>
-                          <td className="text-muted-foreground px-3 py-2.5">
-                            {evt.userEmail ?? (
-                              <span className="text-muted-foreground/60 italic">Anonymous</span>
-                            )}
-                          </td>
-                          <td className="text-muted-foreground px-3 py-2.5 font-mono text-[11px]">
-                            {evt.remoteIp ?? <span className="text-muted-foreground/40">-</span>}
-                          </td>
-                          <td className="text-muted-foreground px-3 py-2.5 text-right font-mono text-[11px]">
-                            {new Date(evt.occurredAt).toLocaleTimeString()}
-                          </td>
-                        </tr>
-                      ))
+                            </td>
+                            <td className="px-2 py-2">
+                              {evt.subdomain ? (
+                                <span className="inline-flex items-center gap-1 font-mono text-[11px] text-cyan-400">
+                                  <Globe className="h-3 w-3 shrink-0 opacity-70" />
+                                  <span className="max-w-[90px] truncate">{evt.subdomain}</span>
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground/40">-</span>
+                              )}
+                            </td>
+                            <td className="px-2 py-2">
+                              <span
+                                className="text-muted-foreground block max-w-[130px] truncate"
+                                title={evt.userEmail ?? "Anonymous"}
+                              >
+                                {evt.userEmail ?? (
+                                  <span className="text-muted-foreground/60 italic">Anonymous</span>
+                                )}
+                              </span>
+                            </td>
+                            <td className="text-muted-foreground px-2 py-2 font-mono text-[11px]">
+                              {evt.remoteIp ?? <span className="text-muted-foreground/40">-</span>}
+                            </td>
+                            <td className="text-muted-foreground px-2 py-2 text-right font-mono text-[11px] whitespace-nowrap">
+                              {new Date(evt.occurredAt).toLocaleTimeString()}
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
