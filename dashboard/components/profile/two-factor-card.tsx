@@ -72,30 +72,31 @@ export function TwoFactorCard({
 
   return (
     <>
-      <div className="bg-card border-border/80 rounded-xl border p-6 font-mono shadow-xs">
-        <div className="border-border/60 flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full border border-purple-500/30 bg-purple-500/10">
-              <KeyRound className="h-5 w-5 text-purple-400" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold">Two-Factor Authentication (2FA)</h2>
-                {profile?.twoFactorEnabled ? (
-                  <span className="flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-bold text-emerald-400">
-                    <CheckCircle2 className="h-3 w-3" /> ENABLED
-                  </span>
-                ) : (
-                  <span className="border-border bg-muted/40 text-muted-foreground rounded-full border px-2.5 py-0.5 text-[10px]">
-                    DISABLED
-                  </span>
-                )}
-              </div>
-              <p className="text-muted-foreground text-xs">
-                Protect your account using TOTP authenticator apps (Google Authenticator,
-                1Password).
-              </p>
-            </div>
+      <div className="border-border/60 bg-card/90 flex flex-col overflow-hidden rounded-xl border shadow-xs">
+        <div className="border-border/60 bg-muted/30 flex items-center justify-between border-b px-5 py-3 text-xs">
+          <div className="flex items-center gap-2 font-mono">
+            <KeyRound className="h-3.5 w-3.5 text-purple-400" />
+            <span className="text-foreground text-xs font-semibold">Two-Factor Authentication</span>
+          </div>
+          {profile?.twoFactorEnabled ? (
+            <span className="flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 font-mono text-[10px] font-semibold text-emerald-400">
+              <CheckCircle2 className="h-3 w-3" /> ENABLED
+            </span>
+          ) : (
+            <span className="border-border bg-muted/40 text-muted-foreground rounded-full border px-2 py-0.5 font-mono text-[10px]">
+              DISABLED
+            </span>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-4 p-6 font-mono text-xs sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-1">
+            <span className="text-foreground text-[11px] font-semibold tracking-wider uppercase">
+              TOTP AUTHENTICATOR APP
+            </span>
+            <p className="text-muted-foreground text-xs">
+              Require a 6-digit TOTP code from your authenticator app when signing in.
+            </p>
           </div>
 
           <div>
@@ -104,7 +105,7 @@ export function TwoFactorCard({
                 variant="outline"
                 size="sm"
                 onClick={() => setIsDisableModalOpen(true)}
-                className="border-destructive/40 text-destructive hover:bg-destructive/10 h-8 text-xs font-semibold"
+                className="border-destructive/40 text-destructive hover:bg-destructive/10 h-8 font-mono text-xs font-semibold"
               >
                 Disable 2FA
               </Button>
@@ -113,7 +114,7 @@ export function TwoFactorCard({
                 size="sm"
                 onClick={handleStartSetup}
                 disabled={isSetupPending}
-                className="h-8 text-xs font-semibold"
+                className="h-8 font-mono text-xs font-semibold"
               >
                 {isSetupPending ? (
                   <>
@@ -129,10 +130,10 @@ export function TwoFactorCard({
 
         {/* 2FA Setup Modal */}
         {setupData && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 font-mono backdrop-blur-xs">
             <div className="bg-card border-border w-full max-w-md rounded-xl border p-6 shadow-2xl">
               <div className="flex items-center justify-between">
-                <h3 className="text-base font-bold">Setup Two-Factor Authentication</h3>
+                <h3 className="text-sm font-bold">Setup Two-Factor Authentication</h3>
                 <button
                   onClick={() => setSetupData(null)}
                   className="text-muted-foreground hover:text-foreground"
@@ -140,10 +141,6 @@ export function TwoFactorCard({
                   <X className="h-4 w-4" />
                 </button>
               </div>
-
-              <p className="text-muted-foreground mt-1 text-xs">
-                Scan the QR code with your authenticator app, or manually enter the secret key.
-              </p>
 
               {error && (
                 <div className="border-destructive/30 bg-destructive/10 text-destructive mt-3 flex items-center gap-2 rounded-lg border p-2.5 text-xs">
@@ -181,13 +178,13 @@ export function TwoFactorCard({
 
               <form onSubmit={handleVerifySetup} className="mt-4 space-y-3">
                 <div>
-                  <label className="text-muted-foreground block text-[11px] font-medium uppercase">
-                    Enter 6-Digit Code from Authenticator
+                  <label className="text-muted-foreground block text-[10px] font-semibold uppercase">
+                    Enter 6-Digit Code
                   </label>
                   <Input
                     type="text"
                     maxLength={6}
-                    placeholder="e.g. 123456"
+                    placeholder="123456"
                     value={code}
                     onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
                     required
@@ -233,7 +230,7 @@ export function TwoFactorCard({
         }}
         onConfirm={handleConfirmDisable}
         title="Disable Two-Factor Authentication"
-        description="Are you sure you want to disable Two-Factor Authentication? Your account will no longer be protected by an authenticator code."
+        description="Are you sure you want to disable Two-Factor Authentication?"
         confirmText="Disable 2FA"
         variant="destructive"
         isPending={isDisablePending}

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { client } from "@/lib/api-client";
+import { toast } from "sonner";
 
 export type UserProfile = {
   id: string;
@@ -40,6 +41,11 @@ export function useUpdateProfileName() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["profile"] });
       queryClient.invalidateQueries({ queryKey: ["auth"] });
+      toast.success("Profile name updated successfully!");
+    },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.message || err?.message || "Failed to update profile name";
+      toast.error(msg);
     },
   });
 }
@@ -49,6 +55,10 @@ export function useSetup2FA() {
     mutationFn: async () => {
       const { data } = await client.post<Setup2FAResponse>("/v1/profile/2fa/setup");
       return data;
+    },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.message || err?.message || "Failed to generate 2FA setup";
+      toast.error(msg);
     },
   });
 }
@@ -65,6 +75,11 @@ export function useVerify2FA() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["profile"] });
+      toast.success("Two-Factor Authentication enabled successfully!");
+    },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.message || err?.message || "Invalid 2FA verification code";
+      toast.error(msg);
     },
   });
 }
@@ -80,6 +95,11 @@ export function useDisable2FA() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["profile"] });
+      toast.success("Two-Factor Authentication disabled.");
+    },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.message || err?.message || "Failed to disable 2FA";
+      toast.error(msg);
     },
   });
 }
@@ -95,8 +115,17 @@ export function useUpdateIpWhitelist() {
       }>("/v1/profile/ip-whitelist", { allowedIps, enabled });
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["profile"] });
+      if (data.ipWhitelistEnabled) {
+        toast.success("IP whitelist rules saved and active!");
+      } else {
+        toast.info("IP whitelist rules saved (enforcement disabled).");
+      }
+    },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.message || err?.message || "Failed to update IP whitelist";
+      toast.error(msg);
     },
   });
 }

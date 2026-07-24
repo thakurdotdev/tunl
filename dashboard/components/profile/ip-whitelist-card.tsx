@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { UserProfile } from "@/hooks/use-profile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import {
   AlertCircle,
   Check,
@@ -57,128 +58,119 @@ export function IpWhitelistCard({ profile, onUpdateWhitelist, isPending }: IpWhi
     }
   };
 
-  return (
-    <div className="bg-card border-border/80 rounded-xl border p-6 font-mono shadow-xs">
-      <div className="border-border/60 flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full border border-cyan-500/30 bg-cyan-500/10">
-            <Shield className="h-5 w-5 text-cyan-400" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-base font-bold">IP Whitelist Security Rules</h2>
-              {enabled ? (
-                <span className="flex items-center gap-1 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-0.5 text-[10px] font-bold text-cyan-400">
-                  <CheckCircle2 className="h-3 w-3" /> RESTRICTIONS ACTIVE
-                </span>
-              ) : (
-                <span className="border-border bg-muted/40 text-muted-foreground rounded-full border px-2.5 py-0.5 text-[10px]">
-                  WHITELIST DISABLED
-                </span>
-              )}
-            </div>
-            <p className="text-muted-foreground text-xs">
-              Restrict access to your subdomains. Incoming requests outside these IPs will receive
-              HTTP 403.
-            </p>
-          </div>
-        </div>
+  const isUnchanged =
+    enabled === (profile?.ipWhitelistEnabled ?? false) &&
+    JSON.stringify(ips) === JSON.stringify(profile?.allowedIps ?? []);
 
-        <Button
-          size="sm"
-          onClick={handleSaveWhitelist}
-          disabled={isPending}
-          className="h-8 text-xs font-semibold"
-        >
-          {isPending ? (
-            <>
-              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Saving...
-            </>
-          ) : saved ? (
-            <>
-              <Check className="mr-1.5 h-3.5 w-3.5 text-emerald-400" /> Whitelist Saved!
-            </>
-          ) : (
-            <>
-              <Save className="mr-1.5 h-3.5 w-3.5" /> Save Rules
-            </>
-          )}
-        </Button>
+  return (
+    <div className="border-border/60 bg-card/90 flex flex-col overflow-hidden rounded-xl border shadow-xs">
+      <div className="border-border/60 bg-muted/30 flex items-center justify-between border-b px-5 py-3 text-xs">
+        <div className="flex items-center gap-2 font-mono">
+          <Shield className="h-3.5 w-3.5 text-cyan-400" />
+          <span className="text-foreground text-xs font-semibold">IP Restrictions</span>
+        </div>
+        {enabled ? (
+          <span className="flex items-center gap-1 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 font-mono text-[10px] font-semibold text-cyan-400">
+            <CheckCircle2 className="h-3 w-3" /> ACTIVE
+          </span>
+        ) : (
+          <span className="border-border bg-muted/40 text-muted-foreground rounded-full border px-2 py-0.5 font-mono text-[10px]">
+            DISABLED
+          </span>
+        )}
       </div>
 
-      {error && (
-        <div className="border-destructive/30 bg-destructive/10 text-destructive mt-4 flex items-center gap-2 rounded-lg border p-3 text-xs">
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
+      <div className="flex flex-col gap-4 p-6 font-mono text-xs">
+        {error && (
+          <div className="border-destructive/30 bg-destructive/10 text-destructive flex items-center gap-2 rounded-lg border p-2.5 text-xs">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
 
-      {/* Enable Toggle Switch */}
-      <div className="border-border/60 bg-muted/20 mt-4 flex items-center justify-between rounded-lg border p-3.5">
-        <div>
+        {/* Enable Toggle Switch */}
+        <div className="border-border/60 bg-muted/20 flex items-center justify-between rounded-lg border px-3.5 py-2.5">
           <label
             htmlFor="toggleWhitelist"
-            className="text-foreground cursor-pointer text-xs font-bold"
+            className="text-foreground cursor-pointer text-xs font-semibold"
           >
-            Enable IP Whitelist Enforcement
+            ENFORCE IP WHITELIST
           </label>
-          <p className="text-muted-foreground mt-0.5 text-[11px]">
-            When disabled, incoming traffic is allowed from all IPs regardless of the list below.
-          </p>
+          <Switch
+            id="toggleWhitelist"
+            checked={enabled}
+            onCheckedChange={(checked) => setEnabled(checked)}
+          />
         </div>
-        <input
-          type="checkbox"
-          id="toggleWhitelist"
-          checked={enabled}
-          onChange={(e) => setEnabled(e.target.checked)}
-          className="accent-primary border-border h-4 w-4 cursor-pointer rounded"
-        />
-      </div>
 
-      {/* Add IP Form */}
-      <form onSubmit={handleAddIp} className="mt-4 flex gap-2">
-        <Input
-          type="text"
-          placeholder="e.g. 192.168.1.100 or 10.0.0.0/8"
-          value={newIp}
-          onChange={(e) => setNewIp(e.target.value)}
-          className="h-8 font-mono text-xs"
-        />
-        <Button
-          type="submit"
-          variant="outline"
-          size="sm"
-          className="border-border h-8 shrink-0 text-xs"
-        >
-          <Plus className="mr-1 h-3.5 w-3.5" /> Add IP Rule
-        </Button>
-      </form>
+        {/* Add IP Form */}
+        <form onSubmit={handleAddIp} className="flex gap-2">
+          <Input
+            type="text"
+            placeholder="e.g. 192.168.1.100 or 10.0.0.0/8"
+            value={newIp}
+            onChange={(e) => setNewIp(e.target.value)}
+            className="bg-background/50 border-border/60 focus-visible:ring-primary/40 h-8 rounded-lg font-mono text-xs"
+          />
+          <Button
+            type="submit"
+            variant="outline"
+            size="sm"
+            className="border-border/60 h-8 shrink-0 font-mono text-xs"
+          >
+            <Plus className="mr-1 h-3.5 w-3.5" /> Add Rule
+          </Button>
+        </form>
 
-      {/* IP List */}
-      <div className="mt-4 space-y-2">
-        {ips.length === 0 ? (
-          <div className="border-border/60 bg-muted/20 text-muted-foreground rounded-lg border p-4 text-center text-xs">
-            No IP restrictions configured. Add your trusted IP addresses above.
-          </div>
-        ) : (
-          ips.map((ip) => (
-            <div
-              key={ip}
-              className="border-border/60 bg-muted/30 flex items-center justify-between rounded-lg border px-3 py-2 text-xs"
-            >
-              <div className="flex items-center gap-2 font-mono">
-                <Globe className="h-3.5 w-3.5 text-cyan-400" />
-                <span className="text-foreground font-semibold">{ip}</span>
-              </div>
-              <button
-                onClick={() => handleRemoveIp(ip)}
-                className="text-muted-foreground hover:text-destructive p-1"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
+        {/* IP List */}
+        <div className="space-y-2">
+          {ips.length === 0 ? (
+            <div className="border-border/60 bg-muted/10 text-muted-foreground/70 rounded-lg border p-3 text-center text-xs">
+              No IP rules configured.
             </div>
-          ))
-        )}
+          ) : (
+            ips.map((ip) => (
+              <div
+                key={ip}
+                className="border-border/60 bg-muted/20 flex items-center justify-between rounded-lg border px-3 py-2 text-xs"
+              >
+                <div className="flex items-center gap-2 font-mono">
+                  <Globe className="h-3.5 w-3.5 text-cyan-400 opacity-80" />
+                  <span className="text-foreground font-semibold">{ip}</span>
+                </div>
+                <button
+                  onClick={() => handleRemoveIp(ip)}
+                  className="text-muted-foreground hover:text-destructive p-1 transition-colors"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="flex items-center justify-end pt-1">
+          <Button
+            size="sm"
+            onClick={handleSaveWhitelist}
+            disabled={isPending || isUnchanged}
+            className="h-8 font-mono text-xs font-semibold"
+          >
+            {isPending ? (
+              <>
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Saving...
+              </>
+            ) : saved ? (
+              <>
+                <Check className="mr-1.5 h-3.5 w-3.5 text-emerald-400" /> Whitelist Saved!
+              </>
+            ) : (
+              <>
+                <Save className="mr-1.5 h-3.5 w-3.5" /> Save Rules
+              </>
+            )}
+          </Button>
+        </div>
       </div>
     </div>
   );

@@ -31,9 +31,18 @@ export type AdminAnalytics = {
   totalActiveSessions: number;
   totalTunnels: number;
   totalEvents: number;
+  totalLinkedIdentities?: number;
+  totalAuthEvents?: number;
+  totalAnonEvents?: number;
   planDistribution: Array<{
     planName: string;
     userCount: number;
+    maxSubdomains?: number;
+    maxActiveTunnels?: number;
+  }>;
+  eventTypeCounts?: Array<{
+    eventType: string;
+    eventCount: number;
   }>;
   activeSessionsList: ActiveSessionItem[];
   recentEventsList: TunnelEventItem[];

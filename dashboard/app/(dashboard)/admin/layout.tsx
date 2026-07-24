@@ -13,7 +13,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (isAuthLoading) {
     return (
-      <div className="text-muted-foreground flex h-64 items-center justify-center font-mono text-xs">
+      <div className="text-muted-foreground flex h-64 items-center justify-center text-sm">
         Loading security credentials...
       </div>
     );
@@ -21,7 +21,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (!user || user.role !== "admin") {
     return (
-      <div className="border-destructive/30 bg-destructive/10 mx-auto my-12 max-w-md rounded-xl border p-6 text-center font-mono">
+      <div className="border-destructive/30 bg-destructive/10 mx-auto my-12 max-w-md rounded-xl border p-6 text-center">
         <ShieldAlert className="text-destructive mx-auto mb-3 h-10 w-10" />
         <h2 className="text-foreground text-base font-bold">403 — Access Forbidden</h2>
         <p className="text-muted-foreground mt-1 text-xs">
@@ -30,7 +30,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <Button
           onClick={() => router.push("/dashboard")}
           variant="outline"
-          className="border-border mt-4 font-mono text-xs"
+          className="border-border mt-4 text-xs"
         >
           Return to Dashboard
         </Button>
@@ -45,30 +45,34 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   ];
 
   return (
-    <div className="space-y-6 pb-12 font-mono">
+    <div className="space-y-6 pb-12">
       {/* Admin Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold tracking-tight">Admin Console</h1>
-            <span className="border-primary/40 bg-primary/10 text-primary flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-bold">
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-foreground text-2xl font-bold tracking-tight">Admin Console</h1>
+            <span className="flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-semibold tracking-wide text-emerald-400">
               <ShieldCheck className="h-3 w-3" /> ADMIN GRANTED
             </span>
           </div>
-          <p className="text-muted-foreground text-xs">
+          <p className="text-muted-foreground mt-1 text-xs sm:text-sm">
             System health analytics, user management, and subscription plan tiers.
           </p>
         </div>
 
         <Link href="/admin/plans/new">
-          <Button size="sm" variant="default" className="h-8 text-xs font-semibold">
+          <Button
+            size="sm"
+            variant="default"
+            className="h-9 px-3.5 text-xs font-semibold shadow-xs"
+          >
             <Plus className="mr-1.5 h-3.5 w-3.5" /> Create Plan Tier
           </Button>
         </Link>
       </div>
 
       {/* Admin Navigation Tabs */}
-      <div className="border-border/80 flex items-center gap-1 border-b pb-2">
+      <div className="border-border/60 flex items-center gap-1.5 border-b pb-1">
         {adminTabs.map((tab) => {
           const isActive = tab.exact ? pathname === tab.href : pathname.startsWith(tab.href);
           const Icon = tab.icon;
@@ -76,10 +80,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Link
               key={tab.href}
               href={tab.href}
-              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
+              className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-medium transition-all ${
                 isActive
-                  ? "bg-primary/15 text-primary border-primary/30 border font-semibold"
-                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  ? "bg-primary/10 text-primary border-primary/20 border font-semibold shadow-2xs"
+                  : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
               }`}
             >
               <Icon className="h-3.5 w-3.5" />

@@ -2,6 +2,7 @@ import { count, eq, ilike, sql } from "drizzle-orm";
 import type { Database } from "../../db/client.js";
 import {
   activeTunnelSessions,
+  identityLinks,
   plans,
   sshKeys,
   tunnelEvents,
@@ -16,7 +17,10 @@ export async function getAdminAnalytics(db: Database) {
     [{ totalActiveSessions }],
     [{ totalTunnels }],
     [{ totalEvents }],
+    [{ totalLinkedIdentities }],
+    [{ totalAuthEvents, totalAnonEvents }],
     planDistribution,
+    eventTypeCounts,
     activeSessionsList,
     recentEventsList,
   ] = await Promise.all([
@@ -24,14 +28,30 @@ export async function getAdminAnalytics(db: Database) {
     db.select({ totalActiveSessions: count() }).from(activeTunnelSessions),
     db.select({ totalTunnels: count() }).from(tunnels),
     db.select({ totalEvents: count() }).from(tunnelEvents),
+    db.select({ totalLinkedIdentities: count() }).from(identityLinks),
+    db
+      .select({
+        totalAuthEvents: count(tunnelEvents.userId),
+        totalAnonEvents: count(sql`CASE WHEN ${tunnelEvents.userId} IS NULL THEN 1 END`),
+      })
+      .from(tunnelEvents),
     db
       .select({
         planName: plans.name,
         userCount: count(users.id),
+        maxSubdomains: plans.maxReservedSubdomains,
+        maxActiveTunnels: plans.maxActiveTunnels,
       })
       .from(plans)
       .leftJoin(users, eq(users.planId, plans.id))
-      .groupBy(plans.name),
+      .groupBy(plans.id, plans.name, plans.maxReservedSubdomains, plans.maxActiveTunnels),
+    db
+      .select({
+        eventType: tunnelEvents.eventType,
+        eventCount: count(),
+      })
+      .from(tunnelEvents)
+      .groupBy(tunnelEvents.eventType),
     db
       .select({
         id: activeTunnelSessions.id,
@@ -55,7 +75,7 @@ export async function getAdminAnalytics(db: Database) {
       .from(tunnelEvents)
       .leftJoin(users, eq(tunnelEvents.userId, users.id))
       .orderBy(sql`${tunnelEvents.occurredAt} DESC`)
-      .limit(20),
+      .limit(200),
   ]);
 
   const mappedRecentEvents = recentEventsList.map((e) => {
@@ -64,7 +84,11 @@ export async function getAdminAnalytics(db: Database) {
       id: e.id,
       eventType: e.eventType,
       subdomain: props.subdomain ? String(props.subdomain) : null,
-      remoteIp: props.remote_ip ? String(props.remote_ip) : null,
+      remoteIp: props.remote_ip
+        ? String(props.remote_ip)
+        : props.remoteIp
+          ? String(props.remoteIp)
+          : null,
       occurredAt: e.occurredAt,
       userEmail: e.userEmail,
     };
@@ -75,7 +99,17 @@ export async function getAdminAnalytics(db: Database) {
     totalActiveSessions,
     totalTunnels,
     totalEvents,
-    planDistribution,
+    totalLinkedIdentities: Number(totalLinkedIdentities ?? 0),
+    totalAuthEvents: Number(totalAuthEvents ?? 0),
+    totalAnonEvents: Number(totalAnonEvents ?? 0),
+    planDistribution: planDistribution.map((p) => ({
+      ...p,
+      userCount: Number(p.userCount ?? 0),
+    })),
+    eventTypeCounts: eventTypeCounts.map((ec) => ({
+      ...ec,
+      eventCount: Number(ec.eventCount ?? 0),
+    })),
     activeSessionsList,
     recentEventsList: mappedRecentEvents,
   };

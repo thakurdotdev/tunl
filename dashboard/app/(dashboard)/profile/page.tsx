@@ -25,19 +25,19 @@ export default function ProfilePage() {
   if (isLoading) {
     return (
       <div className="text-muted-foreground flex h-64 items-center justify-center font-mono text-xs">
-        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading profile details...
+        <Loader2 className="text-primary mr-2 h-4 w-4 animate-spin" /> Loading profile details...
       </div>
     );
   }
 
   if (error || !profile) {
     return (
-      <div className="mx-auto max-w-4xl space-y-4 font-mono">
+      <div className="flex flex-col gap-4 font-mono">
         <div className="border-destructive/30 bg-destructive/10 text-destructive rounded-xl border p-6 text-xs">
           <div className="flex items-center gap-2 text-sm font-bold">
             <AlertCircle className="h-4 w-4" /> Unable to Load Profile
           </div>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-muted-foreground mt-1 font-mono">
             {(error as any)?.response?.data?.message ||
               (error as any)?.message ||
               "Please check your authentication session or reload."}
@@ -48,15 +48,21 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 pb-12 font-mono">
-      <div>
-        <h1 className="text-xl font-bold tracking-tight">Account & Security Center</h1>
-        <p className="text-muted-foreground text-xs">
-          Manage your account profile, configure 2FA authentication, and set IP whitelisting rules.
-        </p>
+    <div className="flex flex-col gap-8 font-mono">
+      {/* Header Bar matching Tunnels page */}
+      <div className="border-border/60 flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <span className="text-primary text-xl font-bold">{">"}</span>
+            <h1 className="text-xl font-bold tracking-tight">Account & Security</h1>
+          </div>
+          <p className="text-muted-foreground text-xs">
+            // Profile details, 2FA authentication, and IP whitelisting rules.
+          </p>
+        </div>
       </div>
 
-      {/* User Information Card */}
+      {/* Profile Info Card */}
       <ProfileInfoCard
         key={profile.name ?? "profile-name"}
         profile={profile}

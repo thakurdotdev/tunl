@@ -38,7 +38,7 @@ export function UserManagementTable({
 
   return (
     <>
-      <div className="bg-card border-border/80 rounded-lg border p-5 font-mono">
+      <div className="bg-card border-border/70 rounded-xl border p-5 shadow-2xs">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-base font-bold">User Account Directory</h2>
