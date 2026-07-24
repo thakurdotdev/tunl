@@ -69,7 +69,7 @@ export default function ProfilePage() {
         profile={profile}
         onSetup2FA={() => setup2FA.mutateAsync()}
         onVerify2FA={(code) => verify2FA.mutateAsync(code)}
-        onDisable2FA={(code) => disable2FA.mutateAsync(code)}
+        onDisable2FA={() => disable2FA.mutateAsync()}
         isSetupPending={setup2FA.isPending}
         isVerifyPending={verify2FA.isPending}
         isDisablePending={disable2FA.isPending}

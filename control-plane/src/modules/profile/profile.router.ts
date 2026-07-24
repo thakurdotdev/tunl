@@ -69,8 +69,7 @@ export function createProfileRouter(db: Database, jwtSecret: string): Router {
     "/2fa/disable",
     asyncRoute(async (req: Request, res: Response) => {
       const userId = req.userId!;
-      const { code } = codeSchema.parse(req.body);
-      const result = await disable2FA(db, userId, code, jwtSecret);
+      const result = await disable2FA(db, userId);
       res.json(result);
     }),
   );

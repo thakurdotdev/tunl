@@ -9,7 +9,7 @@ interface TwoFactorCardProps {
   profile: UserProfile | undefined;
   onSetup2FA: () => Promise<Setup2FAResponse>;
   onVerify2FA: (code: string) => Promise<any>;
-  onDisable2FA: (code: string) => Promise<any>;
+  onDisable2FA: () => Promise<any>;
   isSetupPending: boolean;
   isVerifyPending: boolean;
   isDisablePending: boolean;
@@ -29,7 +29,6 @@ export function TwoFactorCard({
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [isDisableModalOpen, setIsDisableModalOpen] = useState(false);
-  const [disableCode, setDisableCode] = useState("");
 
   const handleStartSetup = async () => {
     setError("");
@@ -56,11 +55,10 @@ export function TwoFactorCard({
   const handleConfirmDisable = async () => {
     setError("");
     try {
-      await onDisable2FA(disableCode);
+      await onDisable2FA();
       setIsDisableModalOpen(false);
-      setDisableCode("");
     } catch (err: any) {
-      setError(err?.response?.data?.message || err?.message || "Invalid 2FA code");
+      setError(err?.response?.data?.message || err?.message || "Failed to disable 2FA");
     }
   };
 
@@ -231,12 +229,11 @@ export function TwoFactorCard({
         isOpen={isDisableModalOpen}
         onClose={() => {
           setIsDisableModalOpen(false);
-          setDisableCode("");
           setError("");
         }}
         onConfirm={handleConfirmDisable}
         title="Disable Two-Factor Authentication"
-        description="To confirm disabling 2FA, please enter your current 6-digit authenticator code below."
+        description="Are you sure you want to disable Two-Factor Authentication? Your account will no longer be protected by an authenticator code."
         confirmText="Disable 2FA"
         variant="destructive"
         isPending={isDisablePending}

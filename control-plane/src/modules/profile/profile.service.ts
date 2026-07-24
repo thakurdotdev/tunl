@@ -115,22 +115,10 @@ export async function verify2FA(db: Database, userId: string, code: string, jwtS
   return { success: true, message: "Two-Factor Authentication successfully enabled" };
 }
 
-export async function disable2FA(db: Database, userId: string, code: string, jwtSecret: string) {
+export async function disable2FA(db: Database, userId: string) {
   const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-  if (!user || !user.twoFactorEnabled || !user.twoFactorSecret) {
+  if (!user || !user.twoFactorEnabled) {
     throw badRequest("2FA is not enabled on this account");
-  }
-
-  let plainSecret = "";
-  try {
-    plainSecret = decryptSecret(user.twoFactorSecret, jwtSecret);
-  } catch {
-    throw badRequest("Failed to decrypt 2FA secret");
-  }
-
-  const result = await verify({ token: code.trim(), secret: plainSecret });
-  if (!result || !result.valid) {
-    throw unauthorized("Invalid 2FA verification code");
   }
 
   await db

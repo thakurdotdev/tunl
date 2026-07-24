@@ -72,10 +72,9 @@ export function useVerify2FA() {
 export function useDisable2FA() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (code: string) => {
+    mutationFn: async () => {
       const { data } = await client.post<{ success: boolean; message: string }>(
         "/v1/profile/2fa/disable",
-        { code },
       );
       return data;
     },
