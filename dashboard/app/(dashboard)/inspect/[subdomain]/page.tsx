@@ -44,7 +44,7 @@ function formatBytes(bytes: number) {
 }
 
 function generateCurlCommand(req: CapturedRequest, subdomain: string): string {
-  const host = `${subdomain}.thakur.dev`;
+  const host = `${subdomain}.tunl.online`;
   const url = `https://${host}${req.path}`;
   let cmd = `curl -X ${req.method} "${url}"`;
 
@@ -144,14 +144,14 @@ export default function InspectPage() {
           </Link>
           <div className="flex min-w-0 items-center gap-1.5 font-mono">
             <span className="text-primary text-xs font-semibold">&gt;_</span>
-            <h1 className="max-w-[160px] truncate text-xs font-bold tracking-tight sm:max-w-none sm:text-sm text-foreground">
-              {subdomain}.thakur.dev
+            <h1 className="text-foreground max-w-[160px] truncate text-xs font-bold tracking-tight sm:max-w-none sm:text-sm">
+              {subdomain}.tunl.online
             </h1>
           </div>
           <span
             className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[10px] font-semibold ${
               connected
-                ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/20"
+                ? "border-emerald-500/20 bg-emerald-500/15 text-emerald-400"
                 : "bg-muted text-muted-foreground border-border/60"
             }`}
           >
@@ -161,7 +161,7 @@ export default function InspectPage() {
         </div>
 
         {/* Right Section: Controls */}
-        <div className="flex items-center gap-1.5 sm:gap-2 font-sans">
+        <div className="flex items-center gap-1.5 font-sans sm:gap-2">
           <Button
             variant="outline"
             size="xs"
@@ -190,7 +190,7 @@ export default function InspectPage() {
       </div>
 
       {/* Filter & Search Bar */}
-      <div className="border-border/60 bg-muted/20 flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2 text-xs font-sans">
+      <div className="border-border/60 bg-muted/20 flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2 font-sans text-xs">
         {/* Method Filter Pills */}
         <div className="no-scrollbar flex items-center gap-1 overflow-x-auto">
           <Filter className="text-muted-foreground mr-1 h-3.5 w-3.5 shrink-0" />
@@ -217,7 +217,7 @@ export default function InspectPage() {
             placeholder="Search path, method, status..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="border-border/60 bg-background placeholder:text-muted-foreground/60 focus:ring-primary w-full rounded-md border py-1 pr-3 pl-8 text-xs focus:outline-none focus:ring-1"
+            className="border-border/60 bg-background placeholder:text-muted-foreground/60 focus:ring-primary w-full rounded-md border py-1 pr-3 pl-8 text-xs focus:ring-1 focus:outline-none"
           />
         </div>
       </div>
@@ -240,10 +240,10 @@ export default function InspectPage() {
           </div>
 
           {/* Request Rows */}
-          <div className="no-scrollbar divide-y divide-border/40 flex-1 overflow-y-auto">
+          <div className="no-scrollbar divide-border/40 flex-1 divide-y overflow-y-auto">
             {filteredRequests.length === 0 ? (
               <div className="flex flex-col items-center justify-center gap-3 px-4 py-20 text-center">
-                <div className="text-muted-foreground/30 text-3xl font-mono">&gt;_</div>
+                <div className="text-muted-foreground/30 font-mono text-3xl">&gt;_</div>
                 <div className="flex flex-col items-center gap-1">
                   <h4 className="text-xs font-semibold sm:text-sm">
                     {searchQuery || methodFilter !== "ALL"
@@ -256,7 +256,7 @@ export default function InspectPage() {
                       : connected
                         ? "Send traffic to https://" +
                           subdomain +
-                          ".thakur.dev to see logs in real time"
+                          ".tunl.online to see logs in real time"
                         : "Connect your tunnel session to start logging requests"}
                   </p>
                 </div>
@@ -273,7 +273,7 @@ export default function InspectPage() {
                     selectedId === req.id ? "bg-muted/50 font-semibold" : ""
                   }`}
                 >
-                  <span className="w-14 shrink-0 sm:w-16 font-mono">
+                  <span className="w-14 shrink-0 font-mono sm:w-16">
                     <span
                       className={`inline-block rounded border px-1.5 py-0.5 text-[10px] font-bold ${
                         METHOD_COLORS[req.method] ??
@@ -345,7 +345,7 @@ export default function InspectPage() {
                   <ArrowLeft className="h-3 w-3" /> Back
                 </Button>
                 <span
-                  className={`shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-bold font-mono ${
+                  className={`shrink-0 rounded border px-1.5 py-0.5 font-mono text-[10px] font-bold ${
                     METHOD_COLORS[selected.method] ??
                     "bg-muted text-muted-foreground border-border/60"
                   }`}
@@ -356,7 +356,7 @@ export default function InspectPage() {
                   {selected.path}
                 </span>
                 <span
-                  className={`shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-bold font-mono ${statusColor(
+                  className={`shrink-0 rounded border px-1.5 py-0.5 font-mono text-[10px] font-bold ${statusColor(
                     selected.statusCode,
                   )}`}
                 >
@@ -448,9 +448,7 @@ function GeneralTab({ req }: { req: CapturedRequest }) {
           key={label}
           className="border-border/60 bg-muted/20 hover:bg-muted/30 flex flex-wrap items-center justify-between rounded-md border px-3 py-2 text-xs"
         >
-          <span className="text-muted-foreground w-28 shrink-0 text-xs font-medium">
-            {label}
-          </span>
+          <span className="text-muted-foreground w-28 shrink-0 text-xs font-medium">{label}</span>
           <span className="text-foreground font-mono text-xs font-semibold break-all">{value}</span>
         </div>
       ))}
@@ -464,7 +462,7 @@ function HeadersTable({ headers, title }: { headers: Record<string, string>; tit
 
   if (entries.length === 0) {
     return (
-      <p className="text-muted-foreground py-12 text-center text-xs font-sans">
+      <p className="text-muted-foreground py-12 text-center font-sans text-xs">
         No {title.toLowerCase()} captured
       </p>
     );
@@ -480,7 +478,7 @@ function HeadersTable({ headers, title }: { headers: Record<string, string>; tit
   return (
     <div className="flex flex-col gap-3 font-sans">
       <div className="flex items-center justify-between">
-        <span className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
+        <span className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
           {title} ({entries.length})
         </span>
         <Button variant="outline" size="xs" onClick={copyHeaders} className="gap-1 text-xs">
@@ -495,13 +493,13 @@ function HeadersTable({ headers, title }: { headers: Record<string, string>; tit
           )}
         </Button>
       </div>
-      <div className="border-border/60 divide-y divide-border/60 flex flex-col overflow-hidden rounded-md border">
+      <div className="border-border/60 divide-border/60 flex flex-col divide-y overflow-hidden rounded-md border">
         {entries.map(([key, value]) => (
           <div
             key={key}
             className="hover:bg-muted/20 flex flex-col gap-1 px-3 py-2 text-xs sm:flex-row sm:items-start sm:gap-0"
           >
-            <span className="text-emerald-400 w-44 shrink-0 font-mono font-semibold break-all">
+            <span className="w-44 shrink-0 font-mono font-semibold break-all text-emerald-400">
               {key}
             </span>
             <span className="text-foreground flex-1 font-mono break-all">{value}</span>
@@ -517,7 +515,7 @@ function BodyView({ body, title }: { body?: string; title: string }) {
 
   if (!body) {
     return (
-      <p className="text-muted-foreground py-12 text-center text-xs font-sans">
+      <p className="text-muted-foreground py-12 text-center font-sans text-xs">
         No {title.toLowerCase()} content
       </p>
     );
@@ -540,7 +538,9 @@ function BodyView({ body, title }: { body?: string; title: string }) {
   return (
     <div className="flex flex-col gap-3 font-sans">
       <div className="flex items-center justify-between">
-        <span className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">{title}</span>
+        <span className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
+          {title}
+        </span>
         <Button variant="outline" size="xs" onClick={copyBody} className="gap-1 text-xs">
           {copied ? (
             <>
@@ -553,7 +553,7 @@ function BodyView({ body, title }: { body?: string; title: string }) {
           )}
         </Button>
       </div>
-      <pre className="border-border/60 bg-muted/40 max-h-[500px] overflow-auto rounded-md border p-3.5 font-mono text-xs leading-relaxed break-all whitespace-pre-wrap text-foreground">
+      <pre className="border-border/60 bg-muted/40 text-foreground max-h-[500px] overflow-auto rounded-md border p-3.5 font-mono text-xs leading-relaxed break-all whitespace-pre-wrap">
         {formatted}
       </pre>
     </div>
@@ -573,7 +573,7 @@ function CurlTab({ req, subdomain }: { req: CapturedRequest; subdomain: string }
   return (
     <div className="flex flex-col gap-3 font-sans">
       <div className="flex items-center justify-between">
-        <span className="text-muted-foreground flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider">
+        <span className="text-muted-foreground flex items-center gap-1.5 text-xs font-semibold tracking-wider uppercase">
           <Code2 className="text-primary h-3.5 w-3.5" /> cURL Command
         </span>
         <Button variant="outline" size="xs" onClick={copyCurl} className="gap-1 text-xs">

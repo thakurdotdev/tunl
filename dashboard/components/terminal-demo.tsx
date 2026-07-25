@@ -7,13 +7,13 @@ interface LogEntry {
   type: "prompt" | "system" | "success" | "traffic";
 }
 
-const FULL_COMMAND = "ssh -R 80:localhost:3000 -p 2222 my-app@t.thakur.dev";
+const FULL_COMMAND = "ssh -R 80:localhost:3000 -p 2222 my-app@tunl.online";
 
 const INITIAL_LOGS: LogEntry[] = [
-  { text: "[sys] Connecting to t.thakur.dev:2222...", type: "system" },
+  { text: "[sys] Connecting to tunl.online:2222...", type: "system" },
   { text: "[auth] Authenticated with key (ed25519:a8...3f)", type: "system" },
   { text: "[tunnel] Remote port forwarding initialized", type: "system" },
-  { text: "▶ Tunnel Live: https://my-app.thakur.dev -> http://localhost:3000", type: "success" },
+  { text: "▶ Tunnel Live: https://my-app.tunl.online -> http://localhost:3000", type: "success" },
 ];
 
 const STREAMING_TRAFFIC = [
@@ -81,28 +81,28 @@ export function TerminalDemo() {
   }, [visibleLogs.length]);
 
   return (
-    <div className="border-zinc-800 bg-zinc-950 overflow-hidden rounded-lg border shadow-xl text-zinc-100 font-sans">
-      <div className="border-zinc-800/80 bg-zinc-900/80 flex items-center justify-between border-b px-4 py-2.5 text-xs font-sans">
+    <div className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950 font-sans text-zinc-100 shadow-xl">
+      <div className="flex items-center justify-between border-b border-zinc-800/80 bg-zinc-900/80 px-4 py-2.5 font-sans text-xs">
         <div className="flex items-center gap-2">
           <span className="inline-block h-2.5 w-2.5 rounded-full bg-zinc-700" />
           <span className="inline-block h-2.5 w-2.5 rounded-full bg-zinc-700" />
           <span className="inline-block h-2.5 w-2.5 rounded-full bg-zinc-700" />
-          <span className="text-zinc-400 ml-2 font-sans text-xs font-medium">
+          <span className="ml-2 font-sans text-xs font-medium text-zinc-400">
             Terminal — ssh tunl
           </span>
         </div>
         <div className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-400">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
           <span>Live Session</span>
         </div>
       </div>
 
-      <div className="flex min-h-[260px] flex-col justify-start gap-2.5 p-5 font-mono text-xs select-none bg-zinc-950">
-        <div className="text-zinc-100 flex items-center gap-2">
-          <span className="text-emerald-400 font-semibold">$</span>
+      <div className="flex min-h-[260px] flex-col justify-start gap-2.5 bg-zinc-950 p-5 font-mono text-xs select-none">
+        <div className="flex items-center gap-2 text-zinc-100">
+          <span className="font-semibold text-emerald-400">$</span>
           <span className="text-zinc-100">{typedCommand}</span>
           <span
-            className={`bg-emerald-400 inline-block h-4 w-2 ${
+            className={`inline-block h-4 w-2 bg-emerald-400 ${
               isTyping ? "animate-pulse" : "animate-terminal-blink"
             }`}
           />
@@ -112,7 +112,7 @@ export function TerminalDemo() {
           if (!log) return null;
           if (log.type === "system") {
             return (
-              <div key={idx} className="text-zinc-400 text-[11px]">
+              <div key={idx} className="text-[11px] text-zinc-400">
                 {log.text}
               </div>
             );

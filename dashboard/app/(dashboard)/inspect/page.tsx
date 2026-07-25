@@ -63,7 +63,7 @@ export default function InspectLandingPage() {
                 </div>
                 <div className="flex items-center justify-between font-sans text-xs">
                   <span className="text-muted-foreground font-mono text-[11px]">
-                    {subdomain}.thakur.dev
+                    {subdomain}.tunl.online
                   </span>
                   <span
                     className={`rounded-md px-2 py-0.5 text-[10px] font-semibold ${

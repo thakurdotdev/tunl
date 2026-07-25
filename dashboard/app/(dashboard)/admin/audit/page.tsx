@@ -202,7 +202,7 @@ export default function AdminAuditPage() {
                         {evt.subdomain ? (
                           <span className="inline-flex items-center gap-1.5 font-bold text-cyan-400">
                             <Globe className="h-3.5 w-3.5 shrink-0 opacity-70" />
-                            {evt.subdomain}.thakur.dev
+                            {evt.subdomain}.tunl.online
                           </span>
                         ) : (
                           <span className="text-muted-foreground/40">-</span>

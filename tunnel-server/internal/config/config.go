@@ -36,7 +36,7 @@ type Config struct {
 func Load() (*Config, error) {
 	loadDotEnv()
 	cfg := &Config{
-		BaseDomain:           getEnv("BASE_DOMAIN", "thakur.dev"),
+		BaseDomain:           getEnv("BASE_DOMAIN", "tunl.online"),
 		TunnelURLScheme:      getEnv("TUNNEL_URL_SCHEME", "https"),
 		SSHListenAddr:        getEnv("SSH_LISTEN_ADDR", ":2222"),
 		HTTPListenAddr:       getEnv("HTTP_LISTEN_ADDR", ":8080"),

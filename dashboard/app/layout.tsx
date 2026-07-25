@@ -16,7 +16,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://tunl.thakur.dev"),
+  metadataBase: new URL("https://tunl.online"),
   title: {
     default: "tunl — Zero-Install OpenSSH Reverse Tunneling Platform",
     template: "%s | tunl",
@@ -51,7 +51,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://tunl.thakur.dev",
+    url: "https://tunl.online",
     siteName: "tunl",
     title: "tunl — Zero-Install OpenSSH Reverse Tunneling Platform",
     description:

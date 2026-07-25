@@ -44,7 +44,7 @@ export default function LandingPage() {
     }
   }, []);
 
-  const defaultSshCmd = "ssh -R 80:localhost:3000 -p 2222 t.thakur.dev";
+  const defaultSshCmd = "ssh -R 80:localhost:3000 -p 2222 tunl.online";
 
   const handleCopy = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
@@ -58,35 +58,35 @@ export default function LandingPage() {
       id: "next",
       name: "Next.js / React",
       port: "3000",
-      cmd: "ssh -R 80:localhost:3000 -p 2222 t.thakur.dev",
+      cmd: "ssh -R 80:localhost:3000 -p 2222 tunl.online",
       note: "Perfect for testing Next.js dev server, Server Actions & Webhooks",
     },
     {
       id: "vite",
       name: "Vite / Vue / Svelte",
       port: "5173",
-      cmd: "ssh -R 80:localhost:5173 -p 2222 t.thakur.dev",
+      cmd: "ssh -R 80:localhost:5173 -p 2222 tunl.online",
       note: "Full WebSocket HMR (Hot Module Replacement) support",
     },
     {
       id: "fastapi",
       name: "FastAPI / Python",
       port: "8000",
-      cmd: "ssh -R 80:localhost:8000 -p 2222 t.thakur.dev",
+      cmd: "ssh -R 80:localhost:8000 -p 2222 tunl.online",
       note: "Instant public endpoint for AI APIs, LangChain & async streaming",
     },
     {
       id: "express",
       name: "Express / Node.js",
       port: "3000",
-      cmd: "ssh -R 80:localhost:3000 -p 2222 t.thakur.dev",
+      cmd: "ssh -R 80:localhost:3000 -p 2222 tunl.online",
       note: "Receive Stripe, GitHub, or Shopify webhooks on local machine",
     },
     {
       id: "django",
       name: "Django / Flask",
       port: "8000",
-      cmd: "ssh -R 80:localhost:8000 -p 2222 t.thakur.dev",
+      cmd: "ssh -R 80:localhost:8000 -p 2222 tunl.online",
       note: "Expose local Django admin & API endpoints securely",
     },
   ];
@@ -332,7 +332,7 @@ export default function LandingPage() {
                   Access your application via an instant public HTTPS endpoint with TLS encryption.
                 </p>
                 <div className="bg-muted/60 border-border/60 rounded-md border p-3 font-mono text-xs text-emerald-400">
-                  <code className="block truncate">https://my-app.thakur.dev</code>
+                  <code className="block truncate">https://my-app.tunl.online</code>
                 </div>
               </div>
             </div>
@@ -374,8 +374,8 @@ export default function LandingPage() {
                 </div>
                 <p className="text-muted-foreground text-xs leading-relaxed">
                   Reserve persistent static subdomains (e.g.{" "}
-                  <code className="font-mono text-[11px] text-emerald-400">my-app.thakur.dev</code>)
-                  bound directly to your SSH public key.
+                  <code className="font-mono text-[11px] text-emerald-400">my-app.tunl.online</code>
+                  ) bound directly to your SSH public key.
                 </p>
               </div>
 

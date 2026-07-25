@@ -1,6 +1,6 @@
 # tunl
 
-Expose local HTTP services to the internet via SSH port forwarding (`ssh -R 80:localhost:3000 t.thakur.dev`). No client installation required.
+Expose local HTTP services to the internet via SSH port forwarding (`ssh -R 80:localhost:3000 tunl.online`). No client installation required.
 
 `tunl` is an open-source reverse tunnel platform consisting of an OpenSSH-compatible tunnel daemon, a control plane, and a web dashboard.
 
@@ -44,8 +44,8 @@ Expose local HTTP services to the internet via SSH port forwarding (`ssh -R 80:l
 
 - **Zero Client Dependencies**: Uses standard OpenSSH (`ssh -R`). No custom CLI or binary installation needed.
 - **Subdomain Routing & Selection**:
-  - Direct subdomain targeting: `ssh -R 80:localhost:3000 app@t.thakur.dev`
-  - Interactive selection menu: `ssh -t -R 80:localhost:3000 t.thakur.dev`
+  - Direct subdomain targeting: `ssh -R 80:localhost:3000 app@tunl.online`
+  - Interactive selection menu: `ssh -t -R 80:localhost:3000 tunl.online`
 - **Security & Access Control**:
   - Two-Factor Authentication (2FA) with TOTP authenticator apps. Secrets are encrypted using AES-256-GCM prior to storage.
   - Per-user IP whitelisting with IPv4/IPv6 CIDR evaluation (`192.168.1.100`, `10.0.0.0/8`).
@@ -85,19 +85,19 @@ pnpm dev
 ### 1. Basic Anonymous / Ephemeral Tunnel
 
 ```bash
-ssh -R 80:localhost:3000 t.thakur.dev
+ssh -R 80:localhost:3000 tunl.online
 ```
 
 ### 2. Interactive Reserved Subdomain Selection
 
 ```bash
-ssh -t -R 80:localhost:3000 t.thakur.dev
+ssh -t -R 80:localhost:3000 tunl.online
 ```
 
 ### 3. Connect to a Specific Reserved Subdomain
 
 ```bash
-ssh -R 80:localhost:3000 myapp@t.thakur.dev
+ssh -R 80:localhost:3000 myapp@tunl.online
 ```
 
 ---
