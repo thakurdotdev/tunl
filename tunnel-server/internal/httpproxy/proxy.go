@@ -207,14 +207,14 @@ func (h *Handler) subdomainFromHost(host string) string {
 }
 
 func getClientIP(r *http.Request) string {
+	if xri := r.Header.Get("X-Real-IP"); xri != "" {
+		return strings.TrimSpace(xri)
+	}
 	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
 		parts := strings.Split(xff, ",")
 		if len(parts) > 0 {
 			return strings.TrimSpace(parts[0])
 		}
-	}
-	if xri := r.Header.Get("X-Real-IP"); xri != "" {
-		return strings.TrimSpace(xri)
 	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {

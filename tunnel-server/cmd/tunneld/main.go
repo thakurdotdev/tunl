@@ -101,9 +101,23 @@ func main() {
 
 	healthHandler := health.NewHandler(reg)
 
-	httpSrv := &http.Server{Addr: cfg.HTTPListenAddr, Handler: finalHandler}
+	httpSrv := &http.Server{
+		Addr:           cfg.HTTPListenAddr,
+		Handler:        finalHandler,
+		ReadTimeout:    15 * time.Second,
+		WriteTimeout:   30 * time.Second,
+		IdleTimeout:    60 * time.Second,
+		MaxHeaderBytes: 1 << 20, // 1MB limit for header size
+	}
 	var httpsSrv *http.Server
-	healthSrv := &http.Server{Addr: cfg.HealthListenAddr, Handler: healthHandler}
+	healthSrv := &http.Server{
+		Addr:           cfg.HealthListenAddr,
+		Handler:        healthHandler,
+		ReadTimeout:    5 * time.Second,
+		WriteTimeout:   5 * time.Second,
+		IdleTimeout:    15 * time.Second,
+		MaxHeaderBytes: 1 << 16,
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -138,7 +152,14 @@ func main() {
 	}()
 
 	if cfg.TLSCertPath != "" && cfg.TLSKeyPath != "" {
-		httpsSrv = &http.Server{Addr: cfg.HTTPSListenAddr, Handler: finalHandler}
+		httpsSrv = &http.Server{
+			Addr:           cfg.HTTPSListenAddr,
+			Handler:        finalHandler,
+			ReadTimeout:    15 * time.Second,
+			WriteTimeout:   30 * time.Second,
+			IdleTimeout:    60 * time.Second,
+			MaxHeaderBytes: 1 << 20,
+		}
 		go func() {
 			logger.Info("https proxy listening", "addr", cfg.HTTPSListenAddr)
 			if err := httpsSrv.ListenAndServeTLS(cfg.TLSCertPath, cfg.TLSKeyPath); err != nil && err != http.ErrServerClosed {

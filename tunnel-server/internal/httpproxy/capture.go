@@ -42,19 +42,16 @@ func captureRequestBody(r *http.Request, maxSize int) (string, int64) {
 	if r.Body == nil {
 		return "", 0
 	}
-	buf := make([]byte, maxSize)
-	n, _ := io.ReadFull(r.Body, buf)
+	var capturedBuf bytes.Buffer
+	lr := io.LimitReader(r.Body, int64(maxSize))
+	nCaptured, _ := io.Copy(&capturedBuf, lr)
 	remaining, _ := io.Copy(io.Discard, r.Body)
-	totalSize := int64(n) + remaining
+	totalSize := nCaptured + remaining
 
-	r.Body = io.NopCloser(io.MultiReader(bytes.NewReader(buf[:n]), strings.NewReader("")))
-	if remaining > 0 {
-		// Body was larger than maxSize, we need to reconstruct it.
-		// Since we already drained, just use what we captured.
-		r.Body = io.NopCloser(bytes.NewReader(buf[:n]))
-	}
+	// Reconstruct r.Body so downstream proxying can still read it
+	r.Body = io.NopCloser(io.MultiReader(bytes.NewReader(capturedBuf.Bytes()), r.Body))
 
-	return string(buf[:n]), totalSize
+	return capturedBuf.String(), totalSize
 }
 
 func flattenHeaders(h http.Header) map[string]string {
