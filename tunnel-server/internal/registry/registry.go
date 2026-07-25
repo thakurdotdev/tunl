@@ -51,6 +51,7 @@ type TunnelRegistry interface {
 	UserActiveCount(userID string) int
 	AnonymousCount() int
 	ReservedCount() int
+	UpdateUserAllowedIPs(userID string, allowedIPs []string)
 }
 
 var (
@@ -252,6 +253,16 @@ func (r *InMemoryRegistry) UserActiveCount(userID string) int {
 		}
 	}
 	return count
+}
+
+func (r *InMemoryRegistry) UpdateUserAllowedIPs(userID string, allowedIPs []string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, e := range r.entries {
+		if e.tunnel.UserID == userID {
+			e.tunnel.AllowedIPs = allowedIPs
+		}
+	}
 }
 
 func (r *InMemoryRegistry) AnonymousCount() int {

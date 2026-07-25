@@ -81,8 +81,25 @@ func (s *sshSession) UserID() string               { return s.userID }
 func (s *sshSession) Email() string                { return s.email }
 func (s *sshSession) Plan() string                 { return s.plan }
 func (s *sshSession) MaxActiveTunnels() int        { return s.maxActiveTunnels }
-func (s *sshSession) ReservedSubdomains() []string { return s.reservedSubdomains }
-func (s *sshSession) AllowedSubdomain() string     { return s.allowedSubdomain }
+func (s *sshSession) Fingerprint() string {
+	if s.permissions != nil {
+		return s.permissions.Extensions["fingerprint"]
+	}
+	return ""
+}
+func (s *sshSession) ReservedSubdomains() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.reservedSubdomains
+}
+
+func (s *sshSession) setReservedSubdomains(subs []string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.reservedSubdomains = subs
+}
+
+func (s *sshSession) AllowedSubdomain() string { return s.allowedSubdomain }
 func (s *sshSession) RequestedSubdomain() string {
 	if s.permissions != nil {
 		return s.permissions.Extensions["requested_subdomain"]

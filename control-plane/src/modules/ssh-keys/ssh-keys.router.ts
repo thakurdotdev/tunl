@@ -69,6 +69,10 @@ export function sshKeysRouter(db: Database, redis: RedisClient) {
         .returning({ id: sshKeys.id, fingerprint: sshKeys.fingerprint });
       if (!deleted.length) throw notFound("SSH key not found");
       await redis.del(redisKeys.validateKey(deleted[0].fingerprint));
+      await redis.publish(
+        "tunl:ssh-key-revoked",
+        JSON.stringify({ userId: req.userId, fingerprint: deleted[0].fingerprint }),
+      );
       res.status(204).send();
     }),
   );

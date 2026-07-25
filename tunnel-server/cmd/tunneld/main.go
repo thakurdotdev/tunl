@@ -5,6 +5,7 @@ import (
 	"crypto"
 	"crypto/ed25519"
 	"crypto/rand"
+	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"log"
@@ -96,6 +97,42 @@ func main() {
 			subdomainExtractor := httpproxy.SubdomainExtractor(cfg.BaseDomain)
 			finalHandler = httpproxy.CaptureMiddleware(proxyHandler, publisher, subdomainExtractor)
 			logger.Info("request inspector enabled", "maxBodySize", cfg.RequestLogMaxBodySize)
+
+			sub := rdb.Subscribe(context.Background(), "tunl:user-ip-updated", "tunl:ssh-key-revoked", "tunl:subdomains-updated")
+			go func() {
+				ch := sub.Channel()
+				for msg := range ch {
+					switch msg.Channel {
+					case "tunl:user-ip-updated":
+						var payload struct {
+							UserID     string   `json:"userId"`
+							AllowedIPs []string `json:"allowedIps"`
+						}
+						if err := json.Unmarshal([]byte(msg.Payload), &payload); err == nil && payload.UserID != "" {
+							reg.UpdateUserAllowedIPs(payload.UserID, payload.AllowedIPs)
+							logger.Info("realtime updated active user ip whitelist", "userId", payload.UserID, "allowedIps", payload.AllowedIPs)
+						}
+					case "tunl:ssh-key-revoked":
+						var payload struct {
+							UserID      string `json:"userId"`
+							Fingerprint string `json:"fingerprint"`
+						}
+						if err := json.Unmarshal([]byte(msg.Payload), &payload); err == nil {
+							sshSrv.CloseSessionsByUserOrFingerprint(payload.UserID, payload.Fingerprint)
+							logger.Info("realtime revoked ssh key and closed active session", "fingerprint", payload.Fingerprint, "userId", payload.UserID)
+						}
+					case "tunl:subdomains-updated":
+						var payload struct {
+							UserID             string   `json:"userId"`
+							ReservedSubdomains []string `json:"reservedSubdomains"`
+						}
+						if err := json.Unmarshal([]byte(msg.Payload), &payload); err == nil && payload.UserID != "" {
+							sshSrv.UpdateUserSubdomains(payload.UserID, payload.ReservedSubdomains)
+							logger.Info("realtime updated user reserved subdomains", "userId", payload.UserID, "reserved", payload.ReservedSubdomains)
+						}
+					}
+				}
+			}()
 		}
 	}
 

@@ -207,6 +207,29 @@ func (s *Server) closeAllSessions() {
 	}
 }
 
+func (s *Server) CloseSessionsByUserOrFingerprint(userID string, fingerprint string) {
+	s.sessMu.Lock()
+	defer s.sessMu.Unlock()
+	for _, sess := range s.sessions {
+		if (userID != "" && sess.UserID() == userID) ||
+			(fingerprint != "" && sess.Fingerprint() == fingerprint) {
+			s.log.Info("force closing SSH session due to key revocation", "session_id", sess.ID(), "user_id", userID, "fingerprint", fingerprint)
+			sess.Close()
+		}
+	}
+}
+
+func (s *Server) UpdateUserSubdomains(userID string, subdomains []string) {
+	s.sessMu.Lock()
+	defer s.sessMu.Unlock()
+	for _, sess := range s.sessions {
+		if sess.UserID() == userID {
+			sess.setReservedSubdomains(subdomains)
+			s.log.Info("realtime updated user reserved subdomains", "user_id", userID, "reserved", subdomains)
+		}
+	}
+}
+
 func (s *Server) handleConn(ctx context.Context, conn net.Conn) {
 	remoteIP := extractIP(conn.RemoteAddr())
 	if !s.limiter.acquire(remoteIP) {

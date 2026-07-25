@@ -99,4 +99,15 @@ export async function invalidateUserKeyCache(db: Database, redis: RedisClient, u
   for (const k of keys) {
     await redis.del(redisKeys.validateKey(k.fingerprint));
   }
+
+  const userTunnels = await db
+    .select({ subdomain: tunnels.subdomain })
+    .from(tunnels)
+    .where(eq(tunnels.userId, userId));
+  const reservedSubdomainsList = userTunnels.map((t) => t.subdomain);
+
+  await redis.publish(
+    "tunl:subdomains-updated",
+    JSON.stringify({ userId, reservedSubdomains: reservedSubdomainsList }),
+  );
 }
