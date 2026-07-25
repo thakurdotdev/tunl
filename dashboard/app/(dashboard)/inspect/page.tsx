@@ -19,7 +19,8 @@ export default function InspectLandingPage() {
       <div className="border-border/60 flex flex-col gap-1 border-b pb-5">
         <h1 className="text-foreground text-xl font-bold tracking-tight">Request Inspector</h1>
         <p className="text-muted-foreground text-xs">
-          Select a tunnel endpoint to inspect real-time HTTP traffic, headers, and payloads.
+          Select a tunnel endpoint to inspect real-time HTTP traffic, headers, and payloads
+          (retained for up to 30 minutes).
         </p>
       </div>
 

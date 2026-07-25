@@ -76,11 +76,11 @@ func newSSHSession(id, userID, email, allowedSubdomain string, reservedSubdomain
 	}
 }
 
-func (s *sshSession) ID() string                   { return s.id }
-func (s *sshSession) UserID() string               { return s.userID }
-func (s *sshSession) Email() string                { return s.email }
-func (s *sshSession) Plan() string                 { return s.plan }
-func (s *sshSession) MaxActiveTunnels() int        { return s.maxActiveTunnels }
+func (s *sshSession) ID() string            { return s.id }
+func (s *sshSession) UserID() string        { return s.userID }
+func (s *sshSession) Email() string         { return s.email }
+func (s *sshSession) Plan() string          { return s.plan }
+func (s *sshSession) MaxActiveTunnels() int { return s.maxActiveTunnels }
 func (s *sshSession) Fingerprint() string {
 	if s.permissions != nil {
 		return s.permissions.Extensions["fingerprint"]

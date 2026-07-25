@@ -64,6 +64,10 @@ type SessionReporter interface {
 	ReportHeartbeat(ctx context.Context, userID, subdomain string)
 }
 
+type LogFlusher interface {
+	FlushSubdomainLogs(subdomain string)
+}
+
 type Server struct {
 	listenAddr         string
 	baseDomain         string
@@ -71,6 +75,7 @@ type Server struct {
 	registry           registry.TunnelRegistry
 	keyValidator       KeyValidator
 	sessionReporter    SessionReporter
+	logFlusher         LogFlusher
 	subdomainMax       int
 	anonMaxDuration    time.Duration
 	sshConfig          *ssh.ServerConfig
@@ -89,6 +94,7 @@ type Options struct {
 	Registry         registry.TunnelRegistry
 	KeyValidator     KeyValidator
 	SessionReporter  SessionReporter
+	LogFlusher       LogFlusher
 	SubdomainRetries int
 	HostKey          ssh.Signer
 	MaxConnsPerIP    int
@@ -133,6 +139,7 @@ func New(opts Options) *Server {
 		registry:           opts.Registry,
 		keyValidator:       kv,
 		sessionReporter:    opts.SessionReporter,
+		logFlusher:         opts.LogFlusher,
 		subdomainMax:       opts.SubdomainRetries,
 		anonMaxDuration:    opts.AnonMaxDuration,
 		sshConfig:          cfg,
@@ -141,6 +148,10 @@ func New(opts Options) *Server {
 		log:                log,
 		sessions:           make(map[string]*sshSession),
 	}
+}
+
+func (s *Server) SetLogFlusher(flusher LogFlusher) {
+	s.logFlusher = flusher
 }
 
 func (s *Server) ListenAndServe(ctx context.Context) error {

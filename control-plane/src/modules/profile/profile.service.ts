@@ -184,10 +184,7 @@ export async function updateAllowedIps(
   }
 
   const effectiveIps = ipWhitelistEnabled ? sanitizedIps : [];
-  await redis.publish(
-    "tunl:user-ip-updated",
-    JSON.stringify({ userId, allowedIps: effectiveIps })
-  );
+  await redis.publish("tunl:user-ip-updated", JSON.stringify({ userId, allowedIps: effectiveIps }));
 
   return updated;
 }

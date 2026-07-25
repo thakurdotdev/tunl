@@ -9,13 +9,13 @@
     "db:seed": "pnpm --filter control-plane db:seed",
     "lint": "oxlint control-plane dashboard",
     "lint:fix": "oxlint --fix control-plane dashboard",
-    "format": "oxfmt --write control-plane dashboard",
-    "format:check": "oxfmt --check control-plane dashboard",
     "go:format": "find tunnel-server -type f -name '*.go' -print0 | xargs -0 gofmt -w",
     "go:format:check": "test -z \"$(find tunnel-server -type f -name '*.go' -print0 | xargs -0 gofmt -l)\"",
     "go:check": "cd tunnel-server && go vet ./... && go test -race ./...",
+    "format": "oxfmt --write control-plane dashboard && pnpm run go:format",
+    "format:check": "oxfmt --check control-plane dashboard && pnpm run go:format:check",
     "test": "pnpm --filter control-plane test",
-    "check": "pnpm run format:check && pnpm run lint && pnpm run test && pnpm run go:format:check && pnpm run go:check"
+    "check": "pnpm run format:check && pnpm run lint && pnpm run test && pnpm run go:check"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",

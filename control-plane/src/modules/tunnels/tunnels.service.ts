@@ -76,15 +76,22 @@ export async function createUserTunnel(db: Database, userId: string, subdomain: 
   }
 }
 
-export async function deleteUserTunnel(db: Database, userId: string, tunnelId: string) {
+export async function deleteUserTunnel(
+  db: Database,
+  redis: RedisClient,
+  userId: string,
+  tunnelId: string,
+) {
   const deleted = await db
     .delete(tunnels)
     .where(and(eq(tunnels.id, tunnelId), eq(tunnels.userId, userId)))
-    .returning({ id: tunnels.id });
+    .returning({ id: tunnels.id, subdomain: tunnels.subdomain });
 
   if (!deleted.length) {
     throw notFound("tunnel not found");
   }
+
+  await redis.del(`tunl:requests:${deleted[0].subdomain}`);
 }
 
 function isUniqueViolation(error: unknown): boolean {

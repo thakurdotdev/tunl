@@ -94,6 +94,7 @@ func main() {
 			logger.Warn("redis not reachable, request logging disabled", "error", err)
 		} else {
 			publisher := requestlog.NewPublisher(rdb, cfg.RequestLogMaxBodySize, logger)
+			sshSrv.SetLogFlusher(publisher)
 			subdomainExtractor := httpproxy.SubdomainExtractor(cfg.BaseDomain)
 			finalHandler = httpproxy.CaptureMiddleware(proxyHandler, publisher, subdomainExtractor)
 			logger.Info("request inspector enabled", "maxBodySize", cfg.RequestLogMaxBodySize)

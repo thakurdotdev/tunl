@@ -61,6 +61,17 @@ func NewPublisher(rdb *redis.Client, maxBodySize int, log *slog.Logger) *Publish
 
 func (p *Publisher) MaxBodySize() int { return p.maxBodySize }
 
+func (p *Publisher) FlushSubdomainLogs(subdomain string) {
+	if p == nil || p.rdb == nil || subdomain == "" {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	if err := p.rdb.Del(ctx, listKey(subdomain)).Err(); err != nil {
+		p.log.Warn("failed to flush subdomain request logs", "subdomain", subdomain, "error", err)
+	}
+}
+
 // Publish enqueues a captured request for async write to Redis.
 func (p *Publisher) Publish(subdomain string, req *CapturedRequest) {
 	data, err := json.Marshal(req)

@@ -158,6 +158,9 @@ export default function InspectPage() {
             <Circle className={`h-1.5 w-1.5 fill-current ${connected ? "animate-pulse" : ""}`} />
             {connected ? "Live" : "Offline"}
           </span>
+          <span className="border-border/60 bg-muted/40 text-muted-foreground hidden rounded-md border px-2 py-0.5 text-[10px] font-medium sm:inline-flex">
+            30m retention
+          </span>
         </div>
 
         {/* Right Section: Controls */}

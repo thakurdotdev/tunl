@@ -41,7 +41,7 @@ export function tunnelsRouter(db: Database, redis: RedisClient) {
     "/:id",
     asyncRoute(async (req, res) => {
       const id = z.uuid().parse(req.params.id);
-      await deleteUserTunnel(db, req.userId!, id);
+      await deleteUserTunnel(db, redis, req.userId!, id);
       await invalidateUserKeyCache(db, redis, req.userId!);
       res.status(204).send();
     }),

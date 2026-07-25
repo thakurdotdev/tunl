@@ -113,6 +113,10 @@ func (s *Server) handleForwardRequest(_ context.Context, req *ssh.Request, sess 
 		}
 	}
 
+	if s.logFlusher != nil {
+		s.logFlusher.FlushSubdomainLogs(sub)
+	}
+
 	sess.markReady()
 }
 
