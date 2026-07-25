@@ -120,13 +120,5 @@ func CaptureMiddleware(next http.Handler, publisher *requestlog.Publisher, subdo
 }
 
 func extractClientIP(r *http.Request) string {
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		if parts := strings.SplitN(xff, ",", 2); len(parts) > 0 {
-			return strings.TrimSpace(parts[0])
-		}
-	}
-	if host, _, err := strings.Cut(r.RemoteAddr, ":"); err {
-		return host
-	}
-	return r.RemoteAddr
+	return getClientIP(r)
 }

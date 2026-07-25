@@ -51,12 +51,14 @@ func NewHandler(opts Options) http.Handler {
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
 			h.log.Warn("proxy error", "error", err)
 			subdomain := h.subdomainFromHost(r.Host)
-			renderProxyError(w, r, http.StatusBadGateway,
-				"Bad Gateway",
-				"bad gateway",
+			renderProxyError(w, r, http.StatusServiceUnavailable,
+				"Service Unavailable",
+				"service unavailable",
 				"Failed to establish a connection with the local application server behind this tunnel.",
 				"Make sure your local development server (e.g., http://localhost:3000) is running and accessible.",
 				subdomain,
+				"https://tunl.online/dashboard",
+				"Open Dashboard →",
 			)
 		},
 	}
@@ -133,6 +135,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"The requested domain does not map to a valid tunnel host.",
 			"Check the URL in your browser address bar to ensure it is spelled correctly.",
 			"",
+			"https://tunl.online",
+			"Back to tunl →",
 		)
 		return
 	}
@@ -143,8 +147,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"Tunnel Not Found",
 			"tunnel not found",
 			"No active tunnel session was found registered for this subdomain.",
-			"Ensure your local tunl client is actively connected.",
+			"Ensure your local tunl client is actively connected over SSH.",
 			subdomain,
+			"https://tunl.online/dashboard",
+			"Open Dashboard →",
 		)
 		return
 	}
@@ -156,8 +162,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				"Access Restricted",
 				"Access Forbidden: IP address not whitelisted",
 				"Your IP address is not authorized to access this whitelisted tunnel.",
-				"If you own this tunnel, add your current IP address to your IP whitelist in the Tunl Dashboard under Profile > IP Restrictions.",
+				fmt.Sprintf("Tunnel owner? Add <strong>%s</strong> to this tunnel's IP allowlist from the dashboard.", clientIP),
 				subdomain,
+				"https://tunl.online/profile",
+				"Open IP Restrictions →",
 			)
 			return
 		}
@@ -170,6 +178,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"The connection to the local tunnel client was temporarily lost.",
 			"The client will automatically attempt to reconnect shortly.",
 			subdomain,
+			"https://tunl.online/dashboard",
+			"Open Dashboard →",
 		)
 		return
 	}
@@ -207,14 +217,20 @@ func (h *Handler) subdomainFromHost(host string) string {
 }
 
 func getClientIP(r *http.Request) string {
-	if xri := r.Header.Get("X-Real-IP"); xri != "" {
-		return strings.TrimSpace(xri)
+	if cfIP := r.Header.Get("CF-Connecting-IP"); cfIP != "" {
+		return strings.TrimSpace(cfIP)
 	}
 	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
 		parts := strings.Split(xff, ",")
 		if len(parts) > 0 {
-			return strings.TrimSpace(parts[0])
+			ip := strings.TrimSpace(parts[0])
+			if ip != "" {
+				return ip
+			}
 		}
+	}
+	if xri := r.Header.Get("X-Real-IP"); xri != "" {
+		return strings.TrimSpace(xri)
 	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {

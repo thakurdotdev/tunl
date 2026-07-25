@@ -22,6 +22,8 @@ type errorPageData struct {
 	RayID       string
 	HelpText    string
 	PortalURL   string
+	ActionURL   string
+	ActionLabel string
 }
 
 func generateRayID() string {
@@ -32,7 +34,7 @@ func generateRayID() string {
 	return hex.EncodeToString(b)
 }
 
-func renderProxyError(w http.ResponseWriter, r *http.Request, statusCode int, title, message, description, helpText, subdomain string) {
+func renderProxyError(w http.ResponseWriter, r *http.Request, statusCode int, title, message, description, helpText, subdomain, actionURL, actionLabel string) {
 	clientIP := getClientIP(r)
 	portalURL := "https://tunl.online"
 	nowUTC := time.Now().UTC().Format("2006-01-02 15:04:05 MST")
@@ -58,6 +60,8 @@ func renderProxyError(w http.ResponseWriter, r *http.Request, statusCode int, ti
 			RayID:       rayID,
 			HelpText:    helpText,
 			PortalURL:   portalURL,
+			ActionURL:   actionURL,
+			ActionLabel: actionLabel,
 		})
 		_, _ = w.Write([]byte(page))
 		return
@@ -122,10 +126,18 @@ func buildErrorHTML(data errorPageData) string {
 
 	helpHTML := ""
 	if data.HelpText != "" {
-		helpHTML = fmt.Sprintf(`<div class="help-box" style="border-left-color: %s;">%s</div>`, accentColor, html.EscapeString(data.HelpText))
+		helpHTML = fmt.Sprintf(`<div class="help-box" style="border-left-color: %s;">%s</div>`, accentColor, data.HelpText)
 	}
 
 	portalLink := html.EscapeString(data.PortalURL)
+	actionURL := data.ActionURL
+	if actionURL == "" {
+		actionURL = data.PortalURL
+	}
+	actionLabel := data.ActionLabel
+	if actionLabel == "" {
+		actionLabel = "Back to tunl →"
+	}
 
 	return fmt.Sprintf(`<!DOCTYPE html>
 <html lang="en">
@@ -266,6 +278,10 @@ func buildErrorHTML(data errorPageData) string {
 			border-radius: 0 8px 8px 0;
 			margin-bottom: 24px;
 		}
+		.help-box strong {
+			color: #f4f4f5;
+			font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+		}
 		.action-row {
 			margin-top: 20px;
 			display: flex;
@@ -324,7 +340,7 @@ func buildErrorHTML(data errorPageData) string {
 			%s
 			%s
 			<div class="action-row">
-				<a href="%s" class="btn-portal">Go to tunl.online &rarr;</a>
+				<a href="%s" class="btn-portal">%s</a>
 			</div>
 		</div>
 		<div class="footer">
@@ -341,7 +357,8 @@ func buildErrorHTML(data errorPageData) string {
 		html.EscapeString(data.Description),
 		metaBoxHTML,
 		helpHTML,
-		portalLink,
+		html.EscapeString(actionURL),
+		html.EscapeString(actionLabel),
 		portalLink,
 	)
 }
