@@ -128,6 +128,10 @@ func (s *Server) resolveSubdomain(sess *sshSession, bindAddr string, bindPort ui
 		return registerAnonymous(s.registry, sess, bindAddr, bindPort, s.subdomainMax)
 	}
 
+	if sess.MaxActiveTunnels() > 0 && s.registry.UserActiveCount(sess.UserID()) >= sess.MaxActiveTunnels() {
+		return "", registry.ErrUserTunnelLimitReached
+	}
+
 	reservedList := sess.ReservedSubdomains()
 	if len(reservedList) == 0 && sess.AllowedSubdomain() != "" {
 		reservedList = []string{sess.AllowedSubdomain()}

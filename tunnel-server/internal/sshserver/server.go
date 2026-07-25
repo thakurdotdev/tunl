@@ -421,8 +421,7 @@ func (s *Server) handleSessionChannel(newCh ssh.NewChannel, sess *sshSession, lo
 		}
 	}()
 
-	// Watch the client's input for Ctrl+C / Ctrl+D so the tunnel can be
-	// closed interactively.
+	// Watch the client's input for Ctrl+C / Ctrl+D and interactive selection prompts
 	go func() {
 		defer sess.Close()
 		buf := make([]byte, sessionReadBufSize)
@@ -437,6 +436,9 @@ func (s *Server) handleSessionChannel(newCh ssh.NewChannel, sess *sshSession, lo
 					return
 				}
 			}
+			b := make([]byte, n)
+			copy(b, buf[:n])
+			sess.feedInput(b)
 		}
 	}()
 

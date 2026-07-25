@@ -3,7 +3,6 @@ package sshserver
 import (
 	"fmt"
 	"io"
-	"strings"
 	"time"
 )
 
@@ -24,7 +23,7 @@ func renderTerminalBanner(ch io.Writer, s *Server, sess *sshSession) {
 
 	inspectorURL := fmt.Sprintf("%s://%s/inspect/%s", s.tunnelScheme, s.baseDomain, sess.Subdomain())
 
-	fmt.Fprintf(ch, "  \033[1;36m⚡ TUNL\033[0m  \033[90m•\033[0m  \033[1;32m● Online\033[0m\r\n")
+	fmt.Fprintf(ch, "\r\033[2K  \033[1;32m>_\033[0m \033[1;37mtunl\033[0m \033[1;32m█\033[0m  \033[90m•\033[0m  \033[1;32m● Online\033[0m\r\n")
 	fmt.Fprintf(ch, "  \033[90m──────────────────────────────────────────────────────────\033[0m\r\n")
 	fmt.Fprintf(ch, "  \033[90mAccount    \033[0m \033[1;37m%s\033[0m\r\n", accountStr)
 	fmt.Fprintf(ch, "  \033[90mForwarding \033[0m \033[1;33m%s\033[0m\r\n", localTarget)
@@ -45,8 +44,8 @@ func renderTerminalExpiry(ch io.Writer, s *Server) {
 
 func renderTerminalError(ch io.Writer, s *Server, errMsg string) {
 	homeURL := fmt.Sprintf("%s://%s", s.tunnelScheme, s.baseDomain)
-	fmt.Fprintf(ch, "\r\n")
-	fmt.Fprintf(ch, "  \033[1;31m✖ Tunnel Error\033[0m\r\n")
+	fmt.Fprintf(ch, "\r\033[2K\r\n")
+	fmt.Fprintf(ch, "  \033[1;32m>_\033[0m \033[1;37mtunl\033[0m \033[1;32m█\033[0m  \033[90m•\033[0m  \033[1;31m✖ Tunnel Error\033[0m\r\n")
 	fmt.Fprintf(ch, "  \033[90m──────────────────────────────────────────────────────────\033[0m\r\n")
 	fmt.Fprintf(ch, "  \033[90mReason\033[0m     %s\r\n", errMsg)
 	fmt.Fprintf(ch, "  \033[90mDashboard\033[0m  \033[4;34m%s\033[0m\r\n", homeURL)
@@ -61,9 +60,8 @@ func promptSubdomainSelection(sess *sshSession, available []string, baseDomain s
 		return available[0]
 	}
 
-	fmt.Fprintf(w, "\r\033[K") // Clear instant status line
-	fmt.Fprintf(w, "\r\n")
-	fmt.Fprintf(w, "  \033[1;36m⚡ TUNL\033[0m  \033[90m•\033[0m  \033[1;33mSelect Reserved Subdomain\033[0m\r\n")
+	fmt.Fprintf(w, "\r\033[2K\r\n")
+	fmt.Fprintf(w, "  \033[1;32m>_\033[0m \033[1;37mtunl\033[0m \033[1;32m█\033[0m  \033[90m•\033[0m  \033[1;33mSelect Reserved Subdomain\033[0m\r\n")
 	fmt.Fprintf(w, "  \033[90m──────────────────────────────────────────────────────────\033[0m\r\n")
 	fmt.Fprintf(w, "  Multiple available reserved subdomains found for your account:\r\n\r\n")
 
@@ -74,35 +72,20 @@ func promptSubdomainSelection(sess *sshSession, available []string, baseDomain s
 	fmt.Fprintf(w, "    \033[1;30m[%d]\033[0m \033[90m(Use random ephemeral subdomain)\033[0m\r\n\r\n", randomIdx)
 	fmt.Fprintf(w, "  \033[1;36mSelect subdomain [1-%d] (default 1):\033[0m ", randomIdx)
 
-	inputCh := make(chan string, 1)
-	go func() {
-		buf := make([]byte, 16)
-		n, err := sess.ReadTerminalInput(buf)
-		if err != nil || n == 0 {
-			inputCh <- ""
-			return
-		}
-		inputCh <- strings.TrimSpace(string(buf[:n]))
-	}()
+	choice := sess.ReadTerminalInput(15 * time.Second)
 
 	var chosen string
-	select {
-	case choice := <-inputCh:
-		if choice == "" || choice == "1" || choice == "\r" || choice == "\n" {
-			chosen = available[0]
-		} else if choice == fmt.Sprintf("%d", randomIdx) {
-			chosen = "__random__"
-		} else {
-			var idx int
-			if n, _ := fmt.Sscanf(choice, "%d", &idx); n == 1 && idx >= 1 && idx <= len(available) {
-				chosen = available[idx-1]
-			} else {
-				chosen = available[0]
-			}
-		}
-	case <-time.After(15 * time.Second):
-		fmt.Fprintf(w, "1 (timeout)")
+	if choice == "" || choice == "1" || choice == "\r" || choice == "\n" {
 		chosen = available[0]
+	} else if choice == fmt.Sprintf("%d", randomIdx) {
+		chosen = "__random__"
+	} else {
+		var idx int
+		if n, _ := fmt.Sscanf(choice, "%d", &idx); n == 1 && idx >= 1 && idx <= len(available) {
+			chosen = available[idx-1]
+		} else {
+			chosen = available[0]
+		}
 	}
 
 	if chosen == "__random__" {

@@ -48,6 +48,7 @@ type TunnelRegistry interface {
 	MarkDisconnected(subdomain string)
 
 	ActiveCount() int
+	UserActiveCount(userID string) int
 	AnonymousCount() int
 	ReservedCount() int
 }
@@ -239,6 +240,18 @@ func (r *InMemoryRegistry) ActiveCount() int {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return len(r.entries)
+}
+
+func (r *InMemoryRegistry) UserActiveCount(userID string) int {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	count := 0
+	for _, e := range r.entries {
+		if !e.disconnected && e.tunnel.UserID == userID {
+			count++
+		}
+	}
+	return count
 }
 
 func (r *InMemoryRegistry) AnonymousCount() int {

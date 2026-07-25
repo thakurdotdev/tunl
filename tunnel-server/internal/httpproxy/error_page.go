@@ -155,23 +155,32 @@ func buildErrorHTML(data errorPageData) string {
 			display: inline-flex;
 			align-items: center;
 			gap: 6px;
-			font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-			font-weight: 700;
-			font-size: 18px;
-			color: #ffffff;
+			font-size: 16px;
 			margin-bottom: 24px;
 			text-decoration: none;
+			user-select: none;
 			transition: opacity 0.15s ease;
 		}
 		.brand:hover {
 			opacity: 0.9;
 		}
+		.brand-prompt {
+			color: #10b981;
+			font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+			font-weight: 600;
+		}
+		.brand-name {
+			color: #ffffff;
+			font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+			font-weight: 700;
+			letter-spacing: -0.02em;
+		}
 		.brand-cursor {
 			display: inline-block;
-			width: 8px;
-			height: 16px;
-			background-color: #10b981;
-			margin-left: 2px;
+			width: 6px;
+			height: 14px;
+			background-color: rgba(16, 185, 129, 0.9);
+			border-radius: 1px;
 		}
 		.card {
 			background-color: #121215;
@@ -302,7 +311,9 @@ func buildErrorHTML(data errorPageData) string {
 <body>
 	<div class="container">
 		<a href="%s" class="brand">
-			&gt;_ tunl<span class="brand-cursor"></span>
+			<span class="brand-prompt">&gt;_</span>
+			<span class="brand-name">tunl</span>
+			<span class="brand-cursor"></span>
 		</a>
 		<div class="card">
 			<div class="header">

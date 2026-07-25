@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 	"time"
 
@@ -46,6 +47,7 @@ type sshSession struct {
 	termRW          io.ReadWriter
 	termWriterReady chan struct{}
 	termWriterOnce  sync.Once
+	inputChan       chan []byte
 }
 
 func newSSHSession(id, userID, email, allowedSubdomain string, reservedSubdomains []string, plan, remoteIP, deviceID string, maxActiveTunnels int, allowedIPs []string, conn *ssh.ServerConn) *sshSession {
@@ -70,6 +72,7 @@ func newSSHSession(id, userID, email, allowedSubdomain string, reservedSubdomain
 		ready:              make(chan struct{}),
 		errReady:           make(chan struct{}),
 		termWriterReady:    make(chan struct{}),
+		inputChan:          make(chan []byte, 16),
 	}
 }
 
@@ -153,14 +156,27 @@ func (s *sshSession) waitForTerminalWriter(timeout time.Duration) io.Writer {
 	}
 }
 
-func (s *sshSession) ReadTerminalInput(buf []byte) (int, error) {
+func (s *sshSession) feedInput(b []byte) {
 	s.mu.Lock()
-	rw := s.termRW
+	ch := s.inputChan
 	s.mu.Unlock()
-	if rw == nil {
-		return 0, io.EOF
+	if ch != nil {
+		select {
+		case ch <- b:
+		default:
+		}
 	}
-	return rw.Read(buf)
+}
+
+func (s *sshSession) ReadTerminalInput(timeout time.Duration) string {
+	select {
+	case b := <-s.inputChan:
+		return strings.TrimSpace(string(b))
+	case <-time.After(timeout):
+		return ""
+	case <-s.done:
+		return ""
+	}
 }
 
 func (s *sshSession) WriteTerminalLog(line string) {
