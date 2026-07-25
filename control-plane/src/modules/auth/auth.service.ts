@@ -85,6 +85,7 @@ export async function signup(
   db: Database,
   email: string,
   password: string,
+  name?: string,
 ): Promise<{ verificationToken?: string }> {
   const normalized = normalizeEmail(email);
   const existing = await getUserByEmail(db, normalized);
@@ -96,6 +97,7 @@ export async function signup(
       .insert(users)
       .values({
         email: normalized,
+        name: name?.trim() || null,
         passwordHash: await hashPassword(password),
         planId: defaultPlan.id,
       })

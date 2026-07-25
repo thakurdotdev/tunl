@@ -14,9 +14,14 @@ import { ApiClientError } from "@/lib/api-client";
 import { Eye, EyeOff } from "lucide-react";
 
 const signupSchema = z.object({
-  email: z.email("Please enter a valid email address").max(320),
+  name: z.string().trim().max(100, "Name must be at most 100 characters").optional(),
+  email: z
+    .string()
+    .min(1, "Email is required")
+    .pipe(z.email("Please enter a valid email address").max(320)),
   password: z
     .string()
+    .min(1, "Password is required")
     .min(8, "Password must be at least 8 characters")
     .max(20, "Password cannot exceed 20 characters")
     .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
@@ -42,6 +47,7 @@ export default function SignupPage() {
   } = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
     defaultValues: {
+      name: "",
       email: "",
       password: "",
     },
@@ -49,7 +55,7 @@ export default function SignupPage() {
 
   const onSubmit = (values: SignupFormValues) => {
     signupMutation.mutate(
-      { email: values.email, password: values.password },
+      { name: values.name, email: values.email, password: values.password },
       {
         onSuccess: () => {
           setRegisteredEmail(values.email);
@@ -86,12 +92,12 @@ export default function SignupPage() {
 
   if (isSuccess) {
     return (
-      <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-2">
-          <h1 className="font-sans text-2xl font-semibold tracking-tight">Verify your email</h1>
-          <p className="text-muted-foreground text-sm leading-relaxed">
+      <div className="flex flex-col gap-6 font-sans">
+        <div className="flex flex-col gap-1.5 text-left">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Verify your email</h1>
+          <p className="text-muted-foreground text-xs leading-relaxed">
             We&apos;ve sent a verification link to{" "}
-            <span className="text-foreground font-medium">{registeredEmail}</span>. Please check
+            <span className="text-foreground font-semibold">{registeredEmail}</span>. Please check
             your inbox and click the link to activate your account.
           </p>
         </div>
@@ -100,13 +106,13 @@ export default function SignupPage() {
           <Button
             onClick={handleResend}
             variant="outline"
-            className="w-full"
+            className="h-9 w-full text-xs"
             disabled={resendMutation.isPending}
           >
             {resendMutation.isPending ? "Resending..." : "Resend email"}
           </Button>
           <Link href="/login" className="w-full">
-            <Button className="w-full">Back to sign in</Button>
+            <Button className="h-9 w-full text-xs font-semibold">Back to sign in</Button>
           </Link>
         </div>
       </div>
@@ -114,37 +120,52 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="font-sans text-2xl font-semibold tracking-tight">Create an account</h1>
-        <p className="text-muted-foreground text-sm">
+    <div className="flex flex-col gap-6 font-sans">
+      <div className="flex flex-col gap-1.5 text-left">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">Create an account</h1>
+        <p className="text-muted-foreground text-xs leading-relaxed">
           Enter your email and password to register a new account.
         </p>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="email">Email</Label>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="name" className="text-foreground text-xs font-medium">Full name (optional)</Label>
+          <Input
+            id="name"
+            type="text"
+            placeholder="Alex Developer"
+            disabled={isSubmitting}
+            {...register("name")}
+            className="h-9 font-sans text-xs border-border/60 bg-background"
+            aria-invalid={!!errors.name}
+          />
+          {errors.name && <p className="text-destructive text-xs">{errors.name.message}</p>}
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="email" className="text-foreground text-xs font-medium">Email address</Label>
           <Input
             id="email"
             type="email"
             placeholder="name@example.com"
             disabled={isSubmitting}
             {...register("email")}
+            className="h-9 font-sans text-xs border-border/60 bg-background"
             aria-invalid={!!errors.email}
           />
           {errors.email && <p className="text-destructive text-xs">{errors.email.message}</p>}
         </div>
 
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="password">Password</Label>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="password" className="text-foreground text-xs font-medium">Password</Label>
           <div className="relative flex items-center">
             <Input
               id="password"
               type={showPassword ? "text" : "password"}
               placeholder="••••••••••••"
               disabled={isSubmitting}
-              className="pr-10"
+              className="h-9 pr-10 font-sans text-xs border-border/60 bg-background"
               {...register("password")}
               aria-invalid={!!errors.password}
             />
@@ -160,16 +181,16 @@ export default function SignupPage() {
           {errors.password && <p className="text-destructive text-xs">{errors.password.message}</p>}
         </div>
 
-        <Button type="submit" disabled={isSubmitting} className="mt-2 w-full">
+        <Button type="submit" disabled={isSubmitting} className="mt-1 h-9 w-full text-xs font-semibold">
           {isSubmitting ? "Creating account..." : "Sign up"}
         </Button>
       </form>
 
-      <div className="text-muted-foreground mt-4 text-center text-sm">
+      <div className="text-muted-foreground text-left text-xs font-sans">
         Already have an account?{" "}
         <Link
           href="/login"
-          className="text-foreground font-medium underline-offset-4 hover:underline"
+          className="text-foreground font-semibold hover:underline"
         >
           Sign in
         </Link>

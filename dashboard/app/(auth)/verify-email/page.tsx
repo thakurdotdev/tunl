@@ -40,45 +40,45 @@ function VerifyEmailContent() {
 
   if (status === "loading") {
     return (
-      <div className="flex flex-col items-center gap-4 py-8">
-        <div className="border-foreground/20 border-t-foreground h-6 w-6 animate-spin rounded-full border-2" />
-        <p className="text-muted-foreground text-sm">Verifying your email address...</p>
+      <div className="flex flex-col items-center gap-4 py-8 font-sans">
+        <div className="border-primary/20 border-t-primary h-6 w-6 animate-spin rounded-full border-2" />
+        <p className="text-muted-foreground text-xs">Verifying your email address...</p>
       </div>
     );
   }
 
   if (status === "success") {
     return (
-      <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-2">
-          <h1 className="font-sans text-2xl font-semibold tracking-tight">Email verified</h1>
-          <p className="text-muted-foreground text-sm">
+      <div className="flex flex-col gap-6 font-sans">
+        <div className="flex flex-col gap-1.5 text-left">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Email verified</h1>
+          <p className="text-muted-foreground text-xs leading-relaxed">
             Your email has been successfully verified. You can now sign in to your dashboard.
           </p>
         </div>
         <Link href="/login" className="w-full">
-          <Button className="w-full">Sign in</Button>
+          <Button className="h-9 w-full text-xs font-semibold">Sign in</Button>
         </Link>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-destructive font-sans text-2xl font-semibold tracking-tight">
+    <div className="flex flex-col gap-6 font-sans">
+      <div className="flex flex-col gap-1.5 text-left">
+        <h1 className="text-destructive text-2xl font-bold tracking-tight">
           Verification failed
         </h1>
-        <p className="text-muted-foreground text-sm">{errorMessage}</p>
+        <p className="text-muted-foreground text-xs leading-relaxed">{errorMessage}</p>
       </div>
       <div className="flex flex-col gap-3">
         <Link href="/signup" className="w-full">
-          <Button variant="outline" className="w-full">
+          <Button variant="outline" className="h-9 w-full text-xs">
             Back to sign up
           </Button>
         </Link>
         <Link href="/login" className="w-full">
-          <Button className="w-full">Go to login</Button>
+          <Button className="h-9 w-full text-xs font-semibold">Go to login</Button>
         </Link>
       </div>
     </div>
@@ -89,9 +89,9 @@ export default function VerifyEmailPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex flex-col items-center gap-4 py-8">
-          <div className="border-foreground/20 border-t-foreground h-6 w-6 animate-spin rounded-full border-2" />
-          <p className="text-muted-foreground text-sm">Loading...</p>
+        <div className="flex flex-col items-center gap-4 py-8 font-sans">
+          <div className="border-primary/20 border-t-primary h-6 w-6 animate-spin rounded-full border-2" />
+          <p className="text-muted-foreground text-xs">Loading...</p>
         </div>
       }
     >

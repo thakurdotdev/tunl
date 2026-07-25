@@ -5,6 +5,7 @@ import { ModeToggle } from "@/components/mode-toggle";
 import { RouteGuard } from "@/components/route-guard";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth-context";
+import { User } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import "./dashboard.css";
@@ -14,19 +15,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
 
   const navItems = [
-    { href: "/dashboard", label: "0:tunnels", pathMatch: "/dashboard" },
-    { href: "/keys", label: "1:ssh-keys", pathMatch: "/keys" },
-    { href: "/inspect", label: "2:inspect", pathMatch: "/inspect" },
-    ...(user?.role === "admin" ? [{ href: "/admin", label: "3:admin", pathMatch: "/admin" }] : []),
-    { href: "/profile", label: "4:profile", pathMatch: "/profile" },
+    { href: "/dashboard", label: "Tunnels", pathMatch: "/dashboard" },
+    { href: "/keys", label: "SSH Keys", pathMatch: "/keys" },
+    { href: "/inspect", label: "Inspect", pathMatch: "/inspect" },
+    ...(user?.role === "admin" ? [{ href: "/admin", label: "Admin", pathMatch: "/admin" }] : []),
   ];
 
   return (
     <RouteGuard>
-      <div className="bg-background flex min-h-screen flex-col font-mono">
-        <header className="border-border bg-card/90 sticky top-0 z-50 border-b backdrop-blur-xs">
-          <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
-            <div className="flex items-center gap-3 overflow-hidden sm:gap-6">
+      <div className="bg-background flex min-h-screen flex-col font-sans">
+        <header className="border-border/60 bg-card/90 sticky top-0 z-50 border-b backdrop-blur-xs">
+          <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-2 px-3 sm:px-6">
+            <div className="flex items-center gap-2 overflow-hidden sm:gap-6">
               <Link href="/dashboard" className="flex shrink-0 items-center gap-2">
                 <Logo />
               </Link>
@@ -38,31 +38,39 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <Link
                       key={item.href}
                       href={item.href}
-                      className={`flex items-center rounded-md px-2 py-1 font-mono text-[11px] whitespace-nowrap transition-all sm:px-2.5 sm:text-xs ${
+                      className={`flex items-center rounded-md px-2.5 py-1 text-xs font-medium whitespace-nowrap transition-colors sm:px-3 sm:py-1.5 ${
                         isActive
-                          ? "bg-primary/15 text-primary border-primary/30 border font-semibold"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                          ? "bg-secondary text-foreground font-semibold"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
                       }`}
                     >
-                      <span className="opacity-60">{isActive ? "> " : ""}</span>
                       {item.label}
                     </Link>
                   );
                 })}
               </nav>
             </div>
-            <div className="flex shrink-0 items-center gap-2 text-xs sm:gap-3">
-              <span className="text-muted-foreground hidden font-mono text-xs lg:inline">
-                {user?.email}
-              </span>
+            <div className="flex shrink-0 items-center gap-1.5 text-xs sm:gap-3">
+              <Link
+                href="/profile"
+                title="Account Settings"
+                className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-colors sm:px-2.5 ${
+                  pathname.startsWith("/profile")
+                    ? "bg-secondary text-foreground font-semibold"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                }`}
+              >
+                <User className="h-3.5 w-3.5 shrink-0" />
+                <span className="hidden font-sans text-xs sm:inline">{user?.email}</span>
+              </Link>
               <ModeToggle />
-              <Button variant="outline" size="xs" onClick={logout} className="font-mono text-xs">
-                [exit]
+              <Button variant="outline" size="xs" onClick={logout} className="shrink-0 text-xs">
+                Sign Out
               </Button>
             </div>
           </div>
         </header>
-        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">{children}</main>
+        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">{children}</main>
       </div>
     </RouteGuard>
   );

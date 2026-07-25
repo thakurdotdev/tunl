@@ -81,27 +81,28 @@ export function TerminalDemo() {
   }, [visibleLogs.length]);
 
   return (
-    <div className="border-border/60 bg-card/90 overflow-hidden rounded-xl border font-mono shadow-xs backdrop-blur-xs">
-      <div className="border-border/60 bg-muted/30 flex items-center justify-between border-b px-5 py-3 text-xs">
+    <div className="border-zinc-800 bg-zinc-950 overflow-hidden rounded-lg border shadow-xl text-zinc-100 font-sans">
+      <div className="border-zinc-800/80 bg-zinc-900/80 flex items-center justify-between border-b px-4 py-2.5 text-xs font-sans">
         <div className="flex items-center gap-2">
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-rose-500/80" />
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-500/80" />
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500/80" />
-          <span className="text-muted-foreground ml-2 font-mono text-[11px]">
-            bash — tunl-ssh-session
+          <span className="inline-block h-2.5 w-2.5 rounded-full bg-zinc-700" />
+          <span className="inline-block h-2.5 w-2.5 rounded-full bg-zinc-700" />
+          <span className="inline-block h-2.5 w-2.5 rounded-full bg-zinc-700" />
+          <span className="text-zinc-400 ml-2 font-sans text-xs font-medium">
+            Terminal — ssh tunl
           </span>
         </div>
-        <span className="text-[10px] font-bold tracking-wider text-emerald-400 uppercase">
-          LIVE DEMO
-        </span>
+        <div className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-400">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          <span>Live Session</span>
+        </div>
       </div>
 
-      <div className="flex min-h-[260px] flex-col justify-start gap-2 p-4 font-mono text-xs select-none">
-        <div className="text-foreground flex items-center gap-2">
-          <span className="text-primary font-bold">$</span>
-          <span className="text-foreground">{typedCommand}</span>
+      <div className="flex min-h-[260px] flex-col justify-start gap-2.5 p-5 font-mono text-xs select-none bg-zinc-950">
+        <div className="text-zinc-100 flex items-center gap-2">
+          <span className="text-emerald-400 font-semibold">$</span>
+          <span className="text-zinc-100">{typedCommand}</span>
           <span
-            className={`bg-primary inline-block h-4 w-2 ${
+            className={`bg-emerald-400 inline-block h-4 w-2 ${
               isTyping ? "animate-pulse" : "animate-terminal-blink"
             }`}
           />
@@ -111,21 +112,21 @@ export function TerminalDemo() {
           if (!log) return null;
           if (log.type === "system") {
             return (
-              <div key={idx} className="text-muted-foreground text-[11px]">
+              <div key={idx} className="text-zinc-400 text-[11px]">
                 {log.text}
               </div>
             );
           }
           if (log.type === "success") {
             return (
-              <div key={idx} className="py-1 text-[12px] font-bold text-emerald-400">
+              <div key={idx} className="py-1 text-xs font-semibold text-emerald-400">
                 {log.text}
               </div>
             );
           }
           return (
-            <div key={idx} className="flex items-center gap-2 text-[11px] text-cyan-400/90">
-              <span className="text-emerald-500/70">▶</span>
+            <div key={idx} className="flex items-center gap-2 text-[11px] text-zinc-300">
+              <span className="text-emerald-400">▶</span>
               <span>{log.text}</span>
             </div>
           );

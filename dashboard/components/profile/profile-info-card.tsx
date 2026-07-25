@@ -24,71 +24,71 @@ export function ProfileInfoCard({ profile, onUpdateName, isPending }: ProfileInf
   const isUnchanged = name.trim() === (profile?.name ?? "");
 
   return (
-    <div className="border-border/60 bg-card/90 flex flex-col overflow-hidden rounded-xl border shadow-xs">
-      <div className="border-border/60 bg-muted/30 flex items-center justify-between border-b px-5 py-3 text-xs">
-        <div className="flex items-center gap-2 font-mono">
-          <User className="text-primary h-3.5 w-3.5" />
-          <span className="text-foreground text-xs font-semibold">Personal Profile Details</span>
+    <div className="border-border/60 bg-card flex flex-col overflow-hidden rounded-lg border shadow-2xs font-sans">
+      <div className="border-border/60 bg-muted/40 flex items-center justify-between border-b px-4 py-2.5 text-xs font-sans">
+        <div className="flex items-center gap-2 font-medium text-foreground">
+          <User className="text-primary h-4 w-4" />
+          <span className="text-xs font-semibold">Personal Profile Details</span>
         </div>
-        <span className="text-muted-foreground font-mono text-[10px] font-semibold uppercase">
-          IDENTITY
+        <span className="text-muted-foreground text-[11px] font-medium uppercase tracking-wider">
+          Identity
         </span>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-5 p-6 font-mono text-xs">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-5 p-5 text-xs">
         <div className="grid gap-5 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
-            <label className="text-muted-foreground text-[10px] font-semibold tracking-wider uppercase">
-              DISPLAY NAME
+            <label className="text-foreground text-xs font-medium">
+              Display Name
             </label>
             <Input
               type="text"
               placeholder="Your name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="bg-background/50 border-border/60 focus-visible:ring-primary/40 h-9 rounded-lg font-mono text-xs"
+              className="border-border/60 bg-background h-9 rounded-md font-sans text-xs"
             />
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-muted-foreground text-[10px] font-semibold tracking-wider uppercase">
-              EMAIL ADDRESS
+            <label className="text-foreground text-xs font-medium">
+              Email Address
             </label>
             <Input
               type="email"
               value={profile?.email ?? ""}
               disabled
-              className="bg-muted/30 border-border/60 text-muted-foreground h-9 rounded-lg font-mono text-xs"
+              className="border-border/60 bg-muted/40 text-muted-foreground h-9 rounded-md font-sans text-xs"
             />
           </div>
         </div>
 
         <div className="grid gap-3 pt-1 text-xs sm:grid-cols-3">
-          <div className="border-border/60 bg-muted/20 rounded-lg border p-3">
-            <span className="text-muted-foreground block text-[10px] font-semibold uppercase">
-              ACCOUNT ROLE
+          <div className="border-border/60 bg-muted/20 rounded-md border p-3">
+            <span className="text-muted-foreground block text-[11px] font-medium uppercase tracking-wider">
+              Account Role
             </span>
-            <span className="text-foreground mt-1 inline-flex items-center gap-1.5 font-bold">
-              <ShieldCheck className="h-3.5 w-3.5 text-purple-400" />
+            <span className="text-foreground mt-1 inline-flex items-center gap-1.5 font-semibold">
+              <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
               {profile?.role?.toUpperCase() ?? "USER"}
             </span>
           </div>
 
-          <div className="border-border/60 bg-muted/20 rounded-lg border p-3">
-            <span className="text-muted-foreground block text-[10px] font-semibold uppercase">
-              ACTIVE TIER PLAN
+          <div className="border-border/60 bg-muted/20 rounded-md border p-3">
+            <span className="text-muted-foreground block text-[11px] font-medium uppercase tracking-wider">
+              Active Tier Plan
             </span>
-            <span className="text-primary mt-1 block font-bold">
+            <span className="text-emerald-400 mt-1 block font-semibold">
               {profile?.planName?.toUpperCase() ?? "DEFAULT"}
             </span>
           </div>
 
-          <div className="border-border/60 bg-muted/20 rounded-lg border p-3">
-            <span className="text-muted-foreground block text-[10px] font-semibold uppercase">
-              MEMBER SINCE
+          <div className="border-border/60 bg-muted/20 rounded-md border p-3">
+            <span className="text-muted-foreground block text-[11px] font-medium uppercase tracking-wider">
+              Member Since
             </span>
-            <span className="text-foreground mt-1 inline-flex items-center gap-1">
-              <Calendar className="h-3.5 w-3.5 opacity-60" />
+            <span className="text-foreground mt-1 inline-flex items-center gap-1.5 font-medium">
+              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
               {profile ? new Date(profile.createdAt).toLocaleDateString() : "-"}
             </span>
           </div>
@@ -99,7 +99,7 @@ export function ProfileInfoCard({ profile, onUpdateName, isPending }: ProfileInf
             type="submit"
             disabled={isPending || isUnchanged}
             size="sm"
-            className="h-8 font-mono text-xs font-semibold"
+            className="h-8 text-xs font-semibold"
           >
             {isPending ? (
               <>

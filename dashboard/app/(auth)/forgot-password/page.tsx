@@ -12,7 +12,10 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 const forgotPasswordSchema = z.object({
-  email: z.email("Please enter a valid email address").max(320),
+  email: z
+    .string()
+    .min(1, "Email is required")
+    .pipe(z.email("Please enter a valid email address").max(320)),
 });
 
 type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
@@ -48,54 +51,55 @@ export default function ForgotPasswordPage() {
 
   if (isSuccess) {
     return (
-      <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-2">
-          <h1 className="font-sans text-2xl font-semibold tracking-tight">Check your email</h1>
-          <p className="text-muted-foreground text-sm leading-relaxed">
+      <div className="flex flex-col gap-6 font-sans">
+        <div className="flex flex-col gap-1.5 text-left">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Check your email</h1>
+          <p className="text-muted-foreground text-xs leading-relaxed">
             If the account is eligible, a password reset link will arrive shortly. Please check your
             spam folder if you do not receive it.
           </p>
         </div>
         <Link href="/login" className="w-full">
-          <Button className="w-full">Back to login</Button>
+          <Button className="h-9 w-full text-xs font-semibold">Back to login</Button>
         </Link>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="font-sans text-2xl font-semibold tracking-tight">Reset your password</h1>
-        <p className="text-muted-foreground text-sm">
+    <div className="flex flex-col gap-6 font-sans">
+      <div className="flex flex-col gap-1.5 text-left">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">Reset your password</h1>
+        <p className="text-muted-foreground text-xs leading-relaxed">
           Enter your email address and we&apos;ll send you a link to reset your password.
         </p>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="email">Email</Label>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="email" className="text-foreground text-xs font-medium">Email address</Label>
           <Input
             id="email"
             type="email"
             placeholder="name@example.com"
             disabled={isSubmitting}
             {...register("email")}
+            className="h-9 font-sans text-xs border-border/60 bg-background"
             aria-invalid={!!errors.email}
           />
           {errors.email && <p className="text-destructive text-xs">{errors.email.message}</p>}
         </div>
 
-        <Button type="submit" disabled={isSubmitting} className="mt-2 w-full">
+        <Button type="submit" disabled={isSubmitting} className="mt-1 h-9 w-full text-xs font-semibold">
           {isSubmitting ? "Sending link..." : "Send reset link"}
         </Button>
       </form>
 
-      <div className="text-muted-foreground mt-4 text-center text-sm">
+      <div className="text-muted-foreground text-left text-xs font-sans">
         Remember your password?{" "}
         <Link
           href="/login"
-          className="text-foreground font-medium underline-offset-4 hover:underline"
+          className="text-foreground font-semibold hover:underline"
         >
           Sign in
         </Link>

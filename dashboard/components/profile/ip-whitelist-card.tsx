@@ -63,38 +63,38 @@ export function IpWhitelistCard({ profile, onUpdateWhitelist, isPending }: IpWhi
     JSON.stringify(ips) === JSON.stringify(profile?.allowedIps ?? []);
 
   return (
-    <div className="border-border/60 bg-card/90 flex flex-col overflow-hidden rounded-xl border shadow-xs">
-      <div className="border-border/60 bg-muted/30 flex items-center justify-between border-b px-5 py-3 text-xs">
-        <div className="flex items-center gap-2 font-mono">
-          <Shield className="h-3.5 w-3.5 text-cyan-400" />
-          <span className="text-foreground text-xs font-semibold">IP Restrictions</span>
+    <div className="border-border/60 bg-card flex flex-col overflow-hidden rounded-lg border shadow-2xs font-sans">
+      <div className="border-border/60 bg-muted/40 flex items-center justify-between border-b px-4 py-2.5 text-xs">
+        <div className="flex items-center gap-2 font-medium text-foreground">
+          <Shield className="h-4 w-4 text-emerald-400" />
+          <span className="text-xs font-semibold">IP Restrictions</span>
         </div>
         {enabled ? (
-          <span className="flex items-center gap-1 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 font-mono text-[10px] font-semibold text-cyan-400">
-            <CheckCircle2 className="h-3 w-3" /> ACTIVE
+          <span className="flex items-center gap-1.5 rounded-md border border-emerald-500/20 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
+            <CheckCircle2 className="h-3 w-3" /> Active
           </span>
         ) : (
-          <span className="border-border bg-muted/40 text-muted-foreground rounded-full border px-2 py-0.5 font-mono text-[10px]">
-            DISABLED
+          <span className="border-border/60 bg-muted text-muted-foreground rounded-md border px-2 py-0.5 text-[10px] font-medium">
+            Disabled
           </span>
         )}
       </div>
 
-      <div className="flex flex-col gap-4 p-6 font-mono text-xs">
+      <div className="flex flex-col gap-4 p-5 text-xs">
         {error && (
-          <div className="border-destructive/30 bg-destructive/10 text-destructive flex items-center gap-2 rounded-lg border p-2.5 text-xs">
+          <div className="border-destructive/30 bg-destructive/10 text-destructive flex items-center gap-2 rounded-md border p-2.5 text-xs">
             <AlertCircle className="h-4 w-4 shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
         {/* Enable Toggle Switch */}
-        <div className="border-border/60 bg-muted/20 flex items-center justify-between rounded-lg border px-3.5 py-2.5">
+        <div className="border-border/60 bg-muted/20 flex items-center justify-between rounded-md border px-3.5 py-2.5">
           <label
             htmlFor="toggleWhitelist"
-            className="text-foreground cursor-pointer text-xs font-semibold"
+            className="text-foreground cursor-pointer text-xs font-medium"
           >
-            ENFORCE IP WHITELIST
+            Enforce IP Whitelist
           </label>
           <Switch
             id="toggleWhitelist"
@@ -110,13 +110,13 @@ export function IpWhitelistCard({ profile, onUpdateWhitelist, isPending }: IpWhi
             placeholder="e.g. 192.168.1.100 or 10.0.0.0/8"
             value={newIp}
             onChange={(e) => setNewIp(e.target.value)}
-            className="bg-background/50 border-border/60 focus-visible:ring-primary/40 h-8 rounded-lg font-mono text-xs"
+            className="border-border/60 bg-background h-8 rounded-md font-mono text-xs"
           />
           <Button
             type="submit"
             variant="outline"
             size="sm"
-            className="border-border/60 h-8 shrink-0 font-mono text-xs"
+            className="h-8 shrink-0 text-xs"
           >
             <Plus className="mr-1 h-3.5 w-3.5" /> Add Rule
           </Button>
@@ -125,17 +125,17 @@ export function IpWhitelistCard({ profile, onUpdateWhitelist, isPending }: IpWhi
         {/* IP List */}
         <div className="space-y-2">
           {ips.length === 0 ? (
-            <div className="border-border/60 bg-muted/10 text-muted-foreground/70 rounded-lg border p-3 text-center text-xs">
+            <div className="border-border/60 bg-muted/10 text-muted-foreground rounded-md border p-3 text-center text-xs">
               No IP rules configured.
             </div>
           ) : (
             ips.map((ip) => (
               <div
                 key={ip}
-                className="border-border/60 bg-muted/20 flex items-center justify-between rounded-lg border px-3 py-2 text-xs"
+                className="border-border/60 bg-muted/20 flex items-center justify-between rounded-md border px-3 py-2 text-xs"
               >
                 <div className="flex items-center gap-2 font-mono">
-                  <Globe className="h-3.5 w-3.5 text-cyan-400 opacity-80" />
+                  <Globe className="h-3.5 w-3.5 text-emerald-400 opacity-80" />
                   <span className="text-foreground font-semibold">{ip}</span>
                 </div>
                 <button
@@ -154,7 +154,7 @@ export function IpWhitelistCard({ profile, onUpdateWhitelist, isPending }: IpWhi
             size="sm"
             onClick={handleSaveWhitelist}
             disabled={isPending || isUnchanged}
-            className="h-8 font-mono text-xs font-semibold"
+            className="h-8 text-xs font-semibold"
           >
             {isPending ? (
               <>
@@ -162,7 +162,7 @@ export function IpWhitelistCard({ profile, onUpdateWhitelist, isPending }: IpWhi
               </>
             ) : saved ? (
               <>
-                <Check className="mr-1.5 h-3.5 w-3.5 text-emerald-400" /> Whitelist Saved!
+                <Check className="mr-1.5 h-3.5 w-3.5 text-emerald-400" /> Whitelist Saved
               </>
             ) : (
               <>

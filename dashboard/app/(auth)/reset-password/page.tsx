@@ -18,13 +18,14 @@ const resetPasswordSchema = z
   .object({
     password: z
       .string()
+      .min(1, "Password is required")
       .min(8, "Password must be at least 8 characters")
       .max(20, "Password cannot exceed 20 characters")
       .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
       .regex(/[a-z]/, "Password must contain at least one lowercase letter")
       .regex(/[0-9]/, "Password must contain at least one number")
       .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character"),
-    confirmPassword: z.string(),
+    confirmPassword: z.string().min(1, "Please confirm your password"),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match",
@@ -85,22 +86,22 @@ function ResetPasswordContent() {
 
   if (!token || tokenQuery.isError) {
     return (
-      <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-destructive font-sans text-2xl font-semibold tracking-tight">
+      <div className="flex flex-col gap-6 font-sans">
+        <div className="flex flex-col gap-1.5 text-left">
+          <h1 className="text-destructive font-sans text-2xl font-bold tracking-tight">
             Link expired or invalid
           </h1>
-          <p className="text-muted-foreground text-sm leading-relaxed">
+          <p className="text-muted-foreground text-xs leading-relaxed">
             This password reset link is invalid or has expired. Password reset links are single-use
             and valid for 15 minutes.
           </p>
         </div>
         <div className="flex flex-col gap-3">
           <Link href="/forgot-password" className="w-full">
-            <Button className="w-full">Request a new link</Button>
+            <Button className="h-9 w-full text-xs font-semibold">Request a new link</Button>
           </Link>
           <Link href="/login" className="w-full">
-            <Button variant="outline" className="w-full">
+            <Button variant="outline" className="h-9 w-full text-xs">
               Back to sign in
             </Button>
           </Link>
@@ -111,48 +112,48 @@ function ResetPasswordContent() {
 
   if (tokenQuery.isLoading) {
     return (
-      <div className="flex flex-col items-center gap-4 py-8">
-        <div className="border-foreground/20 border-t-foreground h-6 w-6 animate-spin rounded-full border-2" />
-        <p className="text-muted-foreground text-sm">Verifying reset link...</p>
+      <div className="flex flex-col items-center gap-4 py-8 font-sans">
+        <div className="border-primary/20 border-t-primary h-6 w-6 animate-spin rounded-full border-2" />
+        <p className="text-muted-foreground text-xs">Verifying reset link...</p>
       </div>
     );
   }
 
   if (isSuccess) {
     return (
-      <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-2">
-          <h1 className="font-sans text-2xl font-semibold tracking-tight">Password updated</h1>
-          <p className="text-muted-foreground text-sm">
+      <div className="flex flex-col gap-6 font-sans">
+        <div className="flex flex-col gap-1.5 text-left">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Password updated</h1>
+          <p className="text-muted-foreground text-xs leading-relaxed">
             Your password has been successfully reset. You can now sign in using your new password.
           </p>
         </div>
         <Link href="/login" className="w-full">
-          <Button className="w-full">Sign in</Button>
+          <Button className="h-9 w-full text-xs font-semibold">Sign in</Button>
         </Link>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="font-sans text-2xl font-semibold tracking-tight">Reset password</h1>
-        <p className="text-muted-foreground text-sm">
+    <div className="flex flex-col gap-6 font-sans">
+      <div className="flex flex-col gap-1.5 text-left">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">Reset password</h1>
+        <p className="text-muted-foreground text-xs leading-relaxed">
           Enter a new secure password for your account.
         </p>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="password">New Password</Label>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="password" className="text-foreground text-xs font-medium">New Password</Label>
           <div className="relative flex items-center">
             <Input
               id="password"
               type={showPassword ? "text" : "password"}
               placeholder="••••••••••••"
               disabled={isSubmitting}
-              className="pr-10"
+              className="h-9 pr-10 font-sans text-xs border-border/60 bg-background"
               {...register("password")}
               aria-invalid={!!errors.password}
             />
@@ -168,15 +169,15 @@ function ResetPasswordContent() {
           {errors.password && <p className="text-destructive text-xs">{errors.password.message}</p>}
         </div>
 
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="confirmPassword">Confirm Password</Label>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="confirmPassword" className="text-foreground text-xs font-medium">Confirm Password</Label>
           <div className="relative flex items-center">
             <Input
               id="confirmPassword"
               type={showConfirmPassword ? "text" : "password"}
               placeholder="••••••••••••"
               disabled={isSubmitting}
-              className="pr-10"
+              className="h-9 pr-10 font-sans text-xs border-border/60 bg-background"
               {...register("confirmPassword")}
               aria-invalid={!!errors.confirmPassword}
             />
@@ -189,13 +190,12 @@ function ResetPasswordContent() {
               {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
-          {errors.password && <p className="text-destructive text-xs">{errors.password.message}</p>}
           {errors.confirmPassword && (
             <p className="text-destructive text-xs">{errors.confirmPassword.message}</p>
           )}
         </div>
 
-        <Button type="submit" disabled={isSubmitting || !token} className="mt-2 w-full">
+        <Button type="submit" disabled={isSubmitting || !token} className="mt-1 h-9 w-full text-xs font-semibold">
           {isSubmitting ? "Updating password..." : "Update password"}
         </Button>
       </form>
@@ -207,9 +207,9 @@ export default function ResetPasswordPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex flex-col items-center gap-4 py-8">
-          <div className="border-foreground/20 border-t-foreground h-6 w-6 animate-spin rounded-full border-2" />
-          <p className="text-muted-foreground text-sm">Loading...</p>
+        <div className="flex flex-col items-center gap-4 py-8 font-sans">
+          <div className="border-primary/20 border-t-primary h-6 w-6 animate-spin rounded-full border-2" />
+          <p className="text-muted-foreground text-xs">Loading...</p>
         </div>
       }
     >

@@ -2,7 +2,7 @@
   display: flex;
   min-height: 100vh;
   width: 100%;
-  font-family: var(--font-mono), monospace;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
 
 .auth-form-panel {
@@ -27,15 +27,13 @@
 .auth-brand-panel {
   display: none;
   flex: 1.2;
-  background-color: var(--card);
+  background-color: var(--muted);
   color: var(--foreground);
   padding: 3rem 4rem;
   flex-direction: column;
   justify-content: center;
   border-left: 1px solid var(--border);
   position: relative;
-  background-image: radial-gradient(var(--border) 1px, transparent 1px);
-  background-size: 20px 20px;
 }
 
 @media (min-width: 1024px) {

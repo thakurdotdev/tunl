@@ -26,6 +26,7 @@ const passwordSchema = z
   .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character");
 
 const credentials = z.object({
+  name: z.string().trim().max(100).optional(),
   email: z.email().max(320),
   password: passwordSchema,
 });
@@ -55,7 +56,7 @@ export function authRouter(
     rateLimit(rateLimitStore, "signup", 5, 60 * 60 * 1000),
     asyncRoute(async (req, res) => {
       const input = credentials.parse(req.body);
-      const result = await signup(db, input.email, input.password);
+      const result = await signup(db, input.email, input.password, input.name);
       if (result.verificationToken)
         await mailer.sendVerification(input.email.trim().toLowerCase(), result.verificationToken);
       res.status(202).json(genericMessage);

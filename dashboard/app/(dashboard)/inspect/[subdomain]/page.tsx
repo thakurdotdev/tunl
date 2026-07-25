@@ -132,9 +132,9 @@ export default function InspectPage() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-56px-64px)] flex-col gap-0 font-mono">
-      {/* Top Bar - Fully Responsive Stack/Row */}
-      <div className="border-border/60 bg-card/40 flex flex-wrap items-center justify-between gap-2.5 border-b px-3 py-2.5 backdrop-blur-md sm:px-4 sm:py-3">
+    <div className="flex h-[calc(100vh-56px-64px)] flex-col gap-0 font-sans">
+      {/* Top Bar */}
+      <div className="border-border/60 bg-card flex flex-wrap items-center justify-between gap-2.5 border-b px-3 py-2.5 sm:px-4 sm:py-3">
         {/* Left Section: Subdomain & Status */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <Link href="/inspect">
@@ -142,31 +142,31 @@ export default function InspectPage() {
               <ArrowLeft className="h-3.5 w-3.5" />
             </Button>
           </Link>
-          <div className="flex min-w-0 items-center gap-1.5">
-            <span className="text-primary text-sm font-bold">&gt;_</span>
-            <h1 className="max-w-[160px] truncate text-xs font-bold tracking-tight sm:max-w-none sm:text-sm">
+          <div className="flex min-w-0 items-center gap-1.5 font-mono">
+            <span className="text-primary text-xs font-semibold">&gt;_</span>
+            <h1 className="max-w-[160px] truncate text-xs font-bold tracking-tight sm:max-w-none sm:text-sm text-foreground">
               {subdomain}.thakur.dev
             </h1>
           </div>
           <span
-            className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[9px] font-semibold tracking-wider sm:text-[10px] ${
+            className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[10px] font-semibold ${
               connected
-                ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-400"
-                : "bg-muted text-muted-foreground border-border/40"
+                ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/20"
+                : "bg-muted text-muted-foreground border-border/60"
             }`}
           >
             <Circle className={`h-1.5 w-1.5 fill-current ${connected ? "animate-pulse" : ""}`} />
-            {connected ? "LIVE" : "OFFLINE"}
+            {connected ? "Live" : "Offline"}
           </span>
         </div>
 
         {/* Right Section: Controls */}
-        <div className="flex items-center gap-1.5 sm:gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 font-sans">
           <Button
             variant="outline"
             size="xs"
             onClick={() => setPaused(!paused)}
-            className="gap-1 px-2 text-[11px] font-semibold sm:text-xs"
+            className="gap-1 px-2.5 text-xs font-medium"
           >
             {paused ? (
               <>
@@ -182,7 +182,7 @@ export default function InspectPage() {
             variant="outline"
             size="xs"
             onClick={handleClear}
-            className="text-muted-foreground hover:text-destructive gap-1 px-2 text-[11px] font-semibold sm:text-xs"
+            className="text-muted-foreground hover:text-destructive gap-1 px-2.5 text-xs font-medium"
           >
             <Trash2 className="h-3 w-3" /> Clear
           </Button>
@@ -190,18 +190,18 @@ export default function InspectPage() {
       </div>
 
       {/* Filter & Search Bar */}
-      <div className="border-border/40 bg-muted/20 flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2 text-xs">
+      <div className="border-border/60 bg-muted/20 flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2 text-xs font-sans">
         {/* Method Filter Pills */}
         <div className="no-scrollbar flex items-center gap-1 overflow-x-auto">
-          <Filter className="text-muted-foreground mr-1 h-3 w-3 shrink-0" />
+          <Filter className="text-muted-foreground mr-1 h-3.5 w-3.5 shrink-0" />
           {(["ALL", "GET", "POST", "ERRORS"] as const).map((filter) => (
             <button
               key={filter}
               onClick={() => setMethodFilter(filter)}
-              className={`shrink-0 rounded px-2 py-0.5 text-[10px] font-bold transition-colors ${
+              className={`shrink-0 rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
                 methodFilter === filter
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-card/60 text-muted-foreground hover:text-foreground hover:bg-muted/40 border-border/40 border"
+                  ? "bg-secondary text-foreground font-semibold"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
               }`}
             >
               {filter}
@@ -211,19 +211,19 @@ export default function InspectPage() {
 
         {/* Search Input */}
         <div className="relative flex-1 sm:w-64 sm:flex-none">
-          <Search className="text-muted-foreground absolute top-1/2 left-2.5 h-3 w-3 -translate-y-1/2" />
+          <Search className="text-muted-foreground absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2" />
           <input
             type="text"
             placeholder="Search path, method, status..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="border-border/50 bg-background/80 placeholder:text-muted-foreground/60 focus:ring-primary w-full rounded-md border py-1 pr-3 pl-7 text-[11px] focus:ring-1 focus:outline-none"
+            className="border-border/60 bg-background placeholder:text-muted-foreground/60 focus:ring-primary w-full rounded-md border py-1 pr-3 pl-8 text-xs focus:outline-none focus:ring-1"
           />
         </div>
       </div>
 
-      {/* Main Content Area - Split on Desktop, Stack/Toggle on Mobile */}
-      <div className="relative flex flex-1 overflow-hidden">
+      {/* Main Content Area */}
+      <div className="relative flex flex-1 overflow-hidden font-sans">
         {/* Request List Column */}
         <div
           className={`border-border/60 flex w-full flex-col overflow-hidden ${
@@ -231,7 +231,7 @@ export default function InspectPage() {
           }`}
         >
           {/* Table Header */}
-          <div className="border-border/60 bg-muted/30 text-muted-foreground flex items-center border-b px-3 py-2 text-[10px] font-bold tracking-wider uppercase">
+          <div className="border-border/60 bg-muted/40 text-muted-foreground flex items-center border-b px-3 py-2 text-[10px] font-semibold tracking-wider uppercase">
             <span className="w-14 shrink-0 sm:w-16">Method</span>
             <span className="flex-1 truncate">Path</span>
             <span className="w-12 shrink-0 text-right sm:w-14">Status</span>
@@ -240,17 +240,17 @@ export default function InspectPage() {
           </div>
 
           {/* Request Rows */}
-          <div className="no-scrollbar divide-border/20 flex-1 divide-y overflow-y-auto">
+          <div className="no-scrollbar divide-y divide-border/40 flex-1 overflow-y-auto">
             {filteredRequests.length === 0 ? (
               <div className="flex flex-col items-center justify-center gap-3 px-4 py-20 text-center">
-                <div className="text-muted-foreground/20 text-4xl font-bold">&gt;_</div>
+                <div className="text-muted-foreground/30 text-3xl font-mono">&gt;_</div>
                 <div className="flex flex-col items-center gap-1">
                   <h4 className="text-xs font-semibold sm:text-sm">
                     {searchQuery || methodFilter !== "ALL"
                       ? "No matching requests"
                       : "No requests captured"}
                   </h4>
-                  <p className="text-muted-foreground max-w-xs text-[11px]">
+                  <p className="text-muted-foreground max-w-xs text-xs">
                     {searchQuery || methodFilter !== "ALL"
                       ? "Try adjusting your search query or filter settings"
                       : connected
@@ -269,26 +269,26 @@ export default function InspectPage() {
                     setSelectedId(req.id);
                     setActiveTab("general");
                   }}
-                  className={`hover:bg-muted/40 flex w-full items-center px-3 py-2.5 text-left text-xs transition-colors ${
-                    selectedId === req.id ? "bg-primary/10 border-l-primary border-l-2" : ""
+                  className={`hover:bg-muted/30 flex w-full items-center px-3 py-2 text-left text-xs transition-colors ${
+                    selectedId === req.id ? "bg-muted/50 font-semibold" : ""
                   }`}
                 >
-                  <span className="w-14 shrink-0 sm:w-16">
+                  <span className="w-14 shrink-0 sm:w-16 font-mono">
                     <span
-                      className={`inline-block rounded border px-1.5 py-0.5 text-[9px] font-bold sm:text-[10px] ${
+                      className={`inline-block rounded border px-1.5 py-0.5 text-[10px] font-bold ${
                         METHOD_COLORS[req.method] ??
-                        "bg-muted text-muted-foreground border-border/40"
+                        "bg-muted text-muted-foreground border-border/60"
                       }`}
                     >
                       {req.method}
                     </span>
                   </span>
-                  <span className="text-foreground flex-1 truncate pr-2 text-xs font-medium">
+                  <span className="text-foreground flex-1 truncate pr-2 font-mono text-xs font-medium">
                     {req.path}
                   </span>
-                  <span className="w-12 shrink-0 text-right sm:w-14">
+                  <span className="w-12 shrink-0 text-right font-mono sm:w-14">
                     <span
-                      className={`inline-block rounded border px-1.5 py-0.5 text-[9px] font-bold sm:text-[10px] ${statusColor(
+                      className={`inline-block rounded border px-1.5 py-0.5 text-[10px] font-bold ${statusColor(
                         req.statusCode,
                       )}`}
                     >
@@ -298,7 +298,7 @@ export default function InspectPage() {
                   <span className="text-muted-foreground w-16 shrink-0 text-right font-mono text-[11px] sm:w-20">
                     {req.durationMs}ms
                   </span>
-                  <span className="text-muted-foreground w-20 shrink-0 text-right font-mono text-[10px] whitespace-nowrap sm:w-24">
+                  <span className="text-muted-foreground w-20 shrink-0 text-right font-sans text-[11px] whitespace-nowrap sm:w-24">
                     {formatShortRelativeTime(req.timestamp)}
                   </span>
                 </button>
@@ -307,12 +307,12 @@ export default function InspectPage() {
           </div>
 
           {/* List Footer Stats */}
-          <div className="border-border/60 bg-muted/20 text-muted-foreground flex items-center justify-between border-t px-3 py-2 text-[10px]">
+          <div className="border-border/60 bg-muted/20 text-muted-foreground flex items-center justify-between border-t px-3 py-2 text-[11px]">
             <span>
               {filteredRequests.length} / {liveRequests.length} request
               {liveRequests.length !== 1 ? "s" : ""}
             </span>
-            <span className="flex items-center gap-1.5">
+            <span className="flex items-center gap-1.5 font-medium">
               {paused ? (
                 <>
                   <span className="h-1.5 w-1.5 rounded-full bg-amber-400" /> Paused
@@ -330,34 +330,33 @@ export default function InspectPage() {
           </div>
         </div>
 
-        {/* Detail Inspector Panel - Full width on Mobile when selected */}
+        {/* Detail Inspector Panel */}
         {selected && (
-          <div className="bg-card/30 flex w-full flex-1 flex-col overflow-hidden">
+          <div className="bg-card flex w-full flex-1 flex-col overflow-hidden">
             {/* Detail Header & Mobile Back Button */}
-            <div className="border-border/60 bg-muted/30 flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2.5 sm:px-4">
+            <div className="border-border/60 bg-muted/40 flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2.5 sm:px-4">
               <div className="flex min-w-0 flex-1 items-center gap-2">
-                {/* Back to List button on mobile */}
                 <Button
                   variant="outline"
                   size="xs"
                   onClick={() => setSelectedId(null)}
-                  className="mr-1 shrink-0 gap-1 text-[11px] md:hidden"
+                  className="mr-1 shrink-0 gap-1 text-xs md:hidden"
                 >
                   <ArrowLeft className="h-3 w-3" /> Back
                 </Button>
                 <span
-                  className={`shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-bold ${
+                  className={`shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-bold font-mono ${
                     METHOD_COLORS[selected.method] ??
-                    "bg-muted text-muted-foreground border-border/40"
+                    "bg-muted text-muted-foreground border-border/60"
                   }`}
                 >
                   {selected.method}
                 </span>
-                <span className="text-foreground truncate font-mono text-xs font-bold">
+                <span className="text-foreground truncate font-mono text-xs font-semibold">
                   {selected.path}
                 </span>
                 <span
-                  className={`shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-bold ${statusColor(
+                  className={`shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-bold font-mono ${statusColor(
                     selected.statusCode,
                   )}`}
                 >
@@ -375,7 +374,7 @@ export default function InspectPage() {
             </div>
 
             {/* Scrollable Tab Navigation */}
-            <div className="border-border/60 no-scrollbar flex items-center gap-1 overflow-x-auto border-b px-2">
+            <div className="border-border/60 no-scrollbar flex items-center gap-1 overflow-x-auto border-b px-3">
               {(
                 [
                   ["general", "General"],
@@ -389,9 +388,9 @@ export default function InspectPage() {
                 <button
                   key={key}
                   onClick={() => setActiveTab(key)}
-                  className={`shrink-0 border-b-2 px-2.5 py-2 text-[11px] font-medium transition-colors ${
+                  className={`shrink-0 border-b-2 px-3 py-2 text-xs font-medium transition-colors ${
                     activeTab === key
-                      ? "text-primary border-primary"
+                      ? "text-primary border-primary font-semibold"
                       : "text-muted-foreground hover:text-foreground border-transparent"
                   }`}
                 >
@@ -401,7 +400,7 @@ export default function InspectPage() {
             </div>
 
             {/* Tab Body Viewers */}
-            <div className="no-scrollbar flex-1 overflow-y-auto p-3 sm:p-4">
+            <div className="no-scrollbar flex-1 overflow-y-auto p-4 sm:p-5">
               {activeTab === "general" && <GeneralTab req={selected} />}
               {activeTab === "req-headers" && (
                 <HeadersTable headers={selected.requestHeaders} title="Request Headers" />
@@ -435,7 +434,7 @@ function GeneralTab({ req }: { req: CapturedRequest }) {
     ["Response Size", formatBytes(req.responseSize)],
     [
       "Timestamp",
-      new Date(req.timestamp).toLocaleString("en-IN", {
+      new Date(req.timestamp).toLocaleString("en-US", {
         dateStyle: "medium",
         timeStyle: "medium",
       }),
@@ -443,16 +442,16 @@ function GeneralTab({ req }: { req: CapturedRequest }) {
   ];
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-2 font-sans">
       {rows.map(([label, value]) => (
         <div
           key={label}
-          className="border-border/30 bg-card/60 hover:bg-muted/30 flex flex-wrap items-center justify-between rounded-lg border px-3 py-2 text-xs"
+          className="border-border/60 bg-muted/20 hover:bg-muted/30 flex flex-wrap items-center justify-between rounded-md border px-3 py-2 text-xs"
         >
-          <span className="text-muted-foreground w-28 shrink-0 text-[11px] font-bold tracking-wider uppercase">
+          <span className="text-muted-foreground w-28 shrink-0 text-xs font-medium">
             {label}
           </span>
-          <span className="text-foreground font-mono font-medium break-all">{value}</span>
+          <span className="text-foreground font-mono text-xs font-semibold break-all">{value}</span>
         </div>
       ))}
     </div>
@@ -465,7 +464,7 @@ function HeadersTable({ headers, title }: { headers: Record<string, string>; tit
 
   if (entries.length === 0) {
     return (
-      <p className="text-muted-foreground py-12 text-center text-xs">
+      <p className="text-muted-foreground py-12 text-center text-xs font-sans">
         No {title.toLowerCase()} captured
       </p>
     );
@@ -479,12 +478,12 @@ function HeadersTable({ headers, title }: { headers: Record<string, string>; tit
   };
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3 font-sans">
       <div className="flex items-center justify-between">
-        <span className="text-muted-foreground text-xs font-semibold uppercase">
+        <span className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
           {title} ({entries.length})
         </span>
-        <Button variant="outline" size="xs" onClick={copyHeaders} className="gap-1 text-[10px]">
+        <Button variant="outline" size="xs" onClick={copyHeaders} className="gap-1 text-xs">
           {copied ? (
             <>
               <Check className="h-3 w-3 text-emerald-400" /> Copied
@@ -496,13 +495,13 @@ function HeadersTable({ headers, title }: { headers: Record<string, string>; tit
           )}
         </Button>
       </div>
-      <div className="border-border/40 divide-border/40 flex flex-col divide-y overflow-hidden rounded-lg border">
+      <div className="border-border/60 divide-y divide-border/60 flex flex-col overflow-hidden rounded-md border">
         {entries.map(([key, value]) => (
           <div
             key={key}
-            className="hover:bg-muted/30 flex flex-col gap-1 px-3 py-2 text-xs sm:flex-row sm:items-start sm:gap-0"
+            className="hover:bg-muted/20 flex flex-col gap-1 px-3 py-2 text-xs sm:flex-row sm:items-start sm:gap-0"
           >
-            <span className="text-primary w-44 shrink-0 font-mono font-semibold break-all">
+            <span className="text-emerald-400 w-44 shrink-0 font-mono font-semibold break-all">
               {key}
             </span>
             <span className="text-foreground flex-1 font-mono break-all">{value}</span>
@@ -518,7 +517,7 @@ function BodyView({ body, title }: { body?: string; title: string }) {
 
   if (!body) {
     return (
-      <p className="text-muted-foreground py-12 text-center text-xs">
+      <p className="text-muted-foreground py-12 text-center text-xs font-sans">
         No {title.toLowerCase()} content
       </p>
     );
@@ -539,10 +538,10 @@ function BodyView({ body, title }: { body?: string; title: string }) {
   };
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3 font-sans">
       <div className="flex items-center justify-between">
-        <span className="text-muted-foreground text-xs font-semibold uppercase">{title}</span>
-        <Button variant="outline" size="xs" onClick={copyBody} className="gap-1 text-[10px]">
+        <span className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">{title}</span>
+        <Button variant="outline" size="xs" onClick={copyBody} className="gap-1 text-xs">
           {copied ? (
             <>
               <Check className="h-3 w-3 text-emerald-400" /> Copied
@@ -554,7 +553,7 @@ function BodyView({ body, title }: { body?: string; title: string }) {
           )}
         </Button>
       </div>
-      <pre className="border-border/60 bg-muted/40 max-h-[500px] overflow-auto rounded-lg border p-3 font-mono text-xs leading-relaxed break-all whitespace-pre-wrap sm:p-4">
+      <pre className="border-border/60 bg-muted/40 max-h-[500px] overflow-auto rounded-md border p-3.5 font-mono text-xs leading-relaxed break-all whitespace-pre-wrap text-foreground">
         {formatted}
       </pre>
     </div>
@@ -572,12 +571,12 @@ function CurlTab({ req, subdomain }: { req: CapturedRequest; subdomain: string }
   };
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3 font-sans">
       <div className="flex items-center justify-between">
-        <span className="text-muted-foreground flex items-center gap-1.5 text-xs font-semibold uppercase">
+        <span className="text-muted-foreground flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider">
           <Code2 className="text-primary h-3.5 w-3.5" /> cURL Command
         </span>
-        <Button variant="outline" size="xs" onClick={copyCurl} className="gap-1 text-[10px]">
+        <Button variant="outline" size="xs" onClick={copyCurl} className="gap-1 text-xs">
           {copied ? (
             <>
               <Check className="h-3 w-3 text-emerald-400" /> Copied
@@ -589,7 +588,7 @@ function CurlTab({ req, subdomain }: { req: CapturedRequest; subdomain: string }
           )}
         </Button>
       </div>
-      <pre className="border-border/60 bg-muted/40 overflow-auto rounded-lg border p-3 font-mono text-xs leading-relaxed break-all whitespace-pre-wrap text-emerald-400 sm:p-4">
+      <pre className="border-border/60 bg-muted/40 overflow-auto rounded-md border p-3.5 font-mono text-xs leading-relaxed break-all whitespace-pre-wrap text-emerald-400">
         {curlCmd}
       </pre>
     </div>

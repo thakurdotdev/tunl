@@ -24,7 +24,7 @@ export default function ProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="text-muted-foreground flex h-64 items-center justify-center font-mono text-xs">
+      <div className="text-muted-foreground flex h-64 items-center justify-center font-sans text-xs">
         <Loader2 className="text-primary mr-2 h-4 w-4 animate-spin" /> Loading profile details...
       </div>
     );
@@ -32,12 +32,12 @@ export default function ProfilePage() {
 
   if (error || !profile) {
     return (
-      <div className="flex flex-col gap-4 font-mono">
-        <div className="border-destructive/30 bg-destructive/10 text-destructive rounded-xl border p-6 text-xs">
-          <div className="flex items-center gap-2 text-sm font-bold">
+      <div className="flex flex-col gap-4 font-sans">
+        <div className="border-destructive/30 bg-destructive/10 text-destructive rounded-lg border p-6 text-xs">
+          <div className="flex items-center gap-2 text-sm font-semibold">
             <AlertCircle className="h-4 w-4" /> Unable to Load Profile
           </div>
-          <p className="text-muted-foreground mt-1 font-mono">
+          <p className="text-muted-foreground mt-1 font-sans">
             {(error as any)?.response?.data?.message ||
               (error as any)?.message ||
               "Please check your authentication session or reload."}
@@ -48,18 +48,13 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="flex flex-col gap-8 font-mono">
-      {/* Header Bar matching Tunnels page */}
-      <div className="border-border/60 flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2">
-            <span className="text-primary text-xl font-bold">{">"}</span>
-            <h1 className="text-xl font-bold tracking-tight">Account & Security</h1>
-          </div>
-          <p className="text-muted-foreground text-xs">
-            // Profile details, 2FA authentication, and IP whitelisting rules.
-          </p>
-        </div>
+    <div className="flex flex-col gap-8 font-sans">
+      {/* Header Bar */}
+      <div className="border-border/60 flex flex-col gap-1 border-b pb-5">
+        <h1 className="text-xl font-bold tracking-tight text-foreground">Account & Security</h1>
+        <p className="text-muted-foreground text-xs">
+          Manage profile details, 2FA authentication, and IP whitelisting rules.
+        </p>
       </div>
 
       {/* Profile Info Card */}

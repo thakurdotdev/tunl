@@ -34,8 +34,17 @@ export function useVerifyTokenQuery(
 
 export function useSignupMutation() {
   return useMutation({
-    mutationFn: async ({ email, password }: { email: string; password: string }) => {
+    mutationFn: async ({
+      name,
+      email,
+      password,
+    }: {
+      name?: string;
+      email: string;
+      password: string;
+    }) => {
       const { data } = await client.post<{ message: string }>("/v1/auth/signup", {
+        name,
         email,
         password,
       });

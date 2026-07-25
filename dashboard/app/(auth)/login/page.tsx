@@ -16,7 +16,10 @@ import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, KeyRound, Loader2 } from "lucide-react";
 
 const loginSchema = z.object({
-  email: z.email("Please enter a valid email address").max(320),
+  email: z
+    .string()
+    .min(1, "Email is required")
+    .pipe(z.email("Please enter a valid email address").max(320)),
   password: z.string().min(1, "Password is required"),
 });
 
@@ -89,17 +92,19 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="space-y-6 font-mono">
-      <div className="space-y-2 text-center">
-        <h1 className="text-2xl font-bold tracking-tight">Sign in to your account</h1>
-        <p className="text-muted-foreground text-xs">
+    <div className="flex flex-col gap-6 font-sans">
+      <div className="flex flex-col gap-1.5 text-left">
+        <h1 className="text-foreground text-2xl font-bold tracking-tight">
+          Sign in to your account
+        </h1>
+        <p className="text-muted-foreground text-xs leading-relaxed">
           Enter your credentials below to access your tunnels
         </p>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="email" className="text-xs">
+      <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="email" className="text-foreground text-xs font-medium">
             Email address
           </Label>
           <Input
@@ -109,56 +114,54 @@ export default function LoginPage() {
             autoComplete="email"
             disabled={isSubmitting || requires2FA}
             {...register("email")}
-            className="h-9 font-mono text-xs"
+            className="border-border/60 bg-background h-9 font-sans text-xs"
           />
-          {errors.email && <p className="text-destructive text-[11px]">{errors.email.message}</p>}
+          {errors.email && <p className="text-destructive text-xs">{errors.email.message}</p>}
         </div>
 
-        <div className="space-y-2">
+        <div className="flex flex-col gap-1.5">
           <div className="flex items-center justify-between">
-            <Label htmlFor="password" className="text-xs">
+            <Label htmlFor="password" className="text-foreground text-xs font-medium">
               Password
             </Label>
             <Link
               href="/forgot-password"
-              className="text-primary text-[11px] font-medium hover:underline"
+              className="text-muted-foreground hover:text-foreground text-xs transition-colors"
             >
               Forgot password?
             </Link>
           </div>
-          <div className="relative">
+          <div className="relative flex items-center">
             <Input
               id="password"
               type={showPassword ? "text" : "password"}
-              placeholder="••••••••"
+              placeholder="••••••••••••"
               autoComplete="current-password"
               disabled={isSubmitting || requires2FA}
               {...register("password")}
-              className="h-9 pr-10 font-mono text-xs"
+              className="border-border/60 bg-background h-9 pr-10 font-sans text-xs"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="text-muted-foreground hover:text-foreground absolute top-2.5 right-3"
+              className="text-muted-foreground hover:text-foreground absolute right-3 transition-colors focus:outline-none"
             >
               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
-          {errors.password && (
-            <p className="text-destructive text-[11px]">{errors.password.message}</p>
-          )}
+          {errors.password && <p className="text-destructive text-xs">{errors.password.message}</p>}
         </div>
 
         {/* 2FA Prompt Step */}
         {requires2FA && (
-          <div className="border-primary/30 bg-primary/5 space-y-2 rounded-lg border p-4">
+          <div className="border-border/60 bg-muted/40 flex flex-col gap-2 rounded-md border p-4">
             <div className="flex items-center gap-2">
-              <KeyRound className="h-4 w-4 text-purple-400" />
-              <Label htmlFor="totpCode" className="text-xs font-bold">
+              <KeyRound className="h-4 w-4 text-emerald-400" />
+              <Label htmlFor="totpCode" className="text-xs font-semibold">
                 Two-Factor Code (2FA)
               </Label>
             </div>
-            <p className="text-muted-foreground text-[11px]">
+            <p className="text-muted-foreground text-xs">
               Enter the 6-digit code from your authenticator app.
             </p>
             <Input
@@ -169,13 +172,13 @@ export default function LoginPage() {
               value={totpCode}
               onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, ""))}
               autoFocus
-              className="h-10 text-center font-mono text-base font-bold tracking-widest"
+              className="border-border/60 bg-background h-9 text-center font-mono text-sm font-semibold tracking-widest"
             />
           </div>
         )}
 
         {unverifiedEmail && (
-          <div className="border-destructive/30 bg-destructive/10 rounded-lg border p-3 text-xs">
+          <div className="border-destructive/30 bg-destructive/10 rounded-md border p-3 text-xs">
             <p className="text-destructive font-medium">Your email is not verified yet.</p>
             <Button
               type="button"
@@ -192,7 +195,7 @@ export default function LoginPage() {
         <Button
           type="submit"
           disabled={isSubmitting || (requires2FA && totpCode.length !== 6)}
-          className="w-full text-xs font-semibold"
+          className="mt-1 h-9 w-full text-xs font-semibold"
         >
           {isSubmitting ? (
             <>
@@ -206,12 +209,12 @@ export default function LoginPage() {
         </Button>
       </form>
 
-      <p className="text-muted-foreground text-center text-xs">
+      <div className="text-muted-foreground text-left font-sans text-xs">
         Don&apos;t have an account?{" "}
-        <Link href="/signup" className="text-primary font-bold hover:underline">
+        <Link href="/signup" className="text-foreground font-semibold hover:underline">
           Sign up
         </Link>
-      </p>
+      </div>
     </div>
   );
 }
