@@ -8,11 +8,11 @@ interface AdminAnalyticsCardsProps {
 
 export function AdminAnalyticsCards({ analytics, isLoading }: AdminAnalyticsCardsProps) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 font-sans">
+    <div className="grid gap-4 font-sans sm:grid-cols-2 lg:grid-cols-4">
       <div className="bg-card border-border/60 rounded-lg border p-4 shadow-2xs">
         <div className="flex items-center justify-between">
           <span className="text-muted-foreground text-xs font-medium">Total Registered Users</span>
-          <div className="bg-secondary text-foreground flex h-8 w-8 items-center justify-center rounded-md border border-border/60">
+          <div className="bg-secondary text-foreground border-border/60 flex h-8 w-8 items-center justify-center rounded-md border">
             <Users className="h-4 w-4" />
           </div>
         </div>
@@ -29,7 +29,7 @@ export function AdminAnalyticsCards({ analytics, isLoading }: AdminAnalyticsCard
       <div className="bg-card border-border/60 rounded-lg border p-4 shadow-2xs">
         <div className="flex items-center justify-between">
           <span className="text-muted-foreground text-xs font-medium">Active Live Tunnels</span>
-          <div className="bg-emerald-500/15 text-emerald-400 flex h-8 w-8 items-center justify-center rounded-md border border-emerald-500/20">
+          <div className="flex h-8 w-8 items-center justify-center rounded-md border border-emerald-500/20 bg-emerald-500/15 text-emerald-400">
             <Radio className="h-4 w-4" />
           </div>
         </div>
@@ -46,7 +46,7 @@ export function AdminAnalyticsCards({ analytics, isLoading }: AdminAnalyticsCard
       <div className="bg-card border-border/60 rounded-lg border p-4 shadow-2xs">
         <div className="flex items-center justify-between">
           <span className="text-muted-foreground text-xs font-medium">Reserved Subdomains</span>
-          <div className="bg-secondary text-foreground flex h-8 w-8 items-center justify-center rounded-md border border-border/60">
+          <div className="bg-secondary text-foreground border-border/60 flex h-8 w-8 items-center justify-center rounded-md border">
             <Globe className="h-4 w-4" />
           </div>
         </div>
@@ -63,7 +63,7 @@ export function AdminAnalyticsCards({ analytics, isLoading }: AdminAnalyticsCard
       <div className="bg-card border-border/60 rounded-lg border p-4 shadow-2xs">
         <div className="flex items-center justify-between">
           <span className="text-muted-foreground text-xs font-medium">Total Audit Events</span>
-          <div className="bg-secondary text-foreground flex h-8 w-8 items-center justify-center rounded-md border border-border/60">
+          <div className="bg-secondary text-foreground border-border/60 flex h-8 w-8 items-center justify-center rounded-md border">
             <Activity className="h-4 w-4" />
           </div>
         </div>

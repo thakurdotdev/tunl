@@ -24,13 +24,13 @@ export function ProfileInfoCard({ profile, onUpdateName, isPending }: ProfileInf
   const isUnchanged = name.trim() === (profile?.name ?? "");
 
   return (
-    <div className="border-border/60 bg-card flex flex-col overflow-hidden rounded-lg border shadow-2xs font-sans">
-      <div className="border-border/60 bg-muted/40 flex items-center justify-between border-b px-4 py-2.5 text-xs font-sans">
-        <div className="flex items-center gap-2 font-medium text-foreground">
+    <div className="border-border/60 bg-card flex flex-col overflow-hidden rounded-lg border font-sans shadow-2xs">
+      <div className="border-border/60 bg-muted/40 flex items-center justify-between border-b px-4 py-2.5 font-sans text-xs">
+        <div className="text-foreground flex items-center gap-2 font-medium">
           <User className="text-primary h-4 w-4" />
           <span className="text-xs font-semibold">Personal Profile Details</span>
         </div>
-        <span className="text-muted-foreground text-[11px] font-medium uppercase tracking-wider">
+        <span className="text-muted-foreground text-[11px] font-medium tracking-wider uppercase">
           Identity
         </span>
       </div>
@@ -38,9 +38,7 @@ export function ProfileInfoCard({ profile, onUpdateName, isPending }: ProfileInf
       <form onSubmit={handleSubmit} className="flex flex-col gap-5 p-5 text-xs">
         <div className="grid gap-5 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
-            <label className="text-foreground text-xs font-medium">
-              Display Name
-            </label>
+            <label className="text-foreground text-xs font-medium">Display Name</label>
             <Input
               type="text"
               placeholder="Your name"
@@ -51,9 +49,7 @@ export function ProfileInfoCard({ profile, onUpdateName, isPending }: ProfileInf
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-foreground text-xs font-medium">
-              Email Address
-            </label>
+            <label className="text-foreground text-xs font-medium">Email Address</label>
             <Input
               type="email"
               value={profile?.email ?? ""}
@@ -65,7 +61,7 @@ export function ProfileInfoCard({ profile, onUpdateName, isPending }: ProfileInf
 
         <div className="grid gap-3 pt-1 text-xs sm:grid-cols-3">
           <div className="border-border/60 bg-muted/20 rounded-md border p-3">
-            <span className="text-muted-foreground block text-[11px] font-medium uppercase tracking-wider">
+            <span className="text-muted-foreground block text-[11px] font-medium tracking-wider uppercase">
               Account Role
             </span>
             <span className="text-foreground mt-1 inline-flex items-center gap-1.5 font-semibold">
@@ -75,20 +71,20 @@ export function ProfileInfoCard({ profile, onUpdateName, isPending }: ProfileInf
           </div>
 
           <div className="border-border/60 bg-muted/20 rounded-md border p-3">
-            <span className="text-muted-foreground block text-[11px] font-medium uppercase tracking-wider">
+            <span className="text-muted-foreground block text-[11px] font-medium tracking-wider uppercase">
               Active Tier Plan
             </span>
-            <span className="text-emerald-400 mt-1 block font-semibold">
+            <span className="mt-1 block font-semibold text-emerald-400">
               {profile?.planName?.toUpperCase() ?? "DEFAULT"}
             </span>
           </div>
 
           <div className="border-border/60 bg-muted/20 rounded-md border p-3">
-            <span className="text-muted-foreground block text-[11px] font-medium uppercase tracking-wider">
+            <span className="text-muted-foreground block text-[11px] font-medium tracking-wider uppercase">
               Member Since
             </span>
             <span className="text-foreground mt-1 inline-flex items-center gap-1.5 font-medium">
-              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+              <Calendar className="text-muted-foreground h-3.5 w-3.5" />
               {profile ? new Date(profile.createdAt).toLocaleDateString() : "-"}
             </span>
           </div>

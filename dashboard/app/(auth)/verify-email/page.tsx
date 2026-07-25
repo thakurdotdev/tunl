@@ -51,7 +51,7 @@ function VerifyEmailContent() {
     return (
       <div className="flex flex-col gap-6 font-sans">
         <div className="flex flex-col gap-1.5 text-left">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Email verified</h1>
+          <h1 className="text-foreground text-2xl font-bold tracking-tight">Email verified</h1>
           <p className="text-muted-foreground text-xs leading-relaxed">
             Your email has been successfully verified. You can now sign in to your dashboard.
           </p>
@@ -66,9 +66,7 @@ function VerifyEmailContent() {
   return (
     <div className="flex flex-col gap-6 font-sans">
       <div className="flex flex-col gap-1.5 text-left">
-        <h1 className="text-destructive text-2xl font-bold tracking-tight">
-          Verification failed
-        </h1>
+        <h1 className="text-destructive text-2xl font-bold tracking-tight">Verification failed</h1>
         <p className="text-muted-foreground text-xs leading-relaxed">{errorMessage}</p>
       </div>
       <div className="flex flex-col gap-3">

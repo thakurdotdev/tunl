@@ -4,14 +4,38 @@ import { Logo } from "@/components/logo";
 import { ModeToggle } from "@/components/mode-toggle";
 import { RouteGuard } from "@/components/route-guard";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useProfile } from "@/hooks/use-profile";
 import { useAuth } from "@/lib/auth-context";
-import { User } from "lucide-react";
+import { LogOut, Shield, User } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import "./dashboard.css";
 
+const getInitial = (name?: string | null, email?: string | null) => {
+  if (name && name.trim()) {
+    const trimmed = name.trim();
+    const parts = trimmed.split(/\s+/);
+    if (parts.length >= 2) {
+      return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    }
+    return trimmed[0].toUpperCase();
+  }
+  if (email && email.trim()) {
+    return email.trim()[0].toUpperCase();
+  }
+  return "U";
+};
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
+  const { data: profile } = useProfile();
   const pathname = usePathname();
 
   const navItems = [
@@ -20,6 +44,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { href: "/inspect", label: "Inspect", pathMatch: "/inspect" },
     ...(user?.role === "admin" ? [{ href: "/admin", label: "Admin", pathMatch: "/admin" }] : []),
   ];
+
+  const isProfileActive = pathname.startsWith("/profile");
+  const displayName = profile?.name || user?.name || null;
+  const userInitial = getInitial(displayName, user?.email);
 
   return (
     <RouteGuard>
@@ -50,23 +78,75 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 })}
               </nav>
             </div>
-            <div className="flex shrink-0 items-center gap-1.5 text-xs sm:gap-3">
-              <Link
-                href="/profile"
-                title="Account Settings"
-                className={`flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-colors sm:px-2.5 ${
-                  pathname.startsWith("/profile")
-                    ? "bg-secondary text-foreground font-semibold"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
-                }`}
-              >
-                <User className="h-3.5 w-3.5 shrink-0" />
-                <span className="hidden font-sans text-xs sm:inline">{user?.email}</span>
-              </Link>
+            <div className="flex shrink-0 items-center gap-2 text-xs">
               <ModeToggle />
-              <Button variant="outline" size="xs" onClick={logout} className="shrink-0 text-xs">
-                Sign Out
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      aria-label="User profile menu"
+                      className={
+                        isProfileActive
+                          ? "bg-secondary text-foreground border-border font-semibold"
+                          : "font-semibold"
+                      }
+                    >
+                      <span className="text-xs font-bold tracking-tight">{userInitial}</span>
+                    </Button>
+                  }
+                />
+                <DropdownMenuContent align="end" className="w-52 p-1">
+                  <div className="px-2.5 py-2 text-xs">
+                    {displayName ? (
+                      <>
+                        <p className="text-foreground truncate font-semibold">{displayName}</p>
+                        <p className="text-muted-foreground truncate text-[11px]">{user?.email}</p>
+                      </>
+                    ) : (
+                      <p className="text-foreground truncate font-semibold">{user?.email}</p>
+                    )}
+                    <p className="text-muted-foreground mt-1 text-[10px] capitalize">
+                      {user?.role || "user"} {user?.plan?.name ? `• ${user.plan.name}` : ""}
+                    </p>
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    render={
+                      <Link
+                        href="/profile"
+                        className="flex w-full cursor-pointer items-center gap-2 text-xs font-medium"
+                      >
+                        <User className="text-muted-foreground h-3.5 w-3.5" />
+                        <span>Account & Security</span>
+                      </Link>
+                    }
+                  />
+                  {user?.role === "admin" && (
+                    <DropdownMenuItem
+                      render={
+                        <Link
+                          href="/admin"
+                          className="flex w-full cursor-pointer items-center gap-2 text-xs font-medium"
+                        >
+                          <Shield className="text-muted-foreground h-3.5 w-3.5" />
+                          <span>Admin Dashboard</span>
+                        </Link>
+                      }
+                    />
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onClick={logout}
+                    className="flex cursor-pointer items-center gap-2 text-xs font-medium"
+                  >
+                    <LogOut className="h-3.5 w-3.5" />
+                    <span>Sign Out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </header>

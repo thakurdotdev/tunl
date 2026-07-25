@@ -156,6 +156,7 @@ export async function getProfile(db: Database, userId: string): Promise<PublicUs
     .select({
       id: users.id,
       email: users.email,
+      name: users.name,
       passwordHash: users.passwordHash,
       role: users.role,
       twoFactorEnabled: users.twoFactorEnabled,

@@ -123,7 +123,7 @@ function ResetPasswordContent() {
     return (
       <div className="flex flex-col gap-6 font-sans">
         <div className="flex flex-col gap-1.5 text-left">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Password updated</h1>
+          <h1 className="text-foreground text-2xl font-bold tracking-tight">Password updated</h1>
           <p className="text-muted-foreground text-xs leading-relaxed">
             Your password has been successfully reset. You can now sign in using your new password.
           </p>
@@ -138,7 +138,7 @@ function ResetPasswordContent() {
   return (
     <div className="flex flex-col gap-6 font-sans">
       <div className="flex flex-col gap-1.5 text-left">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Reset password</h1>
+        <h1 className="text-foreground text-2xl font-bold tracking-tight">Reset password</h1>
         <p className="text-muted-foreground text-xs leading-relaxed">
           Enter a new secure password for your account.
         </p>
@@ -146,14 +146,16 @@ function ResetPasswordContent() {
 
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="password" className="text-foreground text-xs font-medium">New Password</Label>
+          <Label htmlFor="password" className="text-foreground text-xs font-medium">
+            New Password
+          </Label>
           <div className="relative flex items-center">
             <Input
               id="password"
               type={showPassword ? "text" : "password"}
               placeholder="••••••••••••"
               disabled={isSubmitting}
-              className="h-9 pr-10 font-sans text-xs border-border/60 bg-background"
+              className="border-border/60 bg-background h-9 pr-10 font-sans text-xs"
               {...register("password")}
               aria-invalid={!!errors.password}
             />
@@ -170,14 +172,16 @@ function ResetPasswordContent() {
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="confirmPassword" className="text-foreground text-xs font-medium">Confirm Password</Label>
+          <Label htmlFor="confirmPassword" className="text-foreground text-xs font-medium">
+            Confirm Password
+          </Label>
           <div className="relative flex items-center">
             <Input
               id="confirmPassword"
               type={showConfirmPassword ? "text" : "password"}
               placeholder="••••••••••••"
               disabled={isSubmitting}
-              className="h-9 pr-10 font-sans text-xs border-border/60 bg-background"
+              className="border-border/60 bg-background h-9 pr-10 font-sans text-xs"
               {...register("confirmPassword")}
               aria-invalid={!!errors.confirmPassword}
             />
@@ -195,7 +199,11 @@ function ResetPasswordContent() {
           )}
         </div>
 
-        <Button type="submit" disabled={isSubmitting || !token} className="mt-1 h-9 w-full text-xs font-semibold">
+        <Button
+          type="submit"
+          disabled={isSubmitting || !token}
+          className="mt-1 h-9 w-full text-xs font-semibold"
+        >
           {isSubmitting ? "Updating password..." : "Update password"}
         </Button>
       </form>

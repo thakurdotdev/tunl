@@ -94,7 +94,7 @@ export default function SignupPage() {
     return (
       <div className="flex flex-col gap-6 font-sans">
         <div className="flex flex-col gap-1.5 text-left">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Verify your email</h1>
+          <h1 className="text-foreground text-2xl font-bold tracking-tight">Verify your email</h1>
           <p className="text-muted-foreground text-xs leading-relaxed">
             We&apos;ve sent a verification link to{" "}
             <span className="text-foreground font-semibold">{registeredEmail}</span>. Please check
@@ -122,7 +122,7 @@ export default function SignupPage() {
   return (
     <div className="flex flex-col gap-6 font-sans">
       <div className="flex flex-col gap-1.5 text-left">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Create an account</h1>
+        <h1 className="text-foreground text-2xl font-bold tracking-tight">Create an account</h1>
         <p className="text-muted-foreground text-xs leading-relaxed">
           Enter your email and password to register a new account.
         </p>
@@ -130,42 +130,48 @@ export default function SignupPage() {
 
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="name" className="text-foreground text-xs font-medium">Full name (optional)</Label>
+          <Label htmlFor="name" className="text-foreground text-xs font-medium">
+            Full name (optional)
+          </Label>
           <Input
             id="name"
             type="text"
             placeholder="Alex Developer"
             disabled={isSubmitting}
             {...register("name")}
-            className="h-9 font-sans text-xs border-border/60 bg-background"
+            className="border-border/60 bg-background h-9 font-sans text-xs"
             aria-invalid={!!errors.name}
           />
           {errors.name && <p className="text-destructive text-xs">{errors.name.message}</p>}
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="email" className="text-foreground text-xs font-medium">Email address</Label>
+          <Label htmlFor="email" className="text-foreground text-xs font-medium">
+            Email address
+          </Label>
           <Input
             id="email"
             type="email"
             placeholder="name@example.com"
             disabled={isSubmitting}
             {...register("email")}
-            className="h-9 font-sans text-xs border-border/60 bg-background"
+            className="border-border/60 bg-background h-9 font-sans text-xs"
             aria-invalid={!!errors.email}
           />
           {errors.email && <p className="text-destructive text-xs">{errors.email.message}</p>}
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="password" className="text-foreground text-xs font-medium">Password</Label>
+          <Label htmlFor="password" className="text-foreground text-xs font-medium">
+            Password
+          </Label>
           <div className="relative flex items-center">
             <Input
               id="password"
               type={showPassword ? "text" : "password"}
               placeholder="••••••••••••"
               disabled={isSubmitting}
-              className="h-9 pr-10 font-sans text-xs border-border/60 bg-background"
+              className="border-border/60 bg-background h-9 pr-10 font-sans text-xs"
               {...register("password")}
               aria-invalid={!!errors.password}
             />
@@ -181,17 +187,18 @@ export default function SignupPage() {
           {errors.password && <p className="text-destructive text-xs">{errors.password.message}</p>}
         </div>
 
-        <Button type="submit" disabled={isSubmitting} className="mt-1 h-9 w-full text-xs font-semibold">
+        <Button
+          type="submit"
+          disabled={isSubmitting}
+          className="mt-1 h-9 w-full text-xs font-semibold"
+        >
           {isSubmitting ? "Creating account..." : "Sign up"}
         </Button>
       </form>
 
-      <div className="text-muted-foreground text-left text-xs font-sans">
+      <div className="text-muted-foreground text-left font-sans text-xs">
         Already have an account?{" "}
-        <Link
-          href="/login"
-          className="text-foreground font-semibold hover:underline"
-        >
+        <Link href="/login" className="text-foreground font-semibold hover:underline">
           Sign in
         </Link>
       </div>

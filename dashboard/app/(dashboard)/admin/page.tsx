@@ -12,14 +12,6 @@ export default function AdminOverviewPage() {
 
   return (
     <div className="space-y-6 font-sans">
-      {/* Page Header */}
-      <div className="border-border/60 flex flex-col gap-1 border-b pb-5">
-        <h1 className="text-xl font-bold tracking-tight text-foreground">Admin Console</h1>
-        <p className="text-muted-foreground text-xs">
-          System telemetry, active tunnel sessions, and user plan quotas.
-        </p>
-      </div>
-
       {/* Analytics Top KPI Cards */}
       <AdminAnalyticsCards analytics={analytics} isLoading={isLoading} />
 
@@ -62,7 +54,7 @@ export default function AdminOverviewPage() {
                     </p>
                   </div>
                 ) : (
-                  <div className="divide-y divide-border/60">
+                  <div className="divide-border/60 divide-y">
                     {activeSessions.map((session) => (
                       <div
                         key={session.id}
@@ -77,7 +69,7 @@ export default function AdminOverviewPage() {
                               {session.remoteIp}
                             </span>
                           </div>
-                          <p className="text-muted-foreground text-xs font-sans">
+                          <p className="text-muted-foreground font-sans text-xs">
                             {session.userEmail ?? "Anonymous user"}
                           </p>
                         </div>
@@ -103,7 +95,7 @@ export default function AdminOverviewPage() {
             <div>
               <div className="border-border/60 flex items-center justify-between border-b pb-3">
                 <div className="flex items-center gap-2.5">
-                  <div className="bg-secondary text-foreground flex h-8 w-8 items-center justify-center rounded-md border border-border/60">
+                  <div className="bg-secondary text-foreground border-border/60 flex h-8 w-8 items-center justify-center rounded-md border">
                     <BarChart3 className="h-4 w-4" />
                   </div>
                   <div>
@@ -177,7 +169,7 @@ export default function AdminOverviewPage() {
       <div className="bg-card border-border/60 rounded-lg border p-5 shadow-2xs">
         <div className="border-border/60 flex items-center justify-between border-b pb-3">
           <div className="flex items-center gap-2.5">
-            <div className="bg-secondary text-foreground flex h-8 w-8 items-center justify-center rounded-md border border-border/60">
+            <div className="bg-secondary text-foreground border-border/60 flex h-8 w-8 items-center justify-center rounded-md border">
               <Layers className="h-4 w-4" />
             </div>
             <div>
@@ -202,7 +194,7 @@ export default function AdminOverviewPage() {
               No subscription plans found.
             </div>
           ) : (
-            <div className="divide-y divide-border/60">
+            <div className="divide-border/60 divide-y">
               {analytics?.planDistribution.map((plan) => (
                 <div
                   key={plan.planName}
@@ -214,16 +206,20 @@ export default function AdminOverviewPage() {
                     </span>
                     <span className="text-muted-foreground text-xs">
                       Max Subdomains:{" "}
-                      <strong className="text-foreground font-mono">{plan.maxSubdomains ?? 1}</strong>
+                      <strong className="text-foreground font-mono">
+                        {plan.maxSubdomains ?? 1}
+                      </strong>
                     </span>
                     <span className="text-muted-foreground text-xs">
                       Max Tunnels:{" "}
-                      <strong className="text-foreground font-mono">{plan.maxActiveTunnels ?? 1}</strong>
+                      <strong className="text-foreground font-mono">
+                        {plan.maxActiveTunnels ?? 1}
+                      </strong>
                     </span>
                   </div>
 
                   <div className="flex items-center gap-2 font-sans">
-                    <span className="text-emerald-400 text-sm font-bold">{plan.userCount}</span>
+                    <span className="text-sm font-bold text-emerald-400">{plan.userCount}</span>
                     <span className="text-muted-foreground text-xs">subscribers</span>
                   </div>
                 </div>

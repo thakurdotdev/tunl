@@ -72,9 +72,9 @@ export function TwoFactorCard({
 
   return (
     <>
-      <div className="border-border/60 bg-card flex flex-col overflow-hidden rounded-lg border shadow-2xs font-sans">
+      <div className="border-border/60 bg-card flex flex-col overflow-hidden rounded-lg border font-sans shadow-2xs">
         <div className="border-border/60 bg-muted/40 flex items-center justify-between border-b px-4 py-2.5 text-xs">
-          <div className="flex items-center gap-2 font-medium text-foreground">
+          <div className="text-foreground flex items-center gap-2 font-medium">
             <KeyRound className="h-4 w-4 text-emerald-400" />
             <span className="text-xs font-semibold">Two-Factor Authentication</span>
           </div>
@@ -91,9 +91,7 @@ export function TwoFactorCard({
 
         <div className="flex flex-col gap-4 p-5 text-xs sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col gap-0.5">
-            <span className="text-foreground text-xs font-medium">
-              TOTP Authenticator App
-            </span>
+            <span className="text-foreground text-xs font-medium">TOTP Authenticator App</span>
             <p className="text-muted-foreground text-xs">
               Require a 6-digit TOTP code from your authenticator app when signing in.
             </p>
@@ -182,13 +180,16 @@ export function TwoFactorCard({
                     Enter 6-Digit Code
                   </label>
                   <Input
+                    name="totpCode"
                     type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
                     maxLength={6}
                     placeholder="123456"
                     value={code}
                     onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
                     required
-                    className="mt-1 text-center font-mono text-sm font-semibold tracking-widest border-border/60 bg-background h-9 rounded-md"
+                    className="border-border/60 bg-background mt-1 h-9 rounded-md text-center font-mono text-sm font-semibold tracking-widest"
                   />
                 </div>
 

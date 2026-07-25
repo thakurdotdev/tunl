@@ -9,8 +9,8 @@ export function Logo({ className }: { className?: string }) {
       )}
     >
       <span className="text-primary font-mono font-semibold">{">_"}</span>
-      <span className="text-foreground font-sans font-bold tracking-tight text-base">tunl</span>
-      <span className="bg-primary/90 animate-terminal-blink inline-block h-3.5 w-1.5 rounded-2xs" />
+      <span className="text-foreground font-sans text-base font-bold tracking-tight">tunl</span>
+      <span className="bg-primary/90 animate-terminal-blink rounded-2xs inline-block h-3.5 w-1.5" />
     </div>
   );
 }

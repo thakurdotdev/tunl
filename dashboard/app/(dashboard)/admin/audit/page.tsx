@@ -68,33 +68,9 @@ export default function AdminAuditPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header Info Card */}
-      <div className="border-border/60 bg-card/90 flex flex-col gap-4 rounded-xl border p-5 shadow-xs backdrop-blur-xs sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-purple-500/30 bg-purple-500/10">
-            <Activity className="h-5 w-5 text-purple-400" />
-          </div>
-          <div>
-            <h2 className="text-foreground text-base font-bold">System Audit Log Stream</h2>
-            <p className="text-muted-foreground font-mono text-xs">
-              Historical connection and disconnect logs across all anonymous & registered tunnels.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 font-mono text-xs">
-          <div className="border-border/60 bg-muted/20 rounded-lg border px-3 py-1.5">
-            <span className="text-muted-foreground block text-[10px] font-semibold uppercase">
-              TOTAL LOGS STORED
-            </span>
-            <span className="font-bold text-purple-400">{analytics?.totalEvents ?? 0}</span>
-          </div>
-        </div>
-      </div>
-
+    <div className="space-y-6 font-sans">
       {/* Main Audit Trail Container */}
-      <div className="border-border/60 bg-card/90 flex flex-col overflow-hidden rounded-xl border shadow-xs">
+      <div className="border-border/60 bg-card flex flex-col overflow-hidden rounded-lg border shadow-2xs">
         {/* Controls: Search & Filter Tabs */}
         <div className="border-border/60 bg-muted/20 flex flex-col gap-3 border-b p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="relative flex-1 sm:max-w-md">

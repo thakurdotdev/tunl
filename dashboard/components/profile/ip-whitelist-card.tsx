@@ -63,9 +63,9 @@ export function IpWhitelistCard({ profile, onUpdateWhitelist, isPending }: IpWhi
     JSON.stringify(ips) === JSON.stringify(profile?.allowedIps ?? []);
 
   return (
-    <div className="border-border/60 bg-card flex flex-col overflow-hidden rounded-lg border shadow-2xs font-sans">
+    <div className="border-border/60 bg-card flex flex-col overflow-hidden rounded-lg border font-sans shadow-2xs">
       <div className="border-border/60 bg-muted/40 flex items-center justify-between border-b px-4 py-2.5 text-xs">
-        <div className="flex items-center gap-2 font-medium text-foreground">
+        <div className="text-foreground flex items-center gap-2 font-medium">
           <Shield className="h-4 w-4 text-emerald-400" />
           <span className="text-xs font-semibold">IP Restrictions</span>
         </div>
@@ -112,12 +112,7 @@ export function IpWhitelistCard({ profile, onUpdateWhitelist, isPending }: IpWhi
             onChange={(e) => setNewIp(e.target.value)}
             className="border-border/60 bg-background h-8 rounded-md font-mono text-xs"
           />
-          <Button
-            type="submit"
-            variant="outline"
-            size="sm"
-            className="h-8 shrink-0 text-xs"
-          >
+          <Button type="submit" variant="outline" size="sm" className="h-8 shrink-0 text-xs">
             <Plus className="mr-1 h-3.5 w-3.5" /> Add Rule
           </Button>
         </form>

@@ -139,7 +139,7 @@ export default function SshKeysPage() {
     <div className="flex flex-col gap-8 font-sans">
       {/* Page Header */}
       <div className="border-border/60 flex flex-col gap-1 border-b pb-5">
-        <h1 className="text-xl font-bold tracking-tight text-foreground">SSH Public Keys</h1>
+        <h1 className="text-foreground text-xl font-bold tracking-tight">SSH Public Keys</h1>
         <p className="text-muted-foreground text-xs">
           Register OpenSSH public keys to authorize client connections and reserved subdomains.
         </p>
@@ -149,8 +149,8 @@ export default function SshKeysPage() {
       <div className="grid gap-6 lg:grid-cols-12">
         {/* Left Column: Register Key & Guide Box */}
         <div className="border-border/60 bg-card flex flex-col overflow-hidden rounded-lg border shadow-2xs lg:col-span-5">
-          <div className="border-border/60 bg-muted/40 flex items-center justify-between border-b px-4 py-2.5 text-xs font-sans">
-            <div className="flex items-center gap-2 font-medium text-foreground">
+          <div className="border-border/60 bg-muted/40 flex items-center justify-between border-b px-4 py-2.5 font-sans text-xs">
+            <div className="text-foreground flex items-center gap-2 font-medium">
               <Key className="text-primary h-4 w-4" />
               <span>Register SSH Public Key</span>
             </div>
@@ -194,7 +194,7 @@ export default function SshKeysPage() {
           <div className="flex flex-col gap-6 p-5">
             {/* Guide Section */}
             <div className="flex flex-col gap-3">
-              <span className="text-muted-foreground text-[11px] font-semibold uppercase tracking-wider">
+              <span className="text-muted-foreground text-[11px] font-semibold tracking-wider uppercase">
                 1. Generate & Copy Key ({activeOs.toUpperCase()})
               </span>
 
@@ -204,7 +204,8 @@ export default function SshKeysPage() {
                   <span>Existing Key Detected?</span>
                 </div>
                 <p className="text-muted-foreground text-xs leading-relaxed">
-                  If <code className="text-foreground font-mono">~/.ssh/id_ed25519.pub</code> exists, skip generation to avoid overwriting keys used elsewhere.
+                  If <code className="text-foreground font-mono">~/.ssh/id_ed25519.pub</code>{" "}
+                  exists, skip generation to avoid overwriting keys used elsewhere.
                 </p>
               </div>
 
@@ -236,7 +237,7 @@ export default function SshKeysPage() {
 
             {/* Registration Form */}
             <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-              <span className="text-muted-foreground text-[11px] font-semibold uppercase tracking-wider">
+              <span className="text-muted-foreground text-[11px] font-semibold tracking-wider uppercase">
                 2. Paste Public Key
               </span>
 
@@ -252,9 +253,7 @@ export default function SshKeysPage() {
                   {...register("label")}
                   aria-invalid={!!errors.label}
                 />
-                {errors.label && (
-                  <p className="text-destructive text-xs">{errors.label.message}</p>
-                )}
+                {errors.label && <p className="text-destructive text-xs">{errors.label.message}</p>}
               </div>
 
               <div className="flex flex-col gap-1.5">
@@ -289,14 +288,14 @@ export default function SshKeysPage() {
 
         {/* Right Column: Registered Keys List */}
         <div className="border-border/60 bg-card flex flex-col overflow-hidden rounded-lg border shadow-2xs lg:col-span-7">
-          <div className="border-border/60 bg-muted/40 flex items-center justify-between border-b px-4 py-2.5 text-xs font-sans">
+          <div className="border-border/60 bg-muted/40 flex items-center justify-between border-b px-4 py-2.5 font-sans text-xs">
             <div className="flex items-center gap-2">
               <span className="text-foreground text-xs font-semibold">Authorized SSH Keys</span>
               <span className="bg-secondary text-secondary-foreground border-border/60 rounded-md border px-2 py-0.5 text-[11px] font-semibold">
                 {keys.length}
               </span>
             </div>
-            <span className="text-emerald-400 text-[11px] font-semibold">Authorized</span>
+            <span className="text-[11px] font-semibold text-emerald-400">Authorized</span>
           </div>
 
           {isLoading ? (
@@ -316,24 +315,21 @@ export default function SshKeysPage() {
             </div>
           ) : (
             <div className="no-scrollbar flex-1 overflow-x-auto">
-              <table className="w-full border-collapse text-left text-xs font-sans">
+              <table className="w-full border-collapse text-left font-sans text-xs">
                 <thead>
-                  <tr className="border-border/60 bg-muted/40 text-muted-foreground border-b text-[11px] font-semibold uppercase tracking-wider">
+                  <tr className="border-border/60 bg-muted/40 text-muted-foreground border-b text-[11px] font-semibold tracking-wider uppercase">
                     <th className="w-[160px] p-4">Key Label</th>
                     <th className="p-4">SHA256 Fingerprint</th>
                     <th className="w-[130px] p-4">Added Date</th>
                     <th className="w-[70px] p-4 text-right">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border/60">
+                <tbody className="divide-border/60 divide-y">
                   {keys.map((key) => (
-                    <tr
-                      key={key.id}
-                      className="hover:bg-muted/20 transition-colors"
-                    >
+                    <tr key={key.id} className="hover:bg-muted/20 transition-colors">
                       <td className="text-foreground p-4 font-semibold">
                         <div className="flex items-center gap-2">
-                          <span className="bg-secondary text-secondary-foreground border-border/60 rounded border px-1.5 py-0.5 text-[10px] font-mono">
+                          <span className="bg-secondary text-secondary-foreground border-border/60 rounded border px-1.5 py-0.5 font-mono text-[10px]">
                             ED25519
                           </span>
                           <span className="max-w-[100px] truncate">{key.label || "Untitled"}</span>
@@ -383,8 +379,9 @@ export default function SshKeysPage() {
         <AlertDialogContent className="font-sans">
           <AlertDialogHeader>
             <AlertDialogTitle>Revoke SSH Key?</AlertDialogTitle>
-            <AlertDialogDescription className="text-xs text-muted-foreground">
-              This will remove the authorized key. Active tunnels established with this key will be disconnected immediately.
+            <AlertDialogDescription className="text-muted-foreground text-xs">
+              This will remove the authorized key. Active tunnels established with this key will be
+              disconnected immediately.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
