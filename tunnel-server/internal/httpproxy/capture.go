@@ -97,6 +97,11 @@ func CaptureMiddleware(next http.Handler, publisher *requestlog.Publisher, subdo
 
 		next.ServeHTTP(rc, r)
 
+		respBody := rc.body.String()
+		if edgeErr := rc.Header().Get("X-Tunl-Edge-Error"); edgeErr != "" {
+			respBody = fmt.Sprintf("[%d %s: %s]", rc.statusCode, http.StatusText(rc.statusCode), edgeErr)
+		}
+
 		entry := &requestlog.CapturedRequest{
 			ID:              captureID(),
 			Timestamp:       start,
@@ -109,7 +114,7 @@ func CaptureMiddleware(next http.Handler, publisher *requestlog.Publisher, subdo
 			RequestHeaders:  flattenHeaders(r.Header),
 			ResponseHeaders: flattenHeaders(rc.Header()),
 			RequestBody:     reqBody,
-			ResponseBody:    rc.body.String(),
+			ResponseBody:    respBody,
 			ClientIP:        extractClientIP(r),
 		}
 

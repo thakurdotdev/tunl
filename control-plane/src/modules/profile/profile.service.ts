@@ -3,7 +3,9 @@ import { eq } from "drizzle-orm";
 import { generateSecret, generateURI, verify } from "otplib";
 import QRCode from "qrcode";
 import type { Database } from "../../db/client.js";
-import { plans, users } from "../../db/schema.js";
+import type { RedisClient } from "../../redis/client.js";
+import { redisKeys } from "../../redis/keys.js";
+import { plans, sshKeys, users } from "../../db/schema.js";
 import { decryptSecret, encryptSecret } from "../../lib/crypto.js";
 import { badRequest, notFound, unauthorized } from "../../platform/errors.js";
 
@@ -135,6 +137,7 @@ export async function disable2FA(db: Database, userId: string) {
 
 export async function updateAllowedIps(
   db: Database,
+  redis: RedisClient,
   userId: string,
   rawIps: string[],
   ipWhitelistEnabled: boolean,
@@ -170,6 +173,14 @@ export async function updateAllowedIps(
 
   if (!updated) {
     throw notFound("User not found");
+  }
+
+  const keys = await db
+    .select({ fingerprint: sshKeys.fingerprint })
+    .from(sshKeys)
+    .where(eq(sshKeys.userId, userId));
+  for (const k of keys) {
+    await redis.del(redisKeys.validateKey(k.fingerprint));
   }
 
   return updated;

@@ -42,7 +42,7 @@ export function createApp(db: Database, redis: RedisClient, config: Config) {
   );
   app.use("/v1", requireAuth(config));
   app.use("/v1", usersRouter(db));
-  app.use("/v1/profile", createProfileRouter(db, config.JWT_SECRET));
+  app.use("/v1/profile", createProfileRouter(db, redis, config.JWT_SECRET));
   app.use("/v1/admin", createAdminRouter(db));
   app.use("/v1/ssh-keys", sshKeysRouter(db, redis));
   app.use("/v1/tunnels", tunnelsRouter(db, redis));

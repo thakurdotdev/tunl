@@ -41,6 +41,7 @@ func renderProxyError(w http.ResponseWriter, r *http.Request, statusCode int, ti
 	// Prevent Cloudflare from intercepting 502/503/504 errors and overriding with Cloudflare's default error page
 	w.Header().Set("cf-error-mode", "custom")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("X-Tunl-Edge-Error", message)
 
 	if strings.Contains(r.Header.Get("Accept"), "text/html") {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")

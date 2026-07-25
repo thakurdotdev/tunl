@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { z } from "zod";
 import type { Database } from "../../db/client.js";
+import type { RedisClient } from "../../redis/client.js";
 import { asyncRoute } from "../../platform/http.js";
 import {
   disable2FA,
@@ -24,7 +25,7 @@ const ipWhitelistSchema = z.object({
   enabled: z.boolean().default(false),
 });
 
-export function createProfileRouter(db: Database, jwtSecret: string): Router {
+export function createProfileRouter(db: Database, redis: RedisClient, jwtSecret: string): Router {
   const router = Router();
 
   router.get(
@@ -79,7 +80,7 @@ export function createProfileRouter(db: Database, jwtSecret: string): Router {
     asyncRoute(async (req: Request, res: Response) => {
       const userId = req.userId!;
       const { allowedIps, enabled } = ipWhitelistSchema.parse(req.body);
-      const updated = await updateAllowedIps(db, userId, allowedIps, enabled);
+      const updated = await updateAllowedIps(db, redis, userId, allowedIps, enabled);
       res.json(updated);
     }),
   );
