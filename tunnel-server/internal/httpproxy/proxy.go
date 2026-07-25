@@ -50,7 +50,14 @@ func NewHandler(opts Options) http.Handler {
 		},
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
 			h.log.Warn("proxy error", "error", err)
-			http.Error(w, "bad gateway", http.StatusBadGateway)
+			subdomain := h.subdomainFromHost(r.Host)
+			renderProxyError(w, r, http.StatusBadGateway,
+				"Bad Gateway",
+				"bad gateway",
+				"Failed to establish a connection with the local application server behind this tunnel.",
+				"Make sure your local development server (e.g., http://localhost:3000) is running and accessible.",
+				subdomain,
+			)
 		},
 	}
 	return h
@@ -120,26 +127,50 @@ func formatTerminalLog(now time.Time, method, path string, statusCode int, durat
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	subdomain := h.subdomainFromHost(r.Host)
 	if subdomain == "" {
-		http.Error(w, "unknown host", http.StatusNotFound)
+		renderProxyError(w, r, http.StatusNotFound,
+			"Host Not Found",
+			"unknown host",
+			"The requested domain does not map to a valid tunnel host.",
+			"Check the URL in your browser address bar to ensure it is spelled correctly.",
+			"",
+		)
 		return
 	}
 
 	tunnel, ok := h.registry.Lookup(subdomain)
 	if !ok {
-		http.Error(w, "tunnel not found", http.StatusNotFound)
+		renderProxyError(w, r, http.StatusNotFound,
+			"Tunnel Not Found",
+			"tunnel not found",
+			"No active tunnel session was found registered for this subdomain.",
+			"Ensure your local tunl client is actively connected.",
+			subdomain,
+		)
 		return
 	}
 
 	if len(tunnel.AllowedIPs) > 0 {
 		clientIP := getClientIP(r)
 		if !isIPAllowed(clientIP, tunnel.AllowedIPs) {
-			http.Error(w, "Access Forbidden: IP address not whitelisted", http.StatusForbidden)
+			renderProxyError(w, r, http.StatusForbidden,
+				"Access Restricted",
+				"Access Forbidden: IP address not whitelisted",
+				"Your IP address is not authorized to access this whitelisted tunnel.",
+				"If you own this tunnel, add your current IP address to your IP whitelist in the Tunl Dashboard under Profile > IP Restrictions.",
+				subdomain,
+			)
 			return
 		}
 	}
 
 	if h.registry.IsDisconnected(subdomain) {
-		http.Error(w, "tunnel temporarily unavailable", http.StatusServiceUnavailable)
+		renderProxyError(w, r, http.StatusServiceUnavailable,
+			"Tunnel Temporarily Offline",
+			"tunnel temporarily unavailable",
+			"The connection to the local tunnel client was temporarily lost.",
+			"The client will automatically attempt to reconnect shortly.",
+			subdomain,
+		)
 		return
 	}
 
