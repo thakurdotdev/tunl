@@ -38,6 +38,10 @@ func renderProxyError(w http.ResponseWriter, r *http.Request, statusCode int, ti
 	nowUTC := time.Now().UTC().Format("2006-01-02 15:04:05 MST")
 	rayID := generateRayID()
 
+	// Prevent Cloudflare from intercepting 502/503/504 errors and overriding with Cloudflare's default error page
+	w.Header().Set("cf-error-mode", "custom")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+
 	if strings.Contains(r.Header.Get("Accept"), "text/html") {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(statusCode)
@@ -66,15 +70,18 @@ func buildErrorHTML(data errorPageData) string {
 	badgeBg := "rgba(239, 68, 68, 0.12)"
 	badgeBorder := "rgba(239, 68, 68, 0.3)"
 	badgeColor := "#f87171" // Red for 403/errors
+	accentColor := "#ef4444"
 
 	if data.StatusCode == 404 {
 		badgeBg = "rgba(245, 158, 11, 0.12)"
 		badgeBorder = "rgba(245, 158, 11, 0.3)"
 		badgeColor = "#fbbf24" // Amber for 404
+		accentColor = "#f59e0b"
 	} else if data.StatusCode >= 500 {
 		badgeBg = "rgba(168, 85, 247, 0.12)"
 		badgeBorder = "rgba(168, 85, 247, 0.3)"
 		badgeColor = "#c084fc" // Purple for 502/503
+		accentColor = "#a855f7"
 	}
 
 	detailsRows := ""
@@ -114,7 +121,7 @@ func buildErrorHTML(data errorPageData) string {
 
 	helpHTML := ""
 	if data.HelpText != "" {
-		helpHTML = fmt.Sprintf(`<div class="help-box">%s</div>`, html.EscapeString(data.HelpText))
+		helpHTML = fmt.Sprintf(`<div class="help-box" style="border-left-color: %s;">%s</div>`, accentColor, html.EscapeString(data.HelpText))
 	}
 
 	portalLink := html.EscapeString(data.PortalURL)
@@ -140,7 +147,7 @@ func buildErrorHTML(data errorPageData) string {
 			-webkit-font-smoothing: antialiased;
 		}
 		.container {
-			max-width: 480px;
+			max-width: 520px;
 			width: 100%%;
 		}
 		.brand {
@@ -153,6 +160,10 @@ func buildErrorHTML(data errorPageData) string {
 			color: #ffffff;
 			margin-bottom: 24px;
 			text-decoration: none;
+			transition: opacity 0.15s ease;
+		}
+		.brand:hover {
+			opacity: 0.9;
 		}
 		.brand-cursor {
 			display: inline-block;
@@ -201,30 +212,34 @@ func buildErrorHTML(data errorPageData) string {
 			background-color: #09090b;
 			border: 1px solid #27272a;
 			border-radius: 8px;
-			padding: 12px 16px;
+			padding: 14px 16px;
 			margin-bottom: 20px;
 			display: flex;
 			flex-direction: column;
-			gap: 8px;
+			gap: 10px;
 		}
 		.meta-row {
 			display: flex;
 			align-items: center;
 			justify-content: space-between;
+			gap: 12px;
 			font-size: 13px;
 		}
 		.meta-label {
 			color: #71717a;
 			font-weight: 500;
+			white-space: nowrap;
 		}
 		.meta-value {
 			font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 			font-size: 12px;
 			color: #e4e4e7;
 			background: #18181b;
-			padding: 2px 8px;
+			padding: 3px 8px;
 			border-radius: 4px;
 			border: 1px solid #27272a;
+			word-break: break-all;
+			text-align: right;
 		}
 		.meta-value.green {
 			color: #34d399;
@@ -234,33 +249,36 @@ func buildErrorHTML(data errorPageData) string {
 		.help-box {
 			font-size: 13px;
 			color: #a1a1aa;
-			line-height: 1.5;
+			line-height: 1.55;
 			background-color: rgba(255, 255, 255, 0.02);
-			border-left: 2px solid #3f3f46;
-			padding: 10px 14px;
-			border-radius: 0 6px 6px 0;
-			margin-bottom: 20px;
+			border-left: 3px solid #10b981;
+			padding: 12px 16px;
+			border-radius: 0 8px 8px 0;
+			margin-bottom: 24px;
 		}
 		.action-row {
 			margin-top: 20px;
 			display: flex;
-			justify-content: flex-start;
 		}
 		.btn-portal {
 			display: inline-flex;
 			align-items: center;
+			justify-content: center;
 			gap: 6px;
-			padding: 8px 16px;
+			width: 100%%;
+			padding: 10px 16px;
 			font-size: 13px;
 			font-weight: 600;
 			color: #09090b;
 			background-color: #10b981;
-			border-radius: 6px;
+			border-radius: 8px;
 			text-decoration: none;
-			transition: background-color 0.15s ease;
+			transition: all 0.15s ease;
+			box-shadow: 0 2px 4px rgba(16, 185, 129, 0.15);
 		}
 		.btn-portal:hover {
 			background-color: #34d399;
+			transform: translateY(-1px);
 		}
 		.footer {
 			margin-top: 24px;
