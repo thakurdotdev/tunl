@@ -44,6 +44,14 @@ export function createApp(db: Database, redis: RedisClient, config: Config) {
 
   app.use(helmet());
 
+  // Support both /api/auth/* and stripped Nginx proxy /auth/* routes
+  app.use((req, _res, next) => {
+    if (req.url.startsWith("/auth")) {
+      req.url = "/api" + req.url;
+    }
+    next();
+  });
+
   // Mount Better Auth BEFORE express.json body parser (Express v5 catch-all path syntax)
   app.all("/api/auth/{*any}", toNodeHandler(auth));
 
