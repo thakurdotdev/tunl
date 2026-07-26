@@ -12,6 +12,14 @@ const mailer = new ResendAuthMailer({
   DASHBOARD_URL: process.env.DASHBOARD_URL,
 } as any);
 
+const getBetterAuthBaseUrl = () => {
+  const url = process.env.BETTER_AUTH_URL!;
+  const trimmed = url.replace(/\/+$/, "");
+  if (trimmed.endsWith("/api/auth")) return trimmed;
+  if (trimmed.endsWith("/api")) return `${trimmed}/auth`;
+  return `${trimmed}/api/auth`;
+};
+
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: "pg",
@@ -135,6 +143,6 @@ export const auth = betterAuth({
     }),
   ],
   trustedOrigins: [process.env.DASHBOARD_URL!],
-  baseURL: process.env.BETTER_AUTH_URL!,
+  baseURL: getBetterAuthBaseUrl(),
   secret: process.env.BETTER_AUTH_SECRET!,
 });
