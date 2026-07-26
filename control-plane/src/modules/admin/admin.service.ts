@@ -7,7 +7,7 @@ import {
   sshKeys,
   tunnelEvents,
   tunnels,
-  users,
+  user,
 } from "../../db/schema.js";
 import { badRequest, conflict, notFound } from "../../platform/errors.js";
 
@@ -24,7 +24,7 @@ export async function getAdminAnalytics(db: Database) {
     activeSessionsList,
     recentEventsList,
   ] = await Promise.all([
-    db.select({ totalUsers: count() }).from(users),
+    db.select({ totalUsers: count() }).from(user),
     db.select({ totalActiveSessions: count() }).from(activeTunnelSessions),
     db.select({ totalTunnels: count() }).from(tunnels),
     db.select({ totalEvents: count() }).from(tunnelEvents),
@@ -38,12 +38,12 @@ export async function getAdminAnalytics(db: Database) {
     db
       .select({
         planName: plans.name,
-        userCount: count(users.id),
+        userCount: count(user.id),
         maxSubdomains: plans.maxReservedSubdomains,
         maxActiveTunnels: plans.maxActiveTunnels,
       })
       .from(plans)
-      .leftJoin(users, eq(users.planId, plans.id))
+      .leftJoin(user, eq(user.planId, plans.id))
       .groupBy(plans.id, plans.name, plans.maxReservedSubdomains, plans.maxActiveTunnels),
     db
       .select({
@@ -58,10 +58,10 @@ export async function getAdminAnalytics(db: Database) {
         subdomain: activeTunnelSessions.subdomain,
         remoteIp: activeTunnelSessions.remoteIp,
         connectedAt: activeTunnelSessions.connectedAt,
-        userEmail: users.email,
+        userEmail: user.email,
       })
       .from(activeTunnelSessions)
-      .leftJoin(users, eq(activeTunnelSessions.userId, users.id))
+      .leftJoin(user, eq(activeTunnelSessions.userId, user.id))
       .orderBy(sql`${activeTunnelSessions.connectedAt} DESC`)
       .limit(20),
     db
@@ -70,10 +70,10 @@ export async function getAdminAnalytics(db: Database) {
         eventType: tunnelEvents.eventType,
         properties: tunnelEvents.properties,
         occurredAt: tunnelEvents.occurredAt,
-        userEmail: users.email,
+        userEmail: user.email,
       })
       .from(tunnelEvents)
-      .leftJoin(users, eq(tunnelEvents.userId, users.id))
+      .leftJoin(user, eq(tunnelEvents.userId, user.id))
       .orderBy(sql`${tunnelEvents.occurredAt} DESC`)
       .limit(200),
   ]);
@@ -118,24 +118,23 @@ export async function getAdminAnalytics(db: Database) {
 export async function getAdminUsers(db: Database, search?: string) {
   const query = db
     .select({
-      id: users.id,
-      email: users.email,
-      role: users.role,
+      id: user.id,
+      email: user.email,
+      role: user.role,
       planName: plans.name,
       planId: plans.id,
-      createdAt: users.createdAt,
+      createdAt: user.createdAt,
     })
-    .from(users)
-    .innerJoin(plans, eq(users.planId, plans.id));
+    .from(user)
+    .leftJoin(plans, eq(user.planId, plans.id));
 
   if (search && search.trim() !== "") {
     const term = `%${search.trim()}%`;
-    query.where(ilike(users.email, term));
+    query.where(ilike(user.email, term));
   }
 
-  const rows = await query.orderBy(sql`${users.createdAt} DESC`);
+  const rows = await query.orderBy(sql`${user.createdAt} DESC`);
 
-  // Fetch counts per user
   const userIds = rows.map((u) => u.id);
   if (userIds.length === 0) {
     return [];
@@ -169,10 +168,10 @@ export async function updateUserPlan(db: Database, userId: string, planId: strin
   }
 
   const [updatedUser] = await db
-    .update(users)
+    .update(user)
     .set({ planId: targetPlan.id, updatedAt: new Date() })
-    .where(eq(users.id, userId))
-    .returning({ id: users.id, email: users.email, planId: users.planId });
+    .where(eq(user.id, userId))
+    .returning({ id: user.id, email: user.email, planId: user.planId });
 
   if (!updatedUser) {
     throw notFound("User not found");
@@ -187,10 +186,10 @@ export async function updateUserRole(db: Database, userId: string, role: "user" 
   }
 
   const [updatedUser] = await db
-    .update(users)
+    .update(user)
     .set({ role, updatedAt: new Date() })
-    .where(eq(users.id, userId))
-    .returning({ id: users.id, email: users.email, role: users.role });
+    .where(eq(user.id, userId))
+    .returning({ id: user.id, email: user.email, role: user.role });
 
   if (!updatedUser) {
     throw notFound("User not found");

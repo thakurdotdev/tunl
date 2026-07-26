@@ -1,6 +1,6 @@
 import { and, count, desc, eq, sql } from "drizzle-orm";
 import type { Database } from "../../db/client.js";
-import { plans, sshKeys, tunnels, users } from "../../db/schema.js";
+import { plans, sshKeys, tunnels, user } from "../../db/schema.js";
 import { conflict, forbidden, notFound } from "../../platform/errors.js";
 import type { RedisClient } from "../../redis/client.js";
 import { redisKeys } from "../../redis/keys.js";
@@ -28,26 +28,24 @@ export async function createUserTunnel(db: Database, userId: string, subdomain: 
       if (reservedSubdomains.includes(subdomain)) {
         throw conflict("subdomain is already reserved");
       }
-      await tx.execute(sql`select id from users where id = ${userId} for update`);
+      await tx.execute(sql`select id from "user" where id = ${userId} for update`);
 
-      const [user] = await tx
+      const [userPlan] = await tx
         .select({ max: plans.maxReservedSubdomains })
-        .from(users)
-        .innerJoin(plans, eq(users.planId, plans.id))
-        .where(eq(users.id, userId))
+        .from(user)
+        .leftJoin(plans, eq(user.planId, plans.id))
+        .where(eq(user.id, userId))
         .limit(1);
 
-      if (!user) {
-        throw notFound("user not found");
-      }
+      const maxSubdomains = userPlan?.max ?? 1;
 
       const [{ value }] = await tx
         .select({ value: count() })
         .from(tunnels)
         .where(eq(tunnels.userId, userId));
 
-      if (value >= user.max) {
-        throw forbidden(`your plan allows at most ${user.max} reserved subdomain(s)`);
+      if (value >= maxSubdomains) {
+        throw forbidden(`your plan allows at most ${maxSubdomains} reserved subdomain(s)`);
       }
 
       const [existing] = await tx

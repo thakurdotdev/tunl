@@ -1,7 +1,7 @@
 import { Resend } from "resend";
 import { createHash } from "node:crypto";
 import type { Config } from "../../platform/config.js";
-import { TOKEN_TTL_MINUTES } from "./auth.service.js";
+export const TOKEN_TTL_MINUTES = 15;
 
 export interface AuthMailer {
   sendVerification(to: string, token: string, expiryMinutes?: number): Promise<void>;

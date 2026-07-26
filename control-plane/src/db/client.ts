@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
@@ -10,3 +11,5 @@ export function createDatabase(databaseUrl = process.env.DATABASE_URL) {
 }
 
 export type Database = ReturnType<typeof createDatabase>;
+
+export const db = createDatabase();

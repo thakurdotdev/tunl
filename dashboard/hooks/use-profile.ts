@@ -1,17 +1,12 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { client } from "@/lib/api-client";
+import { authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
 
-export type UserProfile = {
-  id: string;
-  email: string;
-  name: string | null;
-  role: "user" | "admin";
-  twoFactorEnabled: boolean;
-  ipWhitelistEnabled: boolean;
-  allowedIps: string[];
-  planName: string;
-  createdAt: string;
+import type { User } from "@/lib/types";
+
+export type UserProfile = User & {
+  planName?: string;
 };
 
 export type Setup2FAResponse = {
@@ -19,32 +14,20 @@ export type Setup2FAResponse = {
   qrCodeDataUrl: string;
 };
 
-export function useProfile() {
-  return useQuery({
-    queryKey: ["profile"],
-    queryFn: async () => {
-      const { data } = await client.get<UserProfile>("/v1/profile");
-      return data;
-    },
-  });
-}
-
 export function useUpdateProfileName() {
-  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (name: string) => {
-      const { data } = await client.patch<{ id: string; name: string | null }>("/v1/profile", {
-        name,
-      });
-      return data;
+      const res = await authClient.updateUser({ name });
+      if (res.error) {
+        throw new Error(res.error.message || "Failed to update profile name");
+      }
+      return res.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["profile"] });
-      queryClient.invalidateQueries({ queryKey: ["auth"] });
       toast.success("Profile name updated successfully!");
     },
     onError: (err: any) => {
-      const msg = err?.response?.data?.message || err?.message || "Failed to update profile name";
+      const msg = err?.message || "Failed to update profile name";
       toast.error(msg);
     },
   });
@@ -64,7 +47,6 @@ export function useSetup2FA() {
 }
 
 export function useVerify2FA() {
-  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (code: string) => {
       const { data } = await client.post<{ success: boolean; message: string }>(
@@ -73,8 +55,8 @@ export function useVerify2FA() {
       );
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["profile"] });
+    onSuccess: async () => {
+      await authClient.getSession();
       toast.success("Two-Factor Authentication enabled successfully!");
     },
     onError: (err: any) => {
@@ -85,7 +67,6 @@ export function useVerify2FA() {
 }
 
 export function useDisable2FA() {
-  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async () => {
       const { data } = await client.post<{ success: boolean; message: string }>(
@@ -93,8 +74,8 @@ export function useDisable2FA() {
       );
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["profile"] });
+    onSuccess: async () => {
+      await authClient.getSession();
       toast.success("Two-Factor Authentication disabled.");
     },
     onError: (err: any) => {
@@ -105,7 +86,6 @@ export function useDisable2FA() {
 }
 
 export function useUpdateIpWhitelist() {
-  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ allowedIps, enabled }: { allowedIps: string[]; enabled: boolean }) => {
       const { data } = await client.patch<{
@@ -115,8 +95,8 @@ export function useUpdateIpWhitelist() {
       }>("/v1/profile/ip-whitelist", { allowedIps, enabled });
       return data;
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["profile"] });
+    onSuccess: async (data) => {
+      await authClient.getSession();
       if (data.ipWhitelistEnabled) {
         toast.success("IP whitelist rules saved and active!");
       } else {

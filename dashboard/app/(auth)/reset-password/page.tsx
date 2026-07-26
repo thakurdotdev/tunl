@@ -3,8 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useResetPasswordMutation, useVerifyTokenQuery } from "@/hooks/use-auth";
-import { ApiClientError } from "@/lib/api-client";
+import { authClient } from "@/lib/auth-client";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
@@ -38,11 +37,9 @@ function ResetPasswordContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
-  const tokenQuery = useVerifyTokenQuery(token, "password_reset");
-  const resetMutation = useResetPasswordMutation();
 
   const {
     register,
@@ -56,44 +53,42 @@ function ResetPasswordContent() {
     },
   });
 
-  const onSubmit = (values: ResetPasswordFormValues) => {
+  const onSubmit = async (values: ResetPasswordFormValues) => {
     if (!token) {
       toast.error("Invalid token. Please check your reset link.");
       return;
     }
 
-    resetMutation.mutate(
-      { token, password: values.password },
-      {
-        onSuccess: () => {
-          setIsSuccess(true);
-          toast.success("Password reset successfully!");
-        },
-        onError: (err) => {
-          if (err instanceof ApiClientError) {
-            toast.error(err.message);
-          } else {
-            toast.error(
-              "Failed to reset password. The link may have expired or already been used.",
-            );
-          }
-        },
-      },
-    );
+    setIsSubmitting(true);
+    try {
+      const res = await authClient.resetPassword({
+        newPassword: values.password,
+        token,
+      });
+
+      if (res.error) {
+        toast.error(res.error.message || "Failed to reset password.");
+        return;
+      }
+
+      setIsSuccess(true);
+      toast.success("Password reset successfully!");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to reset password.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const isSubmitting = resetMutation.isPending;
-
-  if (!token || tokenQuery.isError) {
+  if (!token) {
     return (
       <div className="flex flex-col gap-6 font-sans">
         <div className="flex flex-col gap-1.5 text-left">
           <h1 className="text-destructive font-sans text-2xl font-bold tracking-tight">
-            Link expired or invalid
+            Link invalid or missing token
           </h1>
           <p className="text-muted-foreground text-xs leading-relaxed">
-            This password reset link is invalid or has expired. Password reset links are single-use
-            and valid for 15 minutes.
+            This password reset link is invalid or missing the verification token.
           </p>
         </div>
         <div className="flex flex-col gap-3">
@@ -106,15 +101,6 @@ function ResetPasswordContent() {
             </Button>
           </Link>
         </div>
-      </div>
-    );
-  }
-
-  if (tokenQuery.isLoading) {
-    return (
-      <div className="flex flex-col items-center gap-4 py-8 font-sans">
-        <div className="border-primary/20 border-t-primary h-6 w-6 animate-spin rounded-full border-2" />
-        <p className="text-muted-foreground text-xs">Verifying reset link...</p>
       </div>
     );
   }

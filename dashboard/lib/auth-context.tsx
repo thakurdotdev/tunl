@@ -1,64 +1,53 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
-import { client, getToken, setToken, clearToken } from "./api-client";
+import { createContext, useContext, type ReactNode } from "react";
+import { authClient } from "./auth-client";
 import type { User } from "./types";
 
 type AuthState = {
   user: User | null;
   isLoading: boolean;
-  login: (email: string, password: string, totpCode?: string) => Promise<{ requires2FA?: boolean }>;
+  login: (email: string, password: string) => Promise<void>;
   logout: () => void;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: session, isPending: isSessionPending } = authClient.useSession();
 
-  useEffect(() => {
-    const token = getToken();
-    if (!token) {
-      setIsLoading(false);
-      return;
-    }
-    client
-      .get<User>("/v1/me")
-      .then(({ data }) => setUser(data))
-      .catch(() => clearToken())
-      .finally(() => setIsLoading(false));
-  }, []);
+  const user = (session?.user as User | undefined) || null;
 
-  const login = useCallback(async (email: string, password: string, totpCode?: string) => {
-    const { data } = await client.post<{
-      accessToken?: string;
-      user?: User;
-      requires2FA?: boolean;
-    }>("/v1/auth/login", {
+  const login = async (email: string, password: string) => {
+    const res = await authClient.signIn.email({
       email,
       password,
-      totpCode,
     });
-
-    if (data.requires2FA) {
-      return { requires2FA: true };
+    if (res.error) {
+      const errorObj = new Error(res.error.message || "Failed to sign in") as Error & {
+        code?: string;
+      };
+      errorObj.code = res.error.code;
+      throw errorObj;
     }
+  };
 
-    if (data.accessToken && data.user) {
-      setToken(data.accessToken);
-      setUser(data.user);
-    }
+  const logout = async () => {
+    await authClient.signOut();
+  };
 
-    return {};
-  }, []);
-
-  const logout = useCallback(() => {
-    clearToken();
-    setUser(null);
-  }, []);
-
-  return <AuthContext value={{ user, isLoading, login, logout }}>{children}</AuthContext>;
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        isLoading: isSessionPending,
+        login,
+        logout,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {

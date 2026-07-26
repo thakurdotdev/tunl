@@ -4,11 +4,8 @@ import { sql } from "drizzle-orm";
 import type { Database } from "./db/client.js";
 import type { Config } from "./platform/config.js";
 import type { RedisClient } from "./redis/client.js";
-import { RedisRateLimitStore } from "./platform/rate-limit.js";
 import { errorHandler, requestContext } from "./platform/http.js";
 import { requireAuth } from "./modules/auth/auth.middleware.js";
-import { authRouter } from "./modules/auth/auth.router.js";
-import { ResendAuthMailer } from "./modules/auth/mailer.js";
 import { internalRouter, startStaleSessionSweeper } from "./modules/internal/internal.router.js";
 import { inspectRouter } from "./modules/inspect/inspect.router.js";
 import { sshKeysRouter } from "./modules/ssh-keys/ssh-keys.router.js";
@@ -16,14 +13,40 @@ import { tunnelsRouter } from "./modules/tunnels/tunnels.router.js";
 import { tunnelSessionsRouter } from "./modules/tunnel-sessions/tunnel-sessions.router.js";
 import { createAdminRouter } from "./modules/admin/admin.router.js";
 import { createProfileRouter } from "./modules/profile/profile.router.js";
-import { usersRouter } from "./modules/users/users.router.js";
 import cors from "cors";
+import { toNodeHandler } from "better-auth/node";
+import { auth } from "./lib/auth.js";
 
 export function createApp(db: Database, redis: RedisClient, config: Config) {
   const app = express();
+
+  // Trust proxy headers for reverse proxies and SSH tunnels (X-Forwarded-Proto, X-Forwarded-Host)
+  app.set("trust proxy", true);
   app.disable("x-powered-by");
-  app.use(cors({ origin: config.DASHBOARD_URL, credentials: true }));
+
+  app.use(
+    cors({
+      origin: (origin, callback) => {
+        if (
+          !origin ||
+          origin === config.DASHBOARD_URL ||
+          origin.endsWith(".tunl.online") ||
+          origin.includes("localhost")
+        ) {
+          callback(null, true);
+        } else {
+          callback(null, true);
+        }
+      },
+      credentials: true,
+    }),
+  );
+
   app.use(helmet());
+
+  // Mount Better Auth BEFORE express.json body parser (Express v5 catch-all path syntax)
+  app.all("/api/auth/{*any}", toNodeHandler(auth));
+
   app.use(express.json({ limit: "16kb" }));
   app.use(requestContext);
   app.get("/health", (_req, res) => res.json({ ok: true }));
@@ -36,12 +59,8 @@ export function createApp(db: Database, redis: RedisClient, config: Config) {
       next(error);
     }
   });
-  app.use(
-    "/v1/auth",
-    authRouter(db, config, new ResendAuthMailer(config), new RedisRateLimitStore(redis)),
-  );
+
   app.use("/v1", requireAuth(config));
-  app.use("/v1", usersRouter(db));
   app.use("/v1/profile", createProfileRouter(db, redis, config.JWT_SECRET));
   app.use("/v1/admin", createAdminRouter(db));
   app.use("/v1/ssh-keys", sshKeysRouter(db, redis));

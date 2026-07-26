@@ -1,7 +1,7 @@
 import axios, { AxiosError } from "axios";
 import type { ApiError } from "./types";
 
-const BASE_URL = process.env.NEXT_PUBLIC_CONTROL_PLANE_URL ?? "http://localhost:3001";
+const BASE_URL = process.env.NEXT_PUBLIC_CONTROL_PLANE_URL ?? "";
 
 export class ApiClientError extends Error {
   constructor(
@@ -15,6 +15,7 @@ export class ApiClientError extends Error {
 
 export const client = axios.create({
   baseURL: BASE_URL,
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },

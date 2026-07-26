@@ -3,11 +3,18 @@ export type User = {
   email: string;
   name: string | null;
   emailVerified: boolean;
-  role: "user" | "admin";
-  plan: {
+  image?: string | null;
+  role?: "user" | "admin";
+  planId?: string | null;
+  plan?: {
     name: string;
     maxReservedSubdomains: number;
   };
+  twoFactorEnabled?: boolean;
+  ipWhitelistEnabled?: boolean;
+  allowedIps?: string[];
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type ActiveSessionItem = {

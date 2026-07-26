@@ -5,11 +5,11 @@ import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useForgotPasswordMutation } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { authClient } from "@/lib/auth-client";
 
 const forgotPasswordSchema = z.object({
   email: z
@@ -22,7 +22,7 @@ type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
 
 export default function ForgotPasswordPage() {
   const [isSuccess, setIsSuccess] = useState(false);
-  const forgotPasswordMutation = useForgotPasswordMutation();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
     register,
@@ -35,19 +35,25 @@ export default function ForgotPasswordPage() {
     },
   });
 
-  const onSubmit = (values: ForgotPasswordFormValues) => {
-    forgotPasswordMutation.mutate(values.email, {
-      onSuccess: () => {
-        setIsSuccess(true);
-        toast.success("Reset link sent if email exists.");
-      },
-      onError: () => {
-        setIsSuccess(true);
-      },
-    });
+  const onSubmit = async (values: ForgotPasswordFormValues) => {
+    setIsSubmitting(true);
+    try {
+      const redirectUrl =
+        typeof window !== "undefined"
+          ? `${window.location.origin}/reset-password`
+          : "/reset-password";
+      await authClient.requestPasswordReset({
+        email: values.email,
+        redirectTo: redirectUrl,
+      });
+      setIsSuccess(true);
+      toast.success("Reset link sent if email exists.");
+    } catch {
+      setIsSuccess(true);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
-
-  const isSubmitting = forgotPasswordMutation.isPending;
 
   if (isSuccess) {
     return (

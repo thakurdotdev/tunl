@@ -3,14 +3,13 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useResendVerificationMutation } from "@/hooks/use-auth";
-import { ApiClientError } from "@/lib/api-client";
+import { authClient } from "@/lib/auth-client";
 import { useAuth } from "@/lib/auth-context";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2, Mail } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import * as z from "zod";
@@ -29,17 +28,15 @@ export default function LoginPage() {
   const { login } = useAuth();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSocialLoading, setIsSocialLoading] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [lastUsedProvider, setLastUsedProvider] = useState<string | null>(null);
   const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
-  const [requires2FA, setRequires2FA] = useState(false);
-  const [totpCode, setTotpCode] = useState("");
-
-  const resendMutation = useResendVerificationMutation();
+  const [isResending, setIsResending] = useState(false);
 
   const {
     register,
     handleSubmit,
-    watch,
     formState: { errors },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -49,150 +46,121 @@ export default function LoginPage() {
     },
   });
 
-  const currentEmail = watch("email");
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("tunl_last_used_provider");
+      if (stored) setLastUsedProvider(stored);
+    }
+  }, []);
+
+  const saveLastUsed = (provider: string) => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("tunl_last_used_provider", provider);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (!unverifiedEmail) return;
+    setIsResending(true);
+    try {
+      const redirectUrl =
+        typeof window !== "undefined" ? `${window.location.origin}/dashboard` : "/dashboard";
+      await authClient.sendVerificationEmail({
+        email: unverifiedEmail,
+        callbackURL: redirectUrl,
+      });
+      toast.success("Verification email sent! Please check your inbox.");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to resend verification email");
+    } finally {
+      setIsResending(false);
+    }
+  };
 
   const onSubmit = async (values: LoginFormValues) => {
     setIsSubmitting(true);
     setUnverifiedEmail(null);
+    saveLastUsed("email");
     try {
-      const res = await login(values.email, values.password, totpCode || undefined);
-      if (res.requires2FA) {
-        setRequires2FA(true);
-        setTotpCode("");
-        toast.info("Two-Factor Authentication required.");
-        return;
-      }
+      await login(values.email, values.password);
       toast.success("Welcome back!");
       router.push("/dashboard");
-    } catch (err) {
-      if (err instanceof ApiClientError) {
-        if (
-          err.code === "email_not_verified" ||
-          (err.status === 403 && err.message.toLowerCase().includes("verification"))
-        ) {
-          setUnverifiedEmail(values.email);
-          toast.error("Email verification is required before signing in.");
-          return;
-        }
-        toast.error(err.message);
+    } catch (err: any) {
+      const msg = err?.message || "";
+      const code = err?.code || "";
+      if (
+        code === "EMAIL_NOT_VERIFIED" ||
+        msg.toLowerCase().includes("verify") ||
+        msg.toLowerCase().includes("email_not_verified")
+      ) {
+        setUnverifiedEmail(values.email);
       } else {
-        toast.error("An unexpected error occurred. Please try again.");
+        toast.error(msg || "Invalid email or password");
       }
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleResendVerification = () => {
-    if (!unverifiedEmail) return;
-    resendMutation.mutate(unverifiedEmail, {
-      onSuccess: () => {
-        toast.success("Verification email sent! Check your inbox.");
-      },
-      onError: (err) => {
-        toast.error(err.message || "Failed to resend verification email.");
-      },
-    });
-  };
-
-  const handle2FASubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (totpCode.length !== 6) return;
-    setIsSubmitting(true);
+  const handleSocialLogin = async (provider: "github" | "google") => {
+    setIsSocialLoading(provider);
+    saveLastUsed(provider);
     try {
-      await login(currentEmail, watch("password"), totpCode);
-      toast.success("Welcome back!");
-      router.push("/dashboard");
-    } catch (err) {
-      if (err instanceof ApiClientError) {
-        toast.error(err.message);
-      } else {
-        toast.error("Invalid verification code.");
-      }
-    } finally {
-      setIsSubmitting(false);
+      const redirectUrl =
+        typeof window !== "undefined" ? `${window.location.origin}/dashboard` : "/dashboard";
+      await authClient.signIn.social({
+        provider,
+        callbackURL: redirectUrl,
+      });
+    } catch (err: any) {
+      toast.error(err?.message || `Failed to sign in with ${provider}`);
+      setIsSocialLoading(null);
     }
   };
 
-  if (requires2FA) {
+  if (unverifiedEmail) {
     return (
-      <div key="2fa-view" className="flex flex-col gap-6 font-sans">
-        <div className="flex flex-col gap-1.5 text-left">
-          <h1 className="text-foreground text-2xl font-bold tracking-tight">
-            Two-Factor Authentication
-          </h1>
-          <p className="text-muted-foreground text-xs leading-relaxed">
-            Enter the 6-digit verification code from your authenticator app to complete sign in for{" "}
-            <strong className="text-foreground font-mono">{currentEmail}</strong>.
-          </p>
+      <div key="unverified-view" className="flex flex-col gap-6 font-sans">
+        <div className="flex flex-col gap-3 text-left">
+          <div className="bg-primary/10 border-primary/20 flex h-10 w-10 items-center justify-center rounded-lg border">
+            <Mail className="text-primary h-5 w-5" />
+          </div>
+          <div className="flex flex-col gap-1">
+            <h1 className="text-foreground text-2xl font-bold tracking-tight">
+              Verify your email address
+            </h1>
+            <p className="text-muted-foreground text-xs leading-relaxed">
+              We need to verify your email address before you can sign in. We sent a verification
+              link to <strong className="text-foreground">{unverifiedEmail}</strong>.
+            </p>
+          </div>
         </div>
 
-        <form
-          key="2fa-form"
-          onSubmit={handle2FASubmit}
-          className="flex flex-col gap-4"
-          autoComplete="off"
-        >
-          <input
-            type="text"
-            name="username"
-            value={currentEmail || ""}
-            readOnly
-            tabIndex={-1}
-            className="sr-only"
-            aria-hidden="true"
-            autoComplete="username"
-          />
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2">
-              <Label htmlFor="totpCode" className="text-foreground text-xs font-medium">
-                6-Digit Authentication Code
-              </Label>
-            </div>
-            <Input
-              key="totp-input"
-              id="totpCode"
-              name="one-time-code"
-              type="text"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              maxLength={6}
-              placeholder="123456"
-              value={totpCode}
-              onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, ""))}
-              autoFocus
-              data-1p-ignore
-              data-lpignore="true"
-              data-bwignore="true"
-              className="border-border/60 bg-background h-10 text-center font-mono text-base font-bold tracking-widest"
-            />
-          </div>
-
+        <div className="flex flex-col gap-3 pt-2">
           <Button
-            type="submit"
-            disabled={isSubmitting || totpCode.length !== 6}
-            className="mt-1 h-9 w-full text-xs font-semibold"
+            type="button"
+            onClick={handleResendVerification}
+            disabled={isResending}
+            className="h-9 w-full text-xs font-semibold"
           >
-            {isSubmitting ? (
+            {isResending ? (
               <>
-                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Verifying...
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Sending link...
               </>
             ) : (
-              "Verify & Sign In"
+              "Resend Verification Email"
             )}
           </Button>
-        </form>
 
-        <button
-          type="button"
-          onClick={() => {
-            setRequires2FA(false);
-            setTotpCode("");
-          }}
-          className="text-muted-foreground hover:text-foreground text-left font-sans text-xs transition-colors"
-        >
-          ← Back to Sign In
-        </button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setUnverifiedEmail(null)}
+            className="h-9 w-full text-xs font-medium"
+          >
+            Back to sign in
+          </Button>
+        </div>
       </div>
     );
   }
@@ -204,8 +172,81 @@ export default function LoginPage() {
           Sign in to your account
         </h1>
         <p className="text-muted-foreground text-xs leading-relaxed">
-          Enter your credentials below to access your tunnels
+          Sign in using GitHub, Google, or your credentials to access your tunnels
         </p>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => handleSocialLogin("github")}
+          disabled={isSubmitting || !!isSocialLoading}
+          className="relative h-9 w-full justify-center gap-2 font-sans text-xs font-semibold"
+        >
+          {isSocialLoading === "github" ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24">
+              <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
+            </svg>
+          )}
+          <span>Continue with GitHub</span>
+          {lastUsedProvider === "github" && (
+            <span className="absolute right-3 rounded border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400">
+              Last used
+            </span>
+          )}
+        </Button>
+
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => handleSocialLogin("google")}
+          disabled={isSubmitting || !!isSocialLoading}
+          className="relative h-9 w-full justify-center gap-2 font-sans text-xs font-semibold"
+        >
+          {isSocialLoading === "google" ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <svg className="h-4 w-4" viewBox="0 0 24 24">
+              <path
+                fill="#4285F4"
+                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+              />
+              <path
+                fill="#34A853"
+                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+              />
+              <path
+                fill="#FBBC05"
+                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+              />
+              <path
+                fill="#EA4335"
+                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+              />
+            </svg>
+          )}
+          <span>Continue with Google</span>
+          {lastUsedProvider === "google" && (
+            <span className="absolute right-3 rounded border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400">
+              Last used
+            </span>
+          )}
+        </Button>
+      </div>
+
+      <div className="relative flex items-center justify-center">
+        <div className="border-border/60 w-full border-t" />
+        <span className="bg-background text-muted-foreground absolute flex items-center gap-1 px-2 font-sans text-[11px] font-medium tracking-wider uppercase">
+          Or with email
+          {lastUsedProvider === "email" && (
+            <span className="py-0.2 rounded border-emerald-500/30 bg-emerald-500/10 px-1 text-[9px] font-semibold text-emerald-400">
+              Last used
+            </span>
+          )}
+        </span>
       </div>
 
       <form key="login-form" onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
@@ -219,7 +260,7 @@ export default function LoginPage() {
             type="email"
             placeholder="you@example.com"
             autoComplete="email"
-            disabled={isSubmitting}
+            disabled={isSubmitting || !!isSocialLoading}
             {...register("email")}
             className="border-border/60 bg-background h-9 font-sans text-xs"
           />
@@ -244,7 +285,7 @@ export default function LoginPage() {
               type={showPassword ? "text" : "password"}
               placeholder="••••••••••••"
               autoComplete="current-password"
-              disabled={isSubmitting}
+              disabled={isSubmitting || !!isSocialLoading}
               {...register("password")}
               className="border-border/60 bg-background h-9 pr-10 font-sans text-xs"
             />
@@ -259,29 +300,14 @@ export default function LoginPage() {
           {errors.password && <p className="text-destructive text-xs">{errors.password.message}</p>}
         </div>
 
-        {unverifiedEmail && (
-          <div className="border-destructive/30 bg-destructive/10 rounded-md border p-3 text-xs">
-            <p className="text-destructive font-medium">Your email is not verified yet.</p>
-            <Button
-              type="button"
-              variant="link"
-              onClick={handleResendVerification}
-              disabled={resendMutation.isPending}
-              className="text-primary h-auto p-0 text-xs hover:underline"
-            >
-              {resendMutation.isPending ? "Sending..." : "Click here to resend verification email"}
-            </Button>
-          </div>
-        )}
-
         <Button
           type="submit"
-          disabled={isSubmitting}
+          disabled={isSubmitting || !!isSocialLoading}
           className="mt-1 h-9 w-full text-xs font-semibold"
         >
           {isSubmitting ? (
             <>
-              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Verifying...
+              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Signing in...
             </>
           ) : (
             "Sign In"

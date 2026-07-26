@@ -12,6 +12,12 @@ const envSchema = z.object({
   RESEND_API_KEY: z.string().startsWith("re_"),
   EMAIL_FROM: z.string().min(3).max(320),
   DASHBOARD_URL: z.url(),
+  BETTER_AUTH_SECRET: z.string().default("replace-with-a-random-secret-at-least-32-characters"),
+  BETTER_AUTH_URL: z.string().default("http://localhost:3001"),
+  GITHUB_CLIENT_ID: z.string().default(""),
+  GITHUB_CLIENT_SECRET: z.string().default(""),
+  GOOGLE_CLIENT_ID: z.string().default(""),
+  GOOGLE_CLIENT_SECRET: z.string().default(""),
 });
 
 export type Config = z.infer<typeof envSchema>;

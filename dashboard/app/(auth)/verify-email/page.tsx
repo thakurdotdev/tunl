@@ -1,19 +1,18 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useVerifyEmailMutation } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { ApiClientError } from "@/lib/api-client";
+import { authClient } from "@/lib/auth-client";
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [errorMessage, setErrorMessage] = useState("");
-  const verifyMutation = useVerifyEmailMutation();
+  const hasExecutedRef = useRef(false);
 
   useEffect(() => {
     if (!token) {
@@ -22,20 +21,24 @@ function VerifyEmailContent() {
       return;
     }
 
-    verifyMutation.mutate(token, {
-      onSuccess: () => {
-        setStatus("success");
-        toast.success("Email verified successfully!");
-      },
-      onError: (err) => {
-        setStatus("error");
-        if (err instanceof ApiClientError) {
-          setErrorMessage(err.message);
+    if (hasExecutedRef.current) return;
+    hasExecutedRef.current = true;
+
+    authClient
+      .verifyEmail({ query: { token } })
+      .then((res) => {
+        if (res.error) {
+          setStatus("error");
+          setErrorMessage(res.error.message || "Failed to verify email. Token may be expired.");
         } else {
-          setErrorMessage("Failed to verify email. The token may be expired or invalid.");
+          setStatus("success");
+          toast.success("Email verified successfully!");
         }
-      },
-    });
+      })
+      .catch((err: any) => {
+        setStatus("error");
+        setErrorMessage(err?.message || "Failed to verify email.");
+      });
   }, [token]);
 
   if (status === "loading") {

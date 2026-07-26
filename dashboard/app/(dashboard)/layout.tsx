@@ -11,7 +11,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useProfile } from "@/hooks/use-profile";
 import { useAuth } from "@/lib/auth-context";
 import { LogOut, Shield, User } from "lucide-react";
 import Link from "next/link";
@@ -35,7 +34,6 @@ const getInitial = (name?: string | null, email?: string | null) => {
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
-  const { data: profile } = useProfile();
   const pathname = usePathname();
 
   const navItems = [
@@ -46,7 +44,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   ];
 
   const isProfileActive = pathname.startsWith("/profile");
-  const displayName = profile?.name || user?.name || null;
+  const displayName = user?.name || null;
   const userInitial = getInitial(displayName, user?.email);
 
   return (
@@ -89,27 +87,50 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       aria-label="User profile menu"
                       className={
                         isProfileActive
-                          ? "bg-secondary text-foreground border-border font-semibold"
-                          : "font-semibold"
+                          ? "bg-secondary text-foreground border-border overflow-hidden font-semibold"
+                          : "overflow-hidden font-semibold"
                       }
                     >
-                      <span className="text-xs font-bold tracking-tight">{userInitial}</span>
+                      {user?.image ? (
+                        <img
+                          src={user.image}
+                          alt={displayName || user?.email || "User Avatar"}
+                          className="h-full w-full rounded-md object-cover"
+                        />
+                      ) : (
+                        <span className="text-xs font-bold tracking-tight">{userInitial}</span>
+                      )}
                     </Button>
                   }
                 />
-                <DropdownMenuContent align="end" className="w-52 p-1">
-                  <div className="px-2.5 py-2 text-xs">
-                    {displayName ? (
-                      <>
-                        <p className="text-foreground truncate font-semibold">{displayName}</p>
-                        <p className="text-muted-foreground truncate text-[11px]">{user?.email}</p>
-                      </>
+                <DropdownMenuContent align="end" className="w-56 p-1">
+                  <div className="flex items-center gap-2.5 px-2.5 py-2 text-xs">
+                    {user?.image ? (
+                      <img
+                        src={user.image}
+                        alt={displayName || user?.email || "Avatar"}
+                        className="border-border/60 h-8 w-8 shrink-0 rounded-full border object-cover"
+                      />
                     ) : (
-                      <p className="text-foreground truncate font-semibold">{user?.email}</p>
+                      <div className="bg-secondary text-foreground border-border/60 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs font-bold">
+                        {userInitial}
+                      </div>
                     )}
-                    <p className="text-muted-foreground mt-1 text-[10px] capitalize">
-                      {user?.role || "user"} {user?.plan?.name ? `• ${user.plan.name}` : ""}
-                    </p>
+                    <div className="min-w-0 flex-1">
+                      {displayName ? (
+                        <>
+                          <p className="text-foreground truncate font-semibold">{displayName}</p>
+                          <p className="text-muted-foreground truncate text-[11px]">
+                            {user?.email}
+                          </p>
+                        </>
+                      ) : (
+                        <p className="text-foreground truncate font-semibold">{user?.email}</p>
+                      )}
+                      <p className="text-muted-foreground mt-0.5 text-[10px] capitalize">
+                        {user?.role || "user"} {user?.plan?.name ? `• ${user.plan.name}` : ""}
+                      </p>
+                    </div>
                   </div>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem

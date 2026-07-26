@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import { eq } from "drizzle-orm";
 import type { Database } from "../../db/client.js";
-import { users } from "../../db/schema.js";
+import { user } from "../../db/schema.js";
 import { forbidden, unauthorized } from "../../platform/errors.js";
 
 export function requireAdmin(db: Database) {
@@ -10,13 +10,13 @@ export function requireAdmin(db: Database) {
       return next(unauthorized("Authentication required"));
     }
 
-    const [user] = await db
-      .select({ role: users.role })
-      .from(users)
-      .where(eq(users.id, req.userId))
+    const [u] = await db
+      .select({ role: user.role })
+      .from(user)
+      .where(eq(user.id, req.userId))
       .limit(1);
 
-    if (!user || user.role !== "admin") {
+    if (!u || u.role !== "admin") {
       return next(forbidden("Admin access required"));
     }
 

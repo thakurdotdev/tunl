@@ -2,19 +2,19 @@
 
 import {
   useDisable2FA,
-  useProfile,
   useSetup2FA,
   useUpdateIpWhitelist,
   useUpdateProfileName,
   useVerify2FA,
 } from "@/hooks/use-profile";
+import { useAuth } from "@/lib/auth-context";
 import { ProfileInfoCard } from "@/components/profile/profile-info-card";
 import { TwoFactorCard } from "@/components/profile/two-factor-card";
 import { IpWhitelistCard } from "@/components/profile/ip-whitelist-card";
 import { AlertCircle, Loader2 } from "lucide-react";
 
 export default function ProfilePage() {
-  const { data: profile, isLoading, error } = useProfile();
+  const { user: profile, isLoading } = useAuth();
 
   const updateName = useUpdateProfileName();
   const setup2FA = useSetup2FA();
@@ -30,7 +30,7 @@ export default function ProfilePage() {
     );
   }
 
-  if (error || !profile) {
+  if (!profile) {
     return (
       <div className="flex flex-col gap-4 font-sans">
         <div className="border-destructive/30 bg-destructive/10 text-destructive rounded-lg border p-6 text-xs">
@@ -38,9 +38,7 @@ export default function ProfilePage() {
             <AlertCircle className="h-4 w-4" /> Unable to Load Profile
           </div>
           <p className="text-muted-foreground mt-1 font-sans">
-            {(error as any)?.response?.data?.message ||
-              (error as any)?.message ||
-              "Please check your authentication session or reload."}
+            Please check your authentication session or reload.
           </p>
         </div>
       </div>

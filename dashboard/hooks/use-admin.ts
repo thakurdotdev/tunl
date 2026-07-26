@@ -1,4 +1,5 @@
 import { client } from "@/lib/api-client";
+import { authClient } from "@/lib/auth-client";
 import type { AdminAnalytics, AdminPlan, AdminUser } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -43,8 +44,9 @@ export function useUpdateUserPlan() {
       });
       return data;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["admin"] });
+      await authClient.getSession();
     },
   });
 }
@@ -58,8 +60,9 @@ export function useUpdateUserRole() {
       });
       return data;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["admin"] });
+      await authClient.getSession();
     },
   });
 }
@@ -67,17 +70,17 @@ export function useUpdateUserRole() {
 export function useCreatePlan() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: {
+    mutationFn: async (data: {
       name: string;
       maxReservedSubdomains: number;
       maxActiveTunnels: number;
       isDefault?: boolean;
     }) => {
-      const { data } = await client.post<AdminPlan>("/v1/admin/plans", payload);
-      return data;
+      const { data: res } = await client.post<AdminPlan>("/v1/admin/plans", data);
+      return res;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "plans"] });
     },
   });
 }

@@ -10,7 +10,7 @@ import {
   sshKeys,
   tunnelEvents,
   tunnels,
-  users,
+  user,
 } from "../../db/schema.js";
 import type { Config } from "../../platform/config.js";
 import { notFound, unauthorized } from "../../platform/errors.js";
@@ -48,7 +48,7 @@ const sessionDisconnectedBody = z.object({
 });
 const identityLinkBody = z.object({
   anonymousId: z.string().min(1),
-  userId: z.uuid(),
+  userId: z.string().min(1),
 });
 
 function authorized(token: string | undefined, secret: string) {
@@ -85,16 +85,16 @@ export function internalRouter(db: Database, redis: RedisClient, config: Config)
 
       const [userRow] = await db
         .select({
-          userId: users.id,
-          email: users.email,
+          userId: user.id,
+          email: user.email,
           plan: plans.name,
           maxActiveTunnels: plans.maxActiveTunnels,
-          allowedIps: users.allowedIps,
-          ipWhitelistEnabled: users.ipWhitelistEnabled,
+          allowedIps: user.allowedIps,
+          ipWhitelistEnabled: user.ipWhitelistEnabled,
         })
         .from(sshKeys)
-        .innerJoin(users, eq(sshKeys.userId, users.id))
-        .innerJoin(plans, eq(users.planId, plans.id))
+        .innerJoin(user, eq(sshKeys.userId, user.id))
+        .leftJoin(plans, eq(user.planId, plans.id))
         .where(eq(sshKeys.fingerprint, fingerprint))
         .limit(1);
 
@@ -114,10 +114,10 @@ export function internalRouter(db: Database, redis: RedisClient, config: Config)
       const result = {
         userId: userRow.userId,
         email: userRow.email,
-        plan: userRow.plan,
+        plan: userRow.plan || "free",
         allowedSubdomain,
         reservedSubdomains,
-        maxActiveTunnels: userRow.maxActiveTunnels,
+        maxActiveTunnels: userRow.maxActiveTunnels ?? 1,
         allowedIps: userRow.ipWhitelistEnabled ? (userRow.allowedIps ?? []) : [],
       };
 
@@ -280,7 +280,7 @@ export function internalRouter(db: Database, redis: RedisClient, config: Config)
     "/tunnel-heartbeat",
     asyncRoute(async (req, res) => {
       const { userId, subdomain } = z
-        .object({ userId: z.uuid(), subdomain: z.string().min(1) })
+        .object({ userId: z.string().min(1), subdomain: z.string().min(1) })
         .parse(req.body);
 
       await db

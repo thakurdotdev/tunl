@@ -5,7 +5,7 @@ import QRCode from "qrcode";
 import type { Database } from "../../db/client.js";
 import type { RedisClient } from "../../redis/client.js";
 import { redisKeys } from "../../redis/keys.js";
-import { plans, sshKeys, users } from "../../db/schema.js";
+import { plans, sshKeys, user } from "../../db/schema.js";
 import { decryptSecret, encryptSecret } from "../../lib/crypto.js";
 import { badRequest, notFound, unauthorized } from "../../platform/errors.js";
 
@@ -13,7 +13,6 @@ function isValidIpOrCidr(input: string): boolean {
   const trimmed = input.trim();
   if (net.isIP(trimmed) !== 0) return true;
 
-  // Check CIDR format (e.g. 192.168.1.0/24 or 10.0.0.0/8)
   const parts = trimmed.split("/");
   if (parts.length === 2) {
     const ip = parts[0];
@@ -28,35 +27,38 @@ function isValidIpOrCidr(input: string): boolean {
 export async function getUserProfile(db: Database, userId: string) {
   const [row] = await db
     .select({
-      id: users.id,
-      email: users.email,
-      name: users.name,
-      role: users.role,
-      twoFactorEnabled: users.twoFactorEnabled,
-      ipWhitelistEnabled: users.ipWhitelistEnabled,
-      allowedIps: users.allowedIps,
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      twoFactorEnabled: user.twoFactorEnabled,
+      ipWhitelistEnabled: user.ipWhitelistEnabled,
+      allowedIps: user.allowedIps,
       planName: plans.name,
-      createdAt: users.createdAt,
+      createdAt: user.createdAt,
     })
-    .from(users)
-    .innerJoin(plans, eq(users.planId, plans.id))
-    .where(eq(users.id, userId))
+    .from(user)
+    .leftJoin(plans, eq(user.planId, plans.id))
+    .where(eq(user.id, userId))
     .limit(1);
 
   if (!row) {
     throw notFound("User profile not found");
   }
 
-  return row;
+  return {
+    ...row,
+    planName: row.planName || "free",
+  };
 }
 
 export async function updateUserProfileName(db: Database, userId: string, name: string) {
   const trimmed = name.trim();
   const [updated] = await db
-    .update(users)
+    .update(user)
     .set({ name: trimmed.length > 0 ? trimmed : null, updatedAt: new Date() })
-    .where(eq(users.id, userId))
-    .returning({ id: users.id, name: users.name });
+    .where(eq(user.id, userId))
+    .returning({ id: user.id, name: user.name });
 
   if (!updated) {
     throw notFound("User not found");
@@ -66,40 +68,38 @@ export async function updateUserProfileName(db: Database, userId: string, name: 
 }
 
 export async function setup2FA(db: Database, userId: string, jwtSecret: string) {
-  const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-  if (!user) {
+  const [u] = await db.select().from(user).where(eq(user.id, userId)).limit(1);
+  if (!u) {
     throw notFound("User not found");
   }
 
-  // Generate plain secret and otpauth URI using otplib
   const secret = generateSecret();
-  const otpAuthUrl = generateURI({ issuer: "tunl", label: user.email, secret });
+  const otpAuthUrl = generateURI({ issuer: "tunl", label: u.email, secret });
   const qrCodeDataUrl = await QRCode.toDataURL(otpAuthUrl);
 
-  // Encrypt secret using AES-256-GCM before storing in database
   const encryptedSecret = encryptSecret(secret, jwtSecret);
 
   await db
-    .update(users)
+    .update(user)
     .set({
       twoFactorSecret: encryptedSecret,
       twoFactorEnabled: false,
       updatedAt: new Date(),
     })
-    .where(eq(users.id, userId));
+    .where(eq(user.id, userId));
 
   return { secret, qrCodeDataUrl };
 }
 
 export async function verify2FA(db: Database, userId: string, code: string, jwtSecret: string) {
-  const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-  if (!user || !user.twoFactorSecret) {
+  const [u] = await db.select().from(user).where(eq(user.id, userId)).limit(1);
+  if (!u || !u.twoFactorSecret) {
     throw badRequest("2FA setup not initiated for this account");
   }
 
   let plainSecret = "";
   try {
-    plainSecret = decryptSecret(user.twoFactorSecret, jwtSecret);
+    plainSecret = decryptSecret(u.twoFactorSecret, jwtSecret);
   } catch {
     throw badRequest("Failed to decrypt 2FA secret");
   }
@@ -110,27 +110,27 @@ export async function verify2FA(db: Database, userId: string, code: string, jwtS
   }
 
   await db
-    .update(users)
+    .update(user)
     .set({ twoFactorEnabled: true, updatedAt: new Date() })
-    .where(eq(users.id, userId));
+    .where(eq(user.id, userId));
 
   return { success: true, message: "Two-Factor Authentication successfully enabled" };
 }
 
 export async function disable2FA(db: Database, userId: string) {
-  const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-  if (!user || !user.twoFactorEnabled) {
+  const [u] = await db.select().from(user).where(eq(user.id, userId)).limit(1);
+  if (!u || !u.twoFactorEnabled) {
     throw badRequest("2FA is not enabled on this account");
   }
 
   await db
-    .update(users)
+    .update(user)
     .set({
       twoFactorEnabled: false,
       twoFactorSecret: null,
       updatedAt: new Date(),
     })
-    .where(eq(users.id, userId));
+    .where(eq(user.id, userId));
 
   return { success: true, message: "Two-Factor Authentication disabled" };
 }
@@ -158,17 +158,17 @@ export async function updateAllowedIps(
   }
 
   const [updated] = await db
-    .update(users)
+    .update(user)
     .set({
       allowedIps: sanitizedIps,
       ipWhitelistEnabled,
       updatedAt: new Date(),
     })
-    .where(eq(users.id, userId))
+    .where(eq(user.id, userId))
     .returning({
-      id: users.id,
-      allowedIps: users.allowedIps,
-      ipWhitelistEnabled: users.ipWhitelistEnabled,
+      id: user.id,
+      allowedIps: user.allowedIps,
+      ipWhitelistEnabled: user.ipWhitelistEnabled,
     });
 
   if (!updated) {

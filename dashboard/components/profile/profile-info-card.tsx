@@ -1,14 +1,29 @@
 import { useState } from "react";
-import type { UserProfile } from "@/hooks/use-profile";
+import type { User } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Calendar, Check, Loader2, Save, ShieldCheck, User } from "lucide-react";
+import { Calendar, Check, Loader2, Save, ShieldCheck, User as UserIcon } from "lucide-react";
 
 interface ProfileInfoCardProps {
-  profile: UserProfile | undefined;
+  profile: User | undefined;
   onUpdateName: (name: string) => void;
   isPending: boolean;
 }
+
+const getInitial = (name?: string | null, email?: string | null) => {
+  if (name && name.trim()) {
+    const trimmed = name.trim();
+    const parts = trimmed.split(/\s+/);
+    if (parts.length >= 2) {
+      return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    }
+    return trimmed[0].toUpperCase();
+  }
+  if (email && email.trim()) {
+    return email.trim()[0].toUpperCase();
+  }
+  return "U";
+};
 
 export function ProfileInfoCard({ profile, onUpdateName, isPending }: ProfileInfoCardProps) {
   const [name, setName] = useState(profile?.name ?? "");
@@ -22,12 +37,13 @@ export function ProfileInfoCard({ profile, onUpdateName, isPending }: ProfileInf
   };
 
   const isUnchanged = name.trim() === (profile?.name ?? "");
+  const userInitial = getInitial(profile?.name, profile?.email);
 
   return (
     <div className="border-border/60 bg-card flex flex-col overflow-hidden rounded-lg border font-sans shadow-2xs">
       <div className="border-border/60 bg-muted/40 flex items-center justify-between border-b px-4 py-2.5 font-sans text-xs">
         <div className="text-foreground flex items-center gap-2 font-medium">
-          <User className="text-primary h-4 w-4" />
+          <UserIcon className="text-primary h-4 w-4" />
           <span className="text-xs font-semibold">Personal Profile Details</span>
         </div>
         <span className="text-muted-foreground text-[11px] font-medium tracking-wider uppercase">
@@ -36,6 +52,27 @@ export function ProfileInfoCard({ profile, onUpdateName, isPending }: ProfileInf
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-5 p-5 text-xs">
+        {/* Avatar & Header Info */}
+        <div className="flex items-center gap-4">
+          {profile?.image ? (
+            <img
+              src={profile.image}
+              alt={profile?.name || profile?.email || "Avatar"}
+              className="border-border/60 h-14 w-14 shrink-0 rounded-full border object-cover shadow-xs"
+            />
+          ) : (
+            <div className="bg-secondary text-foreground border-border/60 flex h-14 w-14 shrink-0 items-center justify-center rounded-full border text-base font-bold">
+              {userInitial}
+            </div>
+          )}
+          <div className="flex flex-col">
+            <h2 className="text-foreground text-sm font-bold tracking-tight">
+              {profile?.name || profile?.email || "User Profile"}
+            </h2>
+            <p className="text-muted-foreground text-xs">{profile?.email}</p>
+          </div>
+        </div>
+
         <div className="grid gap-5 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
             <label className="text-foreground text-xs font-medium">Display Name</label>
@@ -75,7 +112,7 @@ export function ProfileInfoCard({ profile, onUpdateName, isPending }: ProfileInf
               Active Tier Plan
             </span>
             <span className="mt-1 block font-semibold text-emerald-400">
-              {profile?.planName?.toUpperCase() ?? "DEFAULT"}
+              {profile?.plan?.name?.toUpperCase() ?? "DEFAULT"}
             </span>
           </div>
 
@@ -85,7 +122,7 @@ export function ProfileInfoCard({ profile, onUpdateName, isPending }: ProfileInf
             </span>
             <span className="text-foreground mt-1 inline-flex items-center gap-1.5 font-medium">
               <Calendar className="text-muted-foreground h-3.5 w-3.5" />
-              {profile ? new Date(profile.createdAt).toLocaleDateString() : "-"}
+              {profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString() : "-"}
             </span>
           </div>
         </div>

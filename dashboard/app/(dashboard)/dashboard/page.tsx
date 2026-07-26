@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useProfileQuery } from "@/hooks/use-auth";
+import { useAuth } from "@/lib/auth-context";
 import {
   useCreateTunnelMutation,
   useDeleteTunnelMutation,
@@ -42,7 +42,7 @@ const tunnelSchema = z.object({
 type TunnelFormValues = z.infer<typeof tunnelSchema>;
 
 export default function TunnelsPage() {
-  const { data: profile } = useProfileQuery();
+  const { user } = useAuth();
   const { data: tunnels = [], isLoading } = useTunnelsQuery();
   const { data: activeSessions = [] } = useTunnelSessionsQuery();
   const createMutation = useCreateTunnelMutation();
@@ -108,7 +108,7 @@ export default function TunnelsPage() {
     }
   };
 
-  const maxTunnels = profile?.plan?.maxReservedSubdomains ?? 1;
+  const maxTunnels = user?.plan?.maxReservedSubdomains ?? 1;
   const currentTunnelsCount = tunnels.length;
   const limitReached = currentTunnelsCount >= maxTunnels;
 

@@ -2,7 +2,8 @@ import type { RequestHandler } from "express";
 import type { Config } from "../../platform/config.js";
 import { unauthorized } from "../../platform/errors.js";
 import { asyncRoute } from "../../platform/http.js";
-import { verifyAccessToken } from "./token.js";
+import { auth } from "../../lib/auth.js";
+import { fromNodeHeaders } from "better-auth/node";
 
 declare global {
   namespace Express {
@@ -11,18 +12,20 @@ declare global {
     }
   }
 }
-export const requireAuth = (config: Config): RequestHandler =>
-  asyncRoute(async (req, _res, next) => {
-    const headerValue = req.header("authorization");
-    let token: string | undefined;
 
-    if (headerValue?.startsWith("Bearer ")) {
-      token = headerValue.slice(7);
-    } else if (typeof req.query.token === "string") {
-      token = req.query.token;
+export const requireAuth = (_config?: Config): RequestHandler =>
+  asyncRoute(async (req, _res, next) => {
+    try {
+      const session = await auth.api.getSession({
+        headers: fromNodeHeaders(req.headers),
+      });
+      if (session?.user?.id) {
+        req.userId = session.user.id;
+        return next();
+      }
+    } catch {
+      // Session fetch error
     }
 
-    if (!token) throw unauthorized();
-    req.userId = await verifyAccessToken(config, token);
-    next();
+    throw unauthorized();
   });
