@@ -9,11 +9,15 @@ import {
   Circle,
   Code2,
   Copy,
+  FileCode,
   Filter,
+  Layers,
   Pause,
   Play,
   Search,
+  Terminal,
   Trash2,
+  WrapText,
   X,
 } from "lucide-react";
 import Link from "next/link";
@@ -34,7 +38,7 @@ function statusColor(code: number) {
   if (code < 300) return "text-emerald-400 bg-emerald-500/10 border-emerald-500/20";
   if (code < 400) return "text-amber-400 bg-amber-500/10 border-amber-500/20";
   if (code < 500) return "text-orange-400 bg-orange-500/10 border-orange-500/20";
-  return "text-red-400 bg-red-500/10 border-red-500/20";
+  return "text-rose-400 bg-rose-500/10 border-rose-500/20";
 }
 
 function formatBytes(bytes: number) {
@@ -56,7 +60,7 @@ function generateCurlCommand(req: CapturedRequest, subdomain: string): string {
   }
 
   if (req.requestBody) {
-    cmd += ` \\\n  --data '${req.requestBody.replace(/'/g, "'\\''")}'`;
+    cmd += ` \\\n  -d '${req.requestBody.replace(/'/g, "'\\''")}'`;
   }
 
   return cmd;
@@ -430,8 +434,8 @@ function GeneralTab({ req }: { req: CapturedRequest }) {
   const rows = [
     ["Method", req.method],
     ["Path", req.path],
-    ["Status", String(req.statusCode)],
-    ["Duration", `${req.durationMs}ms`],
+    ["Status Code", String(req.statusCode)],
+    ["Latency", `${req.durationMs}ms`],
     ["Client IP", req.clientIP || "127.0.0.1"],
     ["Request Size", formatBytes(req.requestSize)],
     ["Response Size", formatBytes(req.responseSize)],
@@ -449,7 +453,7 @@ function GeneralTab({ req }: { req: CapturedRequest }) {
       {rows.map(([label, value]) => (
         <div
           key={label}
-          className="border-border/60 bg-muted/20 hover:bg-muted/30 flex flex-wrap items-center justify-between rounded-md border px-3 py-2 text-xs"
+          className="border-border/60 bg-muted/20 hover:bg-muted/30 flex flex-wrap items-center justify-between rounded-md border px-3.5 py-2.5 text-xs transition-colors"
         >
           <span className="text-muted-foreground w-28 shrink-0 text-xs font-medium">{label}</span>
           <span className="text-foreground font-mono text-xs font-semibold break-all">{value}</span>
@@ -462,14 +466,22 @@ function GeneralTab({ req }: { req: CapturedRequest }) {
 function HeadersTable({ headers, title }: { headers: Record<string, string>; title: string }) {
   const entries = Object.entries(headers ?? {});
   const [copied, setCopied] = useState(false);
+  const [filterQuery, setFilterQuery] = useState("");
 
   if (entries.length === 0) {
     return (
-      <p className="text-muted-foreground py-12 text-center font-sans text-xs">
-        No {title.toLowerCase()} captured
-      </p>
+      <div className="flex flex-col items-center justify-center gap-2 py-12 text-center font-sans text-xs">
+        <Layers className="text-muted-foreground/30 h-8 w-8" />
+        <p className="text-muted-foreground">No {title.toLowerCase()} captured</p>
+      </div>
     );
   }
+
+  const filteredEntries = entries.filter(
+    ([k, v]) =>
+      k.toLowerCase().includes(filterQuery.toLowerCase()) ||
+      v.toLowerCase().includes(filterQuery.toLowerCase()),
+  );
 
   const copyHeaders = () => {
     const text = entries.map(([k, v]) => `${k}: ${v}`).join("\n");
@@ -480,10 +492,17 @@ function HeadersTable({ headers, title }: { headers: Record<string, string>; tit
 
   return (
     <div className="flex flex-col gap-3 font-sans">
-      <div className="flex items-center justify-between">
-        <span className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
-          {title} ({entries.length})
-        </span>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="relative flex-1 sm:w-64 sm:flex-none">
+          <Search className="text-muted-foreground absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2" />
+          <input
+            type="text"
+            placeholder="Filter headers..."
+            value={filterQuery}
+            onChange={(e) => setFilterQuery(e.target.value)}
+            className="border-border/60 bg-background placeholder:text-muted-foreground/60 focus:ring-primary w-full rounded-md border py-1 pr-3 pl-8 text-xs focus:ring-1 focus:outline-none"
+          />
+        </div>
         <Button variant="outline" size="xs" onClick={copyHeaders} className="gap-1 text-xs">
           {copied ? (
             <>
@@ -491,21 +510,24 @@ function HeadersTable({ headers, title }: { headers: Record<string, string>; tit
             </>
           ) : (
             <>
-              <Copy className="h-3 w-3" /> Copy Headers
+              <Copy className="h-3 w-3" /> Copy All Headers
             </>
           )}
         </Button>
       </div>
-      <div className="border-border/60 divide-border/60 flex flex-col divide-y overflow-hidden rounded-md border">
-        {entries.map(([key, value]) => (
+
+      <div className="border-border/60 divide-border/60 flex flex-col divide-y overflow-hidden rounded-lg border">
+        {filteredEntries.map(([key, value]) => (
           <div
             key={key}
-            className="hover:bg-muted/20 flex flex-col gap-1 px-3 py-2 text-xs sm:flex-row sm:items-start sm:gap-0"
+            className="hover:bg-muted/20 flex flex-col gap-1 px-3.5 py-2.5 text-xs sm:flex-row sm:items-start sm:gap-0"
           >
-            <span className="w-44 shrink-0 font-mono font-semibold break-all text-emerald-400">
+            <span className="w-48 shrink-0 font-mono font-semibold break-all text-sky-400">
               {key}
             </span>
-            <span className="text-foreground flex-1 font-mono break-all">{value}</span>
+            <span className="text-foreground flex-1 font-mono leading-relaxed break-all">
+              {value}
+            </span>
           </div>
         ))}
       </div>
@@ -513,26 +535,107 @@ function HeadersTable({ headers, title }: { headers: Record<string, string>; tit
   );
 }
 
+function JsonSyntaxHighlighter({ jsonString }: { jsonString: string }) {
+  let parsed: any;
+  try {
+    parsed = JSON.parse(jsonString);
+  } catch {
+    return <code className="text-muted-foreground">{jsonString}</code>;
+  }
+
+  const renderValue = (val: any, indentLevel = 0): React.ReactNode => {
+    const indent = "  ".repeat(indentLevel);
+    if (val === null) return <span className="font-semibold text-rose-400">null</span>;
+    if (typeof val === "boolean")
+      return <span className="font-semibold text-amber-400">{val ? "true" : "false"}</span>;
+    if (typeof val === "number")
+      return <span className="font-semibold text-purple-400">{val}</span>;
+    if (typeof val === "string")
+      return <span className="font-normal text-emerald-300">&quot;{val}&quot;</span>;
+
+    if (Array.isArray(val)) {
+      if (val.length === 0) return <span className="text-zinc-400">[]</span>;
+      return (
+        <span>
+          <span className="text-zinc-400">[</span>
+          {"\n"}
+          {val.map((item, idx) => (
+            <span key={idx}>
+              {"  ".repeat(indentLevel + 1)}
+              {renderValue(item, indentLevel + 1)}
+              {idx < val.length - 1 ? <span className="text-zinc-500">,</span> : ""}
+              {"\n"}
+            </span>
+          ))}
+          {indent}
+          <span className="text-zinc-400">]</span>
+        </span>
+      );
+    }
+
+    if (typeof val === "object") {
+      const keys = Object.keys(val);
+      if (keys.length === 0) return <span className="text-zinc-400">{"{}"}</span>;
+      return (
+        <span>
+          <span className="text-zinc-400">{"{"}</span>
+          {"\n"}
+          {keys.map((key, idx) => (
+            <span key={key}>
+              {"  ".repeat(indentLevel + 1)}
+              <span className="font-semibold text-sky-300">&quot;{key}&quot;</span>
+              <span className="text-zinc-400">: </span>
+              {renderValue(val[key], indentLevel + 1)}
+              {idx < keys.length - 1 ? <span className="text-zinc-500">,</span> : ""}
+              {"\n"}
+            </span>
+          ))}
+          {indent}
+          <span className="text-zinc-400">{"}"}</span>
+        </span>
+      );
+    }
+
+    return <span>{String(val)}</span>;
+  };
+
+  return (
+    <pre className="font-mono text-xs leading-relaxed break-all whitespace-pre-wrap">
+      {renderValue(parsed, 0)}
+    </pre>
+  );
+}
+
 function BodyView({ body, title }: { body?: string; title: string }) {
   const [copied, setCopied] = useState(false);
+  const [isRaw, setIsRaw] = useState(false);
+  const [wrap, setWrap] = useState(true);
 
-  if (!body) {
+  if (!body || !body.trim()) {
     return (
-      <p className="text-muted-foreground py-12 text-center font-sans text-xs">
-        No {title.toLowerCase()} content
-      </p>
+      <div className="flex flex-col items-center justify-center gap-2 py-12 text-center font-sans text-xs">
+        <FileCode className="text-muted-foreground/30 h-8 w-8" />
+        <p className="text-muted-foreground">No {title.toLowerCase()} payload captured</p>
+      </div>
     );
   }
 
-  let formatted = body;
-  try {
-    const parsed = JSON.parse(body);
-    formatted = JSON.stringify(parsed, null, 2);
-  } catch {
-    // raw plain text/html
-  }
+  const isJson = (() => {
+    try {
+      JSON.parse(body);
+      return true;
+    } catch {
+      return false;
+    }
+  })();
 
   const copyBody = () => {
+    let formatted = body;
+    if (isJson) {
+      try {
+        formatted = JSON.stringify(JSON.parse(body), null, 2);
+      } catch {}
+    }
     navigator.clipboard.writeText(formatted);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -540,25 +643,60 @@ function BodyView({ body, title }: { body?: string; title: string }) {
 
   return (
     <div className="flex flex-col gap-3 font-sans">
-      <div className="flex items-center justify-between">
-        <span className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
-          {title}
-        </span>
-        <Button variant="outline" size="xs" onClick={copyBody} className="gap-1 text-xs">
-          {copied ? (
-            <>
-              <Check className="h-3 w-3 text-emerald-400" /> Copied
-            </>
-          ) : (
-            <>
-              <Copy className="h-3 w-3" /> Copy Body
-            </>
+      {/* Action Header */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="border-border/60 bg-muted/40 text-muted-foreground flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-semibold tracking-wider uppercase">
+            <Code2 className="text-primary h-3.5 w-3.5" />
+            {isJson ? "JSON Payload" : "Plain Text / HTML"}
+          </span>
+          {isJson && (
+            <button
+              onClick={() => setIsRaw(!isRaw)}
+              className="text-muted-foreground hover:text-foreground text-xs font-medium transition-colors"
+            >
+              {isRaw ? "View Formatted" : "View Raw"}
+            </button>
           )}
-        </Button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="xs"
+            onClick={() => setWrap(!wrap)}
+            className="gap-1 text-xs"
+            title="Toggle word wrap"
+          >
+            <WrapText className="h-3 w-3" />
+            {wrap ? "Unwrap" : "Wrap"}
+          </Button>
+          <Button variant="outline" size="xs" onClick={copyBody} className="gap-1 text-xs">
+            {copied ? (
+              <>
+                <Check className="h-3 w-3 text-emerald-400" /> Copied
+              </>
+            ) : (
+              <>
+                <Copy className="h-3 w-3" /> Copy Payload
+              </>
+            )}
+          </Button>
+        </div>
       </div>
-      <pre className="border-border/60 bg-muted/40 text-foreground max-h-[500px] overflow-auto rounded-md border p-3.5 font-mono text-xs leading-relaxed break-all whitespace-pre-wrap">
-        {formatted}
-      </pre>
+
+      {/* Code Container */}
+      <div
+        className={`border-border/60 text-foreground max-h-[500px] overflow-auto rounded-lg border bg-zinc-950 p-4 font-mono text-xs leading-relaxed ${
+          wrap ? "break-all whitespace-pre-wrap" : "whitespace-pre"
+        }`}
+      >
+        {isJson && !isRaw ? (
+          <JsonSyntaxHighlighter jsonString={body} />
+        ) : (
+          <pre className="font-mono text-xs leading-relaxed text-zinc-300">{body}</pre>
+        )}
+      </div>
     </div>
   );
 }
@@ -577,7 +715,7 @@ function CurlTab({ req, subdomain }: { req: CapturedRequest; subdomain: string }
     <div className="flex flex-col gap-3 font-sans">
       <div className="flex items-center justify-between">
         <span className="text-muted-foreground flex items-center gap-1.5 text-xs font-semibold tracking-wider uppercase">
-          <Code2 className="text-primary h-3.5 w-3.5" /> cURL Command
+          <Terminal className="text-primary h-3.5 w-3.5" /> Generated cURL Command
         </span>
         <Button variant="outline" size="xs" onClick={copyCurl} className="gap-1 text-xs">
           {copied ? (
@@ -591,9 +729,10 @@ function CurlTab({ req, subdomain }: { req: CapturedRequest; subdomain: string }
           )}
         </Button>
       </div>
-      <pre className="border-border/60 bg-muted/40 overflow-auto rounded-md border p-3.5 font-mono text-xs leading-relaxed break-all whitespace-pre-wrap text-emerald-400">
+
+      <div className="border-border/60 overflow-auto rounded-lg border bg-zinc-950 p-4 font-mono text-xs leading-relaxed break-all whitespace-pre-wrap text-emerald-400">
         {curlCmd}
-      </pre>
+      </div>
     </div>
   );
 }

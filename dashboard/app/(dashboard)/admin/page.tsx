@@ -74,12 +74,9 @@ export default function AdminOverviewPage() {
                           </p>
                         </div>
 
-                        <Link
-                          href={`/inspect/${session.subdomain}`}
-                          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs font-medium transition-colors"
-                        >
-                          Inspect <ArrowUpRight className="h-3.5 w-3.5" />
-                        </Link>
+                        <span className="border-border/60 bg-muted/50 text-muted-foreground rounded border px-2 py-0.5 font-mono text-[10px] font-medium">
+                          Active Session
+                        </span>
                       </div>
                     ))}
                   </div>
