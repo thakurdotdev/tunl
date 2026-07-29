@@ -95,8 +95,8 @@ export default function RootLayout({
       <body className="flex min-h-full flex-col font-sans">
         <Script
           defer
-          src="https://cloud.umami.is/script.js"
-          data-website-id="3221f3d8-5f0d-4fa5-a872-b50183e30ef2"
+          src="https://analytics.thakur.dev/script.js"
+          data-website-id="dc588219-d595-493d-a02a-95b632d82fdd"
         />
         <script
           type="application/ld+json"
