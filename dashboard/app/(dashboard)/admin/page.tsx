@@ -44,12 +44,12 @@ export default function AdminOverviewPage() {
                 ) : activeSessions.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-10 text-center">
                     <div className="border-border/60 bg-muted/40 mb-2 flex h-9 w-9 items-center justify-center rounded-md border">
-                      <Radio className="text-muted-foreground/50 h-4 w-4" />
+                      <Radio className="text-muted-foreground h-4 w-4" />
                     </div>
                     <p className="text-muted-foreground text-xs font-medium">
                       No active tunnel sessions
                     </p>
-                    <p className="text-muted-foreground/70 mt-0.5 text-xs">
+                    <p className="text-muted-foreground mt-0.5 text-xs">
                       Live sessions will appear here when connected
                     </p>
                   </div>

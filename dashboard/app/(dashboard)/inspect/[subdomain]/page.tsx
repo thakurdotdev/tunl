@@ -224,7 +224,7 @@ export default function InspectPage() {
             placeholder="Search path, method, status..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="border-border/60 bg-background placeholder:text-muted-foreground/60 focus:ring-primary w-full rounded-md border py-1 pr-3 pl-8 text-xs focus:ring-1 focus:outline-none"
+            className="border-border/60 bg-background placeholder:text-muted-foreground focus:ring-primary w-full rounded-md border py-1 pr-3 pl-8 text-xs focus:ring-1 focus:outline-none"
           />
         </div>
       </div>
@@ -500,7 +500,7 @@ function HeadersTable({ headers, title }: { headers: Record<string, string>; tit
             placeholder="Filter headers..."
             value={filterQuery}
             onChange={(e) => setFilterQuery(e.target.value)}
-            className="border-border/60 bg-background placeholder:text-muted-foreground/60 focus:ring-primary w-full rounded-md border py-1 pr-3 pl-8 text-xs focus:ring-1 focus:outline-none"
+            className="border-border/60 bg-background placeholder:text-muted-foreground focus:ring-primary w-full rounded-md border py-1 pr-3 pl-8 text-xs focus:ring-1 focus:outline-none"
           />
         </div>
         <Button variant="outline" size="xs" onClick={copyHeaders} className="gap-1 text-xs">

@@ -1,6 +1,7 @@
 "use client";
 
 import { Logo } from "@/components/logo";
+import { ModeToggle } from "@/components/mode-toggle";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Menu, X } from "lucide-react";
 import Link from "next/link";
@@ -52,7 +53,8 @@ export function LandingNav() {
           ))}
         </nav>
 
-        <div className="hidden items-center gap-3 md:flex">
+        <div className="hidden items-center gap-2.5 md:flex">
+          <ModeToggle />
           <Link href="/login">
             <Button
               variant="ghost"
@@ -69,15 +71,18 @@ export function LandingNav() {
           </Link>
         </div>
 
-        {/* Mobile menu button */}
-        <button
-          type="button"
-          onClick={() => setMobileOpen(!mobileOpen)}
-          className="text-muted-foreground hover:text-foreground md:hidden"
-          aria-label="Toggle menu"
-        >
-          {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
+        {/* Mobile controls */}
+        <div className="flex items-center gap-1.5 md:hidden">
+          <ModeToggle />
+          <button
+            type="button"
+            onClick={() => setMobileOpen(!mobileOpen)}
+            className="text-muted-foreground hover:text-foreground p-1"
+            aria-label="Toggle menu"
+          >
+            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        </div>
       </div>
 
       {/* Mobile overlay */}

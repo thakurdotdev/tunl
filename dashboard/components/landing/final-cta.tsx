@@ -37,7 +37,7 @@ export function FinalCta() {
         >
           <span className="text-muted-foreground select-none">$</span>
           <code className="text-foreground font-semibold sm:text-sm">{SSH_COMMAND}</code>
-          <span className="text-muted-foreground/50 group-hover:text-muted-foreground ml-1 transition-colors">
+          <span className="text-muted-foreground group-hover:text-foreground ml-1 transition-colors">
             {copied ? (
               <Check className="h-3.5 w-3.5 text-emerald-400" />
             ) : (

@@ -87,7 +87,7 @@ export default function InspectLandingPage() {
               placeholder="Filter endpoint subdomain..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="border-border/60 bg-background placeholder:text-muted-foreground/60 focus:ring-primary w-full rounded-md border py-1.5 pr-3 pl-9 text-xs focus:ring-1 focus:outline-none"
+              className="border-border/60 bg-background placeholder:text-muted-foreground focus:ring-primary w-full rounded-md border py-1.5 pr-3 pl-9 text-xs focus:ring-1 focus:outline-none"
             />
           </div>
           <span className="text-muted-foreground text-xs">

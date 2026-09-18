@@ -40,7 +40,7 @@ export function Hero() {
                 </Button>
               </Link>
             </div>
-            <p className="text-muted-foreground/60 text-xs font-medium">
+            <p className="text-muted-foreground text-xs font-medium">
               Free to use · No credit card or account required for basic tunnels
             </p>
           </div>

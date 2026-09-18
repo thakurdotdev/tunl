@@ -15,7 +15,7 @@ export function Pricing() {
         </p>
 
         {/* Unified Two-Plan Container */}
-        <div className="border-border/60 bg-card/30 divide-border/60 grid divide-y overflow-hidden rounded-lg border md:grid-cols-2 md:divide-x md:divide-y-0">
+        <div className="border-border/60 bg-card divide-border/60 grid divide-y overflow-hidden rounded-lg border md:grid-cols-2 md:divide-x md:divide-y-0">
           {/* Ephemeral Tier */}
           <div className="flex flex-col justify-between gap-6 p-6 sm:p-7">
             <div className="flex flex-col gap-4">

@@ -102,16 +102,16 @@ export function HeroFlow() {
 
           {/* SSH Arrow (Desktop) */}
           <div
-            className={`text-muted-foreground/40 hidden items-center transition-all duration-500 sm:flex ${
+            className={`text-muted-foreground/80 hidden items-center transition-all duration-500 sm:flex ${
               flowStage >= 2 ? "translate-x-0 opacity-100" : "-translate-x-1 opacity-0"
             }`}
           >
-            <div className="border-border/40 w-6 border-t border-dashed md:w-10" />
-            <span className="text-muted-foreground bg-background px-1.5 font-mono text-[10px] font-medium tracking-wider uppercase">
+            <div className="border-border/80 w-6 border-t border-dashed md:w-10" />
+            <span className="text-muted-foreground bg-background px-1.5 font-mono text-[10px] font-semibold tracking-wider uppercase">
               SSH
             </span>
-            <div className="border-border/40 w-6 border-t border-dashed md:w-10" />
-            <svg width="6" height="10" viewBox="0 0 6 10" className="text-border/60">
+            <div className="border-border/80 w-6 border-t border-dashed md:w-10" />
+            <svg width="6" height="10" viewBox="0 0 6 10" className="text-muted-foreground">
               <path
                 d="M1 1L5 5L1 9"
                 stroke="currentColor"
@@ -124,15 +124,15 @@ export function HeroFlow() {
 
           {/* Mobile SSH Divider */}
           <div
-            className={`text-muted-foreground/40 flex flex-col items-center transition-all duration-500 sm:hidden ${
+            className={`text-muted-foreground/80 flex flex-col items-center transition-all duration-500 sm:hidden ${
               flowStage >= 2 ? "translate-y-0 opacity-100" : "-translate-y-1 opacity-0"
             }`}
           >
-            <div className="border-border/40 h-2.5 border-l border-dashed" />
-            <span className="text-muted-foreground font-mono text-[9px] font-medium tracking-wider uppercase">
+            <div className="border-border/80 h-2.5 border-l border-dashed" />
+            <span className="text-muted-foreground font-mono text-[9px] font-semibold tracking-wider uppercase">
               SSH
             </span>
-            <div className="border-border/40 h-2.5 border-l border-dashed" />
+            <div className="border-border/80 h-2.5 border-l border-dashed" />
           </div>
 
           {/* tunl node */}
@@ -151,16 +151,16 @@ export function HeroFlow() {
 
           {/* HTTPS Arrow (Desktop) */}
           <div
-            className={`text-muted-foreground/40 hidden items-center transition-all duration-500 sm:flex ${
+            className={`text-muted-foreground/80 hidden items-center transition-all duration-500 sm:flex ${
               flowStage >= 4 ? "translate-x-0 opacity-100" : "-translate-x-1 opacity-0"
             }`}
           >
-            <div className="border-border/40 w-6 border-t border-dashed md:w-10" />
-            <span className="text-muted-foreground bg-background px-1.5 font-mono text-[10px] font-medium tracking-wider uppercase">
+            <div className="border-border/80 w-6 border-t border-dashed md:w-10" />
+            <span className="text-muted-foreground bg-background px-1.5 font-mono text-[10px] font-semibold tracking-wider uppercase">
               HTTPS
             </span>
-            <div className="border-border/40 w-6 border-t border-dashed md:w-10" />
-            <svg width="6" height="10" viewBox="0 0 6 10" className="text-border/60">
+            <div className="border-border/80 w-6 border-t border-dashed md:w-10" />
+            <svg width="6" height="10" viewBox="0 0 6 10" className="text-muted-foreground">
               <path
                 d="M1 1L5 5L1 9"
                 stroke="currentColor"
@@ -173,15 +173,15 @@ export function HeroFlow() {
 
           {/* Mobile HTTPS Divider */}
           <div
-            className={`text-muted-foreground/40 flex flex-col items-center transition-all duration-500 sm:hidden ${
+            className={`text-muted-foreground/80 flex flex-col items-center transition-all duration-500 sm:hidden ${
               flowStage >= 4 ? "translate-y-0 opacity-100" : "-translate-y-1 opacity-0"
             }`}
           >
-            <div className="border-border/40 h-2.5 border-l border-dashed" />
-            <span className="text-muted-foreground font-mono text-[9px] font-medium tracking-wider uppercase">
+            <div className="border-border/80 h-2.5 border-l border-dashed" />
+            <span className="text-muted-foreground font-mono text-[9px] font-semibold tracking-wider uppercase">
               HTTPS
             </span>
-            <div className="border-border/40 h-2.5 border-l border-dashed" />
+            <div className="border-border/80 h-2.5 border-l border-dashed" />
           </div>
 
           {/* Public URL */}
@@ -199,7 +199,7 @@ export function HeroFlow() {
 
         {/* Request Telemetry Stream */}
         <div
-          className={`border-border/40 mt-5 border-t pt-4 transition-all duration-500 ${
+          className={`border-border/60 mt-5 border-t pt-4 transition-all duration-500 ${
             flowStage >= 6 ? "opacity-100" : "opacity-0"
           }`}
         >
@@ -212,15 +212,15 @@ export function HeroFlow() {
                 }`}
               >
                 <div className="flex items-center gap-2 overflow-hidden">
-                  <span className="text-muted-foreground/50 xs:inline hidden text-[10px]">
+                  <span className="text-muted-foreground/80 xs:inline hidden text-[10px]">
                     {req.time}
                   </span>
-                  <span className="text-foreground/80 font-medium">{req.method}</span>
+                  <span className="text-foreground font-medium">{req.method}</span>
                   <span className="text-muted-foreground truncate">{req.path}</span>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   <span className="font-semibold text-emerald-400">{req.status}</span>
-                  <span className="text-muted-foreground/50 text-[10px]">{req.latency}</span>
+                  <span className="text-muted-foreground/80 text-[10px]">{req.latency}</span>
                 </div>
               </div>
             ))}

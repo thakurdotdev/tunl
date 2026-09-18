@@ -26,7 +26,7 @@ export function WhySsh() {
               ].map((item) => (
                 <li
                   key={item}
-                  className="text-muted-foreground/60 decoration-border/60 text-sm leading-snug line-through"
+                  className="text-muted-foreground/80 decoration-border text-sm leading-snug line-through"
                 >
                   {item}
                 </li>

@@ -49,7 +49,7 @@ export function UseCases() {
               <h3 className="text-foreground text-sm font-semibold">{c.title}</h3>
               <p className="text-muted-foreground text-xs leading-relaxed">{c.description}</p>
               {c.command && (
-                <code className="text-muted-foreground/70 mt-1 font-mono text-[11px] select-all">
+                <code className="text-muted-foreground mt-1 font-mono text-[11px] font-medium select-all">
                   $ {c.command}
                 </code>
               )}
