@@ -71,6 +71,20 @@
       "when": 1785053201935,
       "tag": "0009_tired_paper_doll",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1785054000000,
+      "tag": "0010_tunnel_password",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1785054000001,
+      "tag": "0011_bandwidth_analytics",
+      "breakpoints": true
     }
   ]
 }

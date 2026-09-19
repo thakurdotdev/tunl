@@ -17,6 +17,7 @@ import { notFound, unauthorized } from "../../platform/errors.js";
 import { asyncRoute } from "../../platform/http.js";
 import type { RedisClient } from "../../redis/client.js";
 import { redisKeys } from "../../redis/keys.js";
+import { recordRequestMetrics } from "../inspect/analytics.service.js";
 
 export const validateKeyBody = z.object({
   fingerprint: z.string().min(1),
@@ -32,10 +33,17 @@ export const sessionConnectedBody = z.object({
   occurredAt: z.string().min(1),
   eventId: z.string().min(1),
 });
-const usageBody = z.object({
-  tunnelId: z.uuid(),
-  bytesTransferred: z.number().int().nonnegative(),
-  timestamp: z.string().min(1),
+const usageBatchBody = z.object({
+  metrics: z.array(
+    z.object({
+      subdomain: z.string().min(1),
+      requestCount: z.number().int().nonnegative(),
+      bytesIn: z.number().int().nonnegative(),
+      bytesOut: z.number().int().nonnegative(),
+      errorCount: z.number().int().nonnegative(),
+      totalDurationMs: z.number().int().nonnegative(),
+    }),
+  ),
 });
 const sessionDisconnectedBody = z.object({
   userId: z.string().optional(),
@@ -104,12 +112,19 @@ export function internalRouter(db: Database, redis: RedisClient, config: Config)
       }
 
       const userTunnels = await db
-        .select({ subdomain: tunnels.subdomain })
+        .select({ subdomain: tunnels.subdomain, password: tunnels.password })
         .from(tunnels)
         .where(eq(tunnels.userId, userRow.userId));
 
       const reservedSubdomains = userTunnels.map((t) => t.subdomain);
       const allowedSubdomain = reservedSubdomains[0] ?? null;
+
+      const tunnelPasswords: Record<string, string> = {};
+      for (const t of userTunnels) {
+        if (t.password) {
+          tunnelPasswords[t.subdomain] = t.password;
+        }
+      }
 
       const result = {
         userId: userRow.userId,
@@ -119,6 +134,7 @@ export function internalRouter(db: Database, redis: RedisClient, config: Config)
         reservedSubdomains,
         maxActiveTunnels: userRow.maxActiveTunnels ?? 1,
         allowedIps: userRow.ipWhitelistEnabled ? (userRow.allowedIps ?? []) : [],
+        tunnelPasswords,
       };
 
       console.log(
@@ -311,8 +327,10 @@ export function internalRouter(db: Database, redis: RedisClient, config: Config)
   router.post(
     "/usage",
     asyncRoute(async (req, res) => {
-      const event = usageBody.parse(req.body);
-      console.info({ event }, "tunnel usage received");
+      const parsed = usageBatchBody.safeParse(req.body);
+      if (parsed.success && parsed.data.metrics.length > 0) {
+        await recordRequestMetrics(db, parsed.data.metrics);
+      }
       res.status(204).send();
     }),
   );

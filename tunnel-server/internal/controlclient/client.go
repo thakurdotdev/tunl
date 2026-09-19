@@ -9,14 +9,26 @@ import (
 	"log/slog"
 	"math/rand/v2"
 	"net/http"
+	"sync"
 	"time"
 )
+
+type SubdomainUsage struct {
+	Subdomain       string `json:"subdomain"`
+	RequestCount    int    `json:"requestCount"`
+	BytesIn         int64  `json:"bytesIn"`
+	BytesOut        int64  `json:"bytesOut"`
+	ErrorCount      int    `json:"errorCount"`
+	TotalDurationMs int64  `json:"totalDurationMs"`
+}
 
 type Client struct {
 	baseURL      string
 	sharedSecret string
 	httpClient   *http.Client
 	log          *slog.Logger
+	usageMu      sync.Mutex
+	usageBuckets map[string]*SubdomainUsage
 }
 
 type Options struct {
@@ -40,25 +52,27 @@ func New(opts Options) *Client {
 		sharedSecret: opts.SharedSecret,
 		httpClient:   &http.Client{Timeout: timeout},
 		log:          log,
+		usageBuckets: make(map[string]*SubdomainUsage),
 	}
 }
 
 type validateKeyResponse struct {
-	UserID             string   `json:"userId"`
-	Email              string   `json:"email"`
-	AllowedSubdomain   *string  `json:"allowedSubdomain"`
-	ReservedSubdomains []string `json:"reservedSubdomains"`
-	Plan               string   `json:"plan"`
-	MaxActiveTunnels   int      `json:"maxActiveTunnels"`
-	AllowedIPs         []string `json:"allowedIps"`
+	UserID             string            `json:"userId"`
+	Email              string            `json:"email"`
+	AllowedSubdomain   *string           `json:"allowedSubdomain"`
+	ReservedSubdomains []string          `json:"reservedSubdomains"`
+	Plan               string            `json:"plan"`
+	MaxActiveTunnels   int               `json:"maxActiveTunnels"`
+	AllowedIPs         []string          `json:"allowedIps"`
+	TunnelPasswords    map[string]string `json:"tunnelPasswords"`
 }
 
-func (c *Client) ValidateKey(ctx context.Context, fingerprint string) (userID, email, allowedSubdomain string, reservedSubdomains []string, plan string, maxActiveTunnels int, allowedIPs []string, ok bool) {
+func (c *Client) ValidateKey(ctx context.Context, fingerprint string) (userID, email, allowedSubdomain string, reservedSubdomains []string, plan string, maxActiveTunnels int, allowedIPs []string, tunnelPasswords map[string]string, ok bool) {
 	body, _ := json.Marshal(map[string]string{"fingerprint": fingerprint})
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
 		c.baseURL+"/internal/validate-key", bytes.NewReader(body))
 	if err != nil {
-		return "", "", "", nil, "", 0, nil, false
+		return "", "", "", nil, "", 0, nil, nil, false
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Internal-Token", c.sharedSecret)
@@ -66,24 +80,24 @@ func (c *Client) ValidateKey(ctx context.Context, fingerprint string) (userID, e
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		c.log.Warn("validate-key request failed", "error", err)
-		return "", "", "", nil, "", 0, nil, false
+		return "", "", "", nil, "", 0, nil, nil, false
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusNotFound {
-		return "", "", "", nil, "", 0, nil, false
+		return "", "", "", nil, "", 0, nil, nil, false
 	}
 	if resp.StatusCode != http.StatusOK {
 		c.log.Warn("validate-key unexpected status", "status", resp.StatusCode, "fingerprint", fingerprint)
-		return "", "", "", nil, "", 0, nil, false
+		return "", "", "", nil, "", 0, nil, nil, false
 	}
 
 	var r validateKeyResponse
 	if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
-		return "", "", "", nil, "", 0, nil, false
+		return "", "", "", nil, "", 0, nil, nil, false
 	}
 
-	return r.UserID, r.Email, optionalSubdomain(r.AllowedSubdomain), r.ReservedSubdomains, r.Plan, r.MaxActiveTunnels, r.AllowedIPs, true
+	return r.UserID, r.Email, optionalSubdomain(r.AllowedSubdomain), r.ReservedSubdomains, r.Plan, r.MaxActiveTunnels, r.AllowedIPs, r.TunnelPasswords, true
 }
 
 func optionalSubdomain(value *string) string {
@@ -146,13 +160,47 @@ func (c *Client) ReportHeartbeat(ctx context.Context, userID, subdomain string) 
 	}, "tunnel-heartbeat")
 }
 
-func (c *Client) ReportUsage(ctx context.Context, tunnelID string, bytesTransferred int64) error {
-	payload := map[string]any{
-		"tunnelId":         tunnelID,
-		"bytesTransferred": bytesTransferred,
-		"timestamp":        time.Now().UTC().Format(time.RFC3339),
+func (c *Client) RecordUsage(subdomain string, bytesIn, bytesOut int64, durationMs int64, isError bool) {
+	if subdomain == "" {
+		return
 	}
-	body, _ := json.Marshal(payload)
+	c.usageMu.Lock()
+	defer c.usageMu.Unlock()
+
+	b, ok := c.usageBuckets[subdomain]
+	if !ok {
+		b = &SubdomainUsage{Subdomain: subdomain}
+		c.usageBuckets[subdomain] = b
+	}
+	b.RequestCount++
+	b.BytesIn += bytesIn
+	b.BytesOut += bytesOut
+	b.TotalDurationMs += durationMs
+	if isError {
+		b.ErrorCount++
+	}
+}
+
+func (c *Client) FlushUsage(ctx context.Context) error {
+	c.usageMu.Lock()
+	if len(c.usageBuckets) == 0 {
+		c.usageMu.Unlock()
+		return nil
+	}
+	metrics := make([]SubdomainUsage, 0, len(c.usageBuckets))
+	for _, b := range c.usageBuckets {
+		metrics = append(metrics, *b)
+	}
+	c.usageBuckets = make(map[string]*SubdomainUsage)
+	c.usageMu.Unlock()
+
+	payload := map[string]any{
+		"metrics": metrics,
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
 		c.baseURL+"/internal/usage", bytes.NewReader(body))
 	if err != nil {
@@ -163,12 +211,33 @@ func (c *Client) ReportUsage(ctx context.Context, tunnelID string, bytesTransfer
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
+		c.log.Warn("failed to flush usage metrics", "error", err)
 		return err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusNoContent {
+	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("unexpected status: %d", resp.StatusCode)
 	}
+	return nil
+}
+
+func (c *Client) StartUsageFlusher(ctx context.Context, interval time.Duration) {
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				_ = c.FlushUsage(context.Background())
+				return
+			case <-ticker.C:
+				_ = c.FlushUsage(ctx)
+			}
+		}
+	}()
+}
+
+func (c *Client) ReportUsage(ctx context.Context, tunnelID string, bytesTransferred int64) error {
 	return nil
 }
 

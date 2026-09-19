@@ -74,7 +74,7 @@ export function createApp(db: Database, redis: RedisClient, config: Config) {
   app.use("/v1/ssh-keys", sshKeysRouter(db, redis));
   app.use("/v1/tunnels", tunnelsRouter(db, redis));
   app.use("/v1/tunnel-sessions", tunnelSessionsRouter(db));
-  app.use("/v1/inspect", inspectRouter(db, redis));
+  app.use("/v1/inspect", inspectRouter(db, redis, config));
   app.use("/internal", internalRouter(db, redis, config));
   app.use(errorHandler);
 

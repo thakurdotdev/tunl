@@ -2,6 +2,9 @@ package httpproxy
 
 import (
 	"context"
+	"crypto/sha256"
+	"crypto/subtle"
+	"encoding/hex"
 	"fmt"
 	"log/slog"
 	"net"
@@ -18,26 +21,29 @@ type ctxKey string
 const tunnelCtxKey ctxKey = "tunnel"
 
 type Handler struct {
-	registry    registry.TunnelRegistry
-	baseDomain  string
-	dialTimeout time.Duration
-	log         *slog.Logger
-	proxy       *httputil.ReverseProxy
+	registry             registry.TunnelRegistry
+	baseDomain           string
+	dialTimeout          time.Duration
+	internalSharedSecret string
+	log                  *slog.Logger
+	proxy                *httputil.ReverseProxy
 }
 
 type Options struct {
-	Registry    registry.TunnelRegistry
-	BaseDomain  string
-	DialTimeout time.Duration
-	Logger      *slog.Logger
+	Registry             registry.TunnelRegistry
+	BaseDomain           string
+	DialTimeout          time.Duration
+	InternalSharedSecret string
+	Logger               *slog.Logger
 }
 
 func NewHandler(opts Options) http.Handler {
 	h := &Handler{
-		registry:    opts.Registry,
-		baseDomain:  opts.BaseDomain,
-		dialTimeout: opts.DialTimeout,
-		log:         opts.Logger,
+		registry:             opts.Registry,
+		baseDomain:           opts.BaseDomain,
+		dialTimeout:          opts.DialTimeout,
+		internalSharedSecret: opts.InternalSharedSecret,
+		log:                  opts.Logger,
 	}
 	h.proxy = &httputil.ReverseProxy{
 		Director: func(req *http.Request) {
@@ -168,6 +174,35 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				"Open IP Restrictions →",
 			)
 			return
+		}
+	}
+
+	if tunnel.Password != "" {
+		isReplay := false
+		if h.internalSharedSecret != "" && r.Header.Get("X-Tunl-Internal-Secret") == h.internalSharedSecret {
+			isReplay = true
+		}
+		if !isReplay {
+			_, pass, ok := r.BasicAuth()
+			var valid bool
+			if ok {
+				hash := sha256.Sum256([]byte(pass))
+				hashHex := hex.EncodeToString(hash[:])
+				valid = subtle.ConstantTimeCompare([]byte(hashHex), []byte(tunnel.Password)) == 1
+			}
+			if !valid {
+				w.Header().Set("WWW-Authenticate", `Basic realm="tunl protected tunnel"`)
+				renderProxyError(w, r, http.StatusUnauthorized,
+					"Authentication Required",
+					"unauthorized",
+					"This tunnel is password-protected by its owner.",
+					"Please enter the tunnel password to continue.",
+					subdomain,
+					"https://tunl.online",
+					"Back to tunl →",
+				)
+				return
+			}
 		}
 	}
 

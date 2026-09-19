@@ -2,7 +2,13 @@ import { Router } from "express";
 import { z } from "zod";
 import type { Database } from "../../db/client.js";
 import { asyncRoute } from "../../platform/http.js";
-import { createUserTunnel, deleteUserTunnel, listUserTunnels } from "./tunnels.service.js";
+import {
+  createUserTunnel,
+  deleteUserTunnel,
+  invalidateUserKeyCache,
+  listUserTunnels,
+  updateTunnelPassword,
+} from "./tunnels.service.js";
 
 const createTunnelSchema = z.object({
   subdomain: z
@@ -13,8 +19,11 @@ const createTunnelSchema = z.object({
     ),
 });
 
+const updatePasswordSchema = z.object({
+  password: z.string().min(4).max(128).nullable(),
+});
+
 import type { RedisClient } from "../../redis/client.js";
-import { invalidateUserKeyCache } from "./tunnels.service.js";
 
 export function tunnelsRouter(db: Database, redis: RedisClient) {
   const router = Router();
@@ -44,6 +53,16 @@ export function tunnelsRouter(db: Database, redis: RedisClient) {
       await deleteUserTunnel(db, redis, req.userId!, id);
       await invalidateUserKeyCache(db, redis, req.userId!);
       res.status(204).send();
+    }),
+  );
+
+  router.patch(
+    "/:id/password",
+    asyncRoute(async (req, res) => {
+      const id = z.uuid().parse(req.params.id);
+      const { password } = updatePasswordSchema.parse(req.body);
+      const result = await updateTunnelPassword(db, redis, req.userId!, id, password);
+      res.json(result);
     }),
   );
 

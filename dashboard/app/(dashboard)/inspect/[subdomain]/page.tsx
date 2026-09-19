@@ -1,10 +1,12 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { useInspectorSSE, useRecentRequests } from "@/hooks/use-inspector";
+import { useInspectorSSE, useRecentRequests, useReplayMutation } from "@/hooks/use-inspector";
+import { ApiClientError } from "@/lib/api-client";
 import { type CapturedRequest } from "@/lib/types";
 import {
   ArrowLeft,
+  BarChart3,
   Check,
   Circle,
   Code2,
@@ -14,6 +16,7 @@ import {
   Layers,
   Pause,
   Play,
+  RotateCw,
   Search,
   Terminal,
   Trash2,
@@ -23,6 +26,7 @@ import {
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 const METHOD_COLORS: Record<string, string> = {
   GET: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
@@ -101,14 +105,40 @@ export default function InspectPage() {
     setRequests,
   } = useInspectorSSE(subdomain, paused);
 
+  const replayMutation = useReplayMutation(subdomain);
+
+  const handleReplay = () => {
+    if (!selected) return;
+    replayMutation.mutate(selected.id, {
+      onSuccess: (result) => {
+        if (result.success) {
+          toast.success(`Request replayed: ${result.statusCode} (${result.durationMs}ms)`);
+        } else {
+          toast.error(`Replay returned HTTP ${result.statusCode} (${result.durationMs}ms)`);
+        }
+      },
+      onError: (err) => {
+        if (err instanceof ApiClientError) {
+          toast.error(err.message);
+        } else {
+          toast.error("Failed to replay request.");
+        }
+      },
+    });
+  };
+
   useEffect(() => {
     if (!cleared && initialRequests?.length && liveRequests.length === 0) {
       setRequests(initialRequests);
     }
   }, [initialRequests, liveRequests.length, setRequests, cleared]);
 
+  const RETENTION_MS = 30 * 60 * 1000;
+
   const filteredRequests = useMemo(() => {
+    const cutoff = Date.now() - RETENTION_MS;
     return liveRequests.filter((r) => {
+      if (new Date(r.timestamp).getTime() < cutoff) return false;
       if (methodFilter === "GET" && r.method !== "GET") return false;
       if (methodFilter === "POST" && r.method !== "POST") return false;
       if (methodFilter === "ERRORS" && r.statusCode < 400) return false;
@@ -117,10 +147,7 @@ export default function InspectPage() {
         const q = searchQuery.toLowerCase();
         const pathMatch = r.path ? r.path.toLowerCase().includes(q) : false;
         const methodMatch = r.method ? r.method.toLowerCase().includes(q) : false;
-        const statusMatch =
-          r.statusCode !== undefined && r.statusCode !== null
-            ? String(r.statusCode).includes(q)
-            : false;
+        const statusMatch = r.statusCode ? r.statusCode.toString().includes(q) : false;
         return pathMatch || methodMatch || statusMatch;
       }
       return true;
@@ -169,6 +196,15 @@ export default function InspectPage() {
 
         {/* Right Section: Controls */}
         <div className="flex items-center gap-1.5 font-sans sm:gap-2">
+          <Link href={`/inspect/${subdomain}/analytics`}>
+            <Button
+              variant="outline"
+              size="xs"
+              className="border-primary/20 text-foreground hover:bg-primary/10 gap-1.5 px-2.5 text-xs font-medium"
+            >
+              <BarChart3 className="text-primary h-3 w-3" /> Analytics
+            </Button>
+          </Link>
           <Button
             variant="outline"
             size="xs"
@@ -370,14 +406,28 @@ export default function InspectPage() {
                   {selected.statusCode}
                 </span>
               </div>
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                onClick={() => setSelectedId(null)}
-                className="hidden shrink-0 md:flex"
-              >
-                <X className="h-3.5 w-3.5" />
-              </Button>
+              <div className="flex shrink-0 items-center gap-1.5">
+                <Button
+                  variant="outline"
+                  size="xs"
+                  onClick={handleReplay}
+                  disabled={replayMutation.isPending}
+                  className="border-primary/30 text-primary hover:bg-primary/10 hover:text-primary gap-1.5 text-xs"
+                >
+                  <RotateCw
+                    className={`h-3 w-3 ${replayMutation.isPending ? "animate-spin" : ""}`}
+                  />
+                  {replayMutation.isPending ? "Replaying..." : "Replay"}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  onClick={() => setSelectedId(null)}
+                  className="hidden shrink-0 md:flex"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              </div>
             </div>
 
             {/* Scrollable Tab Navigation */}

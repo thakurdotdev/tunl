@@ -34,7 +34,7 @@ type keyValidatorAdapter struct {
 	client *controlclient.Client
 }
 
-func (a *keyValidatorAdapter) ValidateKey(fingerprint string) (string, string, string, []string, string, int, []string, bool) {
+func (a *keyValidatorAdapter) ValidateKey(fingerprint string) (string, string, string, []string, string, int, []string, map[string]string, bool) {
 	return a.client.ValidateKey(context.Background(), fingerprint)
 }
 
@@ -46,6 +46,9 @@ func main() {
 
 	logger := logging.Init(getEnv("LOG_LEVEL", "info"))
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	reg := registry.New(cfg.ReconnectGraceWindow, cfg.ReservedSubdomains)
 
 	ccClient := controlclient.New(controlclient.Options{
@@ -53,6 +56,7 @@ func main() {
 		SharedSecret: cfg.InternalSharedSecret,
 		Logger:       logger,
 	})
+	ccClient.StartUsageFlusher(ctx, 10*time.Second)
 
 	hostKey, err := loadOrGenerateHostKey()
 	if err != nil {
@@ -75,14 +79,16 @@ func main() {
 	})
 
 	proxyHandler := httpproxy.NewHandler(httpproxy.Options{
-		Registry:    reg,
-		BaseDomain:  cfg.BaseDomain,
-		DialTimeout: 10 * time.Second,
-		Logger:      logger,
+		Registry:             reg,
+		BaseDomain:           cfg.BaseDomain,
+		DialTimeout:          10 * time.Second,
+		InternalSharedSecret: cfg.InternalSharedSecret,
+		Logger:               logger,
 	})
 
 	// Wrap the proxy with request capture when Redis is available
-	var finalHandler http.Handler = proxyHandler
+	subdomainExtractor := httpproxy.SubdomainExtractor(cfg.BaseDomain)
+	var finalHandler http.Handler = httpproxy.CaptureMiddleware(proxyHandler, nil, ccClient, subdomainExtractor)
 	if cfg.RedisURL != "" && cfg.RequestLogEnabled {
 		opts, err := redis.ParseURL(cfg.RedisURL)
 		if err != nil {
@@ -95,11 +101,10 @@ func main() {
 		} else {
 			publisher := requestlog.NewPublisher(rdb, cfg.RequestLogMaxBodySize, logger)
 			sshSrv.SetLogFlusher(publisher)
-			subdomainExtractor := httpproxy.SubdomainExtractor(cfg.BaseDomain)
-			finalHandler = httpproxy.CaptureMiddleware(proxyHandler, publisher, subdomainExtractor)
+			finalHandler = httpproxy.CaptureMiddleware(proxyHandler, publisher, ccClient, subdomainExtractor)
 			logger.Info("request inspector enabled", "maxBodySize", cfg.RequestLogMaxBodySize)
 
-			sub := rdb.Subscribe(context.Background(), "tunl:user-ip-updated", "tunl:ssh-key-revoked", "tunl:subdomains-updated")
+			sub := rdb.Subscribe(context.Background(), "tunl:user-ip-updated", "tunl:ssh-key-revoked", "tunl:subdomains-updated", "tunl:tunnel-password-updated")
 			go func() {
 				ch := sub.Channel()
 				for msg := range ch {
@@ -131,6 +136,19 @@ func main() {
 							sshSrv.UpdateUserSubdomains(payload.UserID, payload.ReservedSubdomains)
 							logger.Info("realtime updated user reserved subdomains", "userId", payload.UserID, "reserved", payload.ReservedSubdomains)
 						}
+					case "tunl:tunnel-password-updated":
+						var payload struct {
+							Subdomain    string  `json:"subdomain"`
+							PasswordHash *string `json:"passwordHash"`
+						}
+						if err := json.Unmarshal([]byte(msg.Payload), &payload); err == nil && payload.Subdomain != "" {
+							var pwd string
+							if payload.PasswordHash != nil {
+								pwd = *payload.PasswordHash
+							}
+							reg.UpdateSubdomainPassword(payload.Subdomain, pwd)
+							logger.Info("realtime updated tunnel password", "subdomain", payload.Subdomain, "hasPassword", pwd != "")
+						}
 					}
 				}
 			}()
@@ -156,9 +174,6 @@ func main() {
 		IdleTimeout:    15 * time.Second,
 		MaxHeaderBytes: 1 << 16,
 	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGTERM, syscall.SIGINT)

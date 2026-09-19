@@ -269,14 +269,14 @@ func (s *Server) handleConn(ctx context.Context, conn net.Conn) {
 	}
 	conn.SetDeadline(time.Time{})
 
-	userID, email, allowedSubdomain, reservedSubdomains, plan, maxActiveTunnels, allowedIPs := extractPermissions(sshConn.Permissions)
+	userID, email, allowedSubdomain, reservedSubdomains, plan, maxActiveTunnels, allowedIPs, tunnelPasswords := extractPermissions(sshConn.Permissions)
 
 	deviceID := s.deviceFingerprints.take(conn.RemoteAddr().String())
 	if deviceID == "" {
 		deviceID = remoteIP
 	}
 
-	sess := newSSHSession(sessionID(), userID, email, allowedSubdomain, reservedSubdomains, plan, remoteIP, deviceID, maxActiveTunnels, allowedIPs, sshConn)
+	sess := newSSHSession(sessionID(), userID, email, allowedSubdomain, reservedSubdomains, plan, remoteIP, deviceID, maxActiveTunnels, allowedIPs, tunnelPasswords, sshConn)
 
 	// Authenticated users are bounded by their plan's maxActiveTunnels,
 	// not the per-IP anonymous connection cap.
@@ -351,9 +351,9 @@ func (s *Server) handleConn(ctx context.Context, conn net.Conn) {
 	s.handleChannels(chans, sess, connLog)
 }
 
-func extractPermissions(perms *ssh.Permissions) (userID, email, allowedSubdomain string, reservedSubdomains []string, plan string, maxActiveTunnels int, allowedIPs []string) {
+func extractPermissions(perms *ssh.Permissions) (userID, email, allowedSubdomain string, reservedSubdomains []string, plan string, maxActiveTunnels int, allowedIPs []string, tunnelPasswords map[string]string) {
 	if perms == nil || perms.Extensions == nil {
-		return "", "", "", nil, "", 0, nil
+		return "", "", "", nil, "", 0, nil, nil
 	}
 	max := 0
 	if v, ok := perms.Extensions["max_active_tunnels"]; ok {
@@ -377,7 +377,16 @@ func extractPermissions(perms *ssh.Permissions) (userID, email, allowedSubdomain
 			}
 		}
 	}
-	return perms.Extensions["user_id"], perms.Extensions["email"], perms.Extensions["allowed_subdomain"], res, perms.Extensions["plan"], max, ips
+	passwords := make(map[string]string)
+	if raw, ok := perms.Extensions["tunnel_passwords"]; ok && raw != "" {
+		for _, pair := range strings.Split(raw, ",") {
+			parts := strings.SplitN(pair, "=", 2)
+			if len(parts) == 2 && parts[0] != "" && parts[1] != "" {
+				passwords[parts[0]] = parts[1]
+			}
+		}
+	}
+	return perms.Extensions["user_id"], perms.Extensions["email"], perms.Extensions["allowed_subdomain"], res, perms.Extensions["plan"], max, ips, passwords
 }
 
 func extractIP(addr net.Addr) string {

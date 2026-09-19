@@ -143,6 +143,7 @@ export const tunnels = pgTable(
       .references(() => user.id, { onDelete: "cascade" }),
     subdomain: text("subdomain").notNull().unique(),
     status: tunnelStatus("status").notNull().default("reserved"),
+    password: text("password"),
     lastConnectedAt: timestamp("last_connected_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -204,3 +205,24 @@ export const identityLinks = pgTable("identity_links", {
     .references(() => user.id, { onDelete: "cascade" }),
   linkedAt: timestamp("linked_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const tunnelBandwidth = pgTable(
+  "tunnel_bandwidth",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    subdomain: text("subdomain").notNull(),
+    userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
+    requestCount: integer("request_count").notNull().default(0),
+    bytesIn: integer("bytes_in").notNull().default(0),
+    bytesOut: integer("bytes_out").notNull().default(0),
+    errorCount: integer("error_count").notNull().default(0),
+    totalDurationMs: integer("total_duration_ms").notNull().default(0),
+    bucketStart: timestamp("bucket_start", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("tunnel_bandwidth_subdomain_bucket_uidx").on(table.subdomain, table.bucketStart),
+    index("tunnel_bandwidth_user_id_idx").on(table.userId),
+    index("tunnel_bandwidth_bucket_start_idx").on(table.bucketStart),
+  ],
+);

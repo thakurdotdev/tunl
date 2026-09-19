@@ -87,6 +87,8 @@ export type Tunnel = {
   id: string;
   subdomain: string;
   status: "reserved" | "active" | "inactive";
+  password?: string | null;
+  hasPassword?: boolean;
   lastConnectedAt: string | null;
   createdAt: string;
 };
@@ -122,4 +124,36 @@ export type CapturedRequest = {
   requestBody?: string;
   responseBody?: string;
   clientIP: string;
+};
+
+export type ReplayResult = {
+  success: boolean;
+  statusCode: number;
+  durationMs: number;
+  responseHeaders: Record<string, string>;
+  responseBody: string;
+};
+
+export type BandwidthBucket = {
+  bucketStart: string;
+  requestCount: number;
+  bytesIn: number;
+  bytesOut: number;
+  errorCount: number;
+  avgDurationMs: number;
+  errorRate: number;
+};
+
+export type SubdomainAnalytics = {
+  subdomain: string;
+  period: "24h" | "7d" | "30d";
+  summary: {
+    totalRequests: number;
+    totalBytesIn: number;
+    totalBytesOut: number;
+    totalErrors: number;
+    avgDurationMs: number;
+    errorRate: number;
+  };
+  timeSeries: BandwidthBucket[];
 };

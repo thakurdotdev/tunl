@@ -68,13 +68,20 @@ func captureID() string {
 	return fmt.Sprintf("%x", b)
 }
 
+type MetricsRecorder interface {
+	RecordUsage(subdomain string, bytesIn, bytesOut int64, durationMs int64, isError bool)
+}
+
 // CaptureMiddleware wraps an http.Handler and publishes request/response
-// metadata to the requestlog publisher for authenticated tunnels.
-func CaptureMiddleware(next http.Handler, publisher *requestlog.Publisher, subdomainExtractor func(string) string) http.Handler {
-	if publisher == nil {
+// metadata to the requestlog publisher and metrics recorder.
+func CaptureMiddleware(next http.Handler, publisher *requestlog.Publisher, metrics MetricsRecorder, subdomainExtractor func(string) string) http.Handler {
+	if publisher == nil && metrics == nil {
 		return next
 	}
-	maxBody := publisher.MaxBodySize()
+	var maxBody int
+	if publisher != nil {
+		maxBody = publisher.MaxBodySize()
+	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		subdomain := subdomainExtractor(r.Host)
@@ -94,28 +101,36 @@ func CaptureMiddleware(next http.Handler, publisher *requestlog.Publisher, subdo
 
 		next.ServeHTTP(rc, r)
 
-		respBody := rc.body.String()
-		if edgeErr := rc.Header().Get("X-Tunl-Edge-Error"); edgeErr != "" {
-			respBody = fmt.Sprintf("[%d %s: %s]", rc.statusCode, http.StatusText(rc.statusCode), edgeErr)
+		durationMs := time.Since(start).Milliseconds()
+
+		if metrics != nil {
+			metrics.RecordUsage(subdomain, reqSize, rc.written, durationMs, rc.statusCode >= 400)
 		}
 
-		entry := &requestlog.CapturedRequest{
-			ID:              captureID(),
-			Timestamp:       start,
-			Method:          r.Method,
-			Path:            r.URL.RequestURI(),
-			StatusCode:      rc.statusCode,
-			DurationMs:      time.Since(start).Milliseconds(),
-			RequestSize:     reqSize,
-			ResponseSize:    rc.written,
-			RequestHeaders:  flattenHeaders(r.Header),
-			ResponseHeaders: flattenHeaders(rc.Header()),
-			RequestBody:     reqBody,
-			ResponseBody:    respBody,
-			ClientIP:        extractClientIP(r),
-		}
+		if publisher != nil {
+			respBody := rc.body.String()
+			if edgeErr := rc.Header().Get("X-Tunl-Edge-Error"); edgeErr != "" {
+				respBody = fmt.Sprintf("[%d %s: %s]", rc.statusCode, http.StatusText(rc.statusCode), edgeErr)
+			}
 
-		publisher.Publish(subdomain, entry)
+			entry := &requestlog.CapturedRequest{
+				ID:              captureID(),
+				Timestamp:       start,
+				Method:          r.Method,
+				Path:            r.URL.RequestURI(),
+				StatusCode:      rc.statusCode,
+				DurationMs:      durationMs,
+				RequestSize:     reqSize,
+				ResponseSize:    rc.written,
+				RequestHeaders:  flattenHeaders(r.Header),
+				ResponseHeaders: flattenHeaders(rc.Header()),
+				RequestBody:     reqBody,
+				ResponseBody:    respBody,
+				ClientIP:        extractClientIP(r),
+			}
+
+			publisher.Publish(subdomain, entry)
+		}
 	})
 }
 

@@ -184,10 +184,15 @@ func (s *Server) resolveSubdomain(sess *sshSession, bindAddr string, bindPort ui
 }
 
 func registerSpecificReserved(reg registry.TunnelRegistry, sess *sshSession, sub string, bindAddr string, bindPort uint32) (string, error) {
+	var pwd string
+	if sess.TunnelPasswords() != nil {
+		pwd = sess.TunnelPasswords()[sub]
+	}
 	t := &registry.Tunnel{
 		Subdomain:        sub,
 		UserID:           sess.UserID(),
 		Reserved:         true,
+		Password:         pwd,
 		BindAddr:         bindAddr,
 		BindPort:         bindPort,
 		RemoteIP:         sess.RemoteIP(),
@@ -199,6 +204,7 @@ func registerSpecificReserved(reg registry.TunnelRegistry, sess *sshSession, sub
 		return sub, nil
 	}
 	if err := reg.Reclaim(sub, sess, bindAddr, bindPort); err == nil {
+		reg.UpdateSubdomainPassword(sub, pwd)
 		return sub, nil
 	}
 	return "", registry.ErrSubdomainTaken

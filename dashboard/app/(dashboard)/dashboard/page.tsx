@@ -11,6 +11,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/auth-context";
@@ -19,11 +27,25 @@ import {
   useDeleteTunnelMutation,
   useTunnelSessionsQuery,
   useTunnelsQuery,
+  useUpdateTunnelPasswordMutation,
 } from "@/hooks/use-tunnels";
 import { ApiClientError } from "@/lib/api-client";
+import { type Tunnel } from "@/lib/types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format, formatDistanceToNow } from "date-fns";
-import { Calendar, CheckCircle2, Copy, Eye, Globe, Trash2, Wifi, WifiOff } from "lucide-react";
+import {
+  Calendar,
+  CheckCircle2,
+  Copy,
+  Eye,
+  Globe,
+  KeyRound,
+  Lock,
+  ShieldCheck,
+  Trash2,
+  Wifi,
+  WifiOff,
+} from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -49,8 +71,12 @@ export default function TunnelsPage() {
   const deleteMutation = useDeleteTunnelMutation();
 
   const [deleteTunnelId, setDeleteTunnelId] = useState<string | null>(null);
+  const [passwordTunnel, setPasswordTunnel] = useState<Tunnel | null>(null);
+  const [passwordValue, setPasswordValue] = useState("");
   const [customPort, setCustomPort] = useState("3000");
   const [copiedSnippetId, setCopiedSnippetId] = useState<string | null>(null);
+
+  const updatePasswordMutation = useUpdateTunnelPasswordMutation();
 
   const {
     register,
@@ -97,6 +123,52 @@ export default function TunnelsPage() {
         setDeleteTunnelId(null);
       },
     });
+  };
+
+  const handleSavePassword = () => {
+    if (!passwordTunnel) return;
+    if (passwordValue.trim().length < 4) {
+      toast.error("Password must be at least 4 characters.");
+      return;
+    }
+    updatePasswordMutation.mutate(
+      { id: passwordTunnel.id, password: passwordValue.trim() },
+      {
+        onSuccess: () => {
+          toast.success(`Password set for ${passwordTunnel.subdomain}.tunl.online`);
+          setPasswordTunnel(null);
+          setPasswordValue("");
+        },
+        onError: (err) => {
+          if (err instanceof ApiClientError) {
+            toast.error(err.message);
+          } else {
+            toast.error("Failed to set password.");
+          }
+        },
+      },
+    );
+  };
+
+  const handleRemovePassword = () => {
+    if (!passwordTunnel) return;
+    updatePasswordMutation.mutate(
+      { id: passwordTunnel.id, password: null },
+      {
+        onSuccess: () => {
+          toast.success(`Password removed from ${passwordTunnel.subdomain}.tunl.online`);
+          setPasswordTunnel(null);
+          setPasswordValue("");
+        },
+        onError: (err) => {
+          if (err instanceof ApiClientError) {
+            toast.error(err.message);
+          } else {
+            toast.error("Failed to remove password.");
+          }
+        },
+      },
+    );
   };
 
   const copyToClipboard = (text: string, id?: string) => {
@@ -304,11 +376,12 @@ export default function TunnelsPage() {
             <table className="w-full border-collapse text-left font-sans text-xs">
               <thead>
                 <tr className="border-border/60 bg-muted/40 text-muted-foreground border-b text-[11px] font-semibold tracking-wider uppercase">
-                  <th className="w-[220px] p-4">Subdomain Endpoint</th>
-                  <th className="w-[120px] p-4">State</th>
+                  <th className="w-[200px] p-4">Subdomain Endpoint</th>
+                  <th className="w-[110px] p-4">State</th>
+                  <th className="w-[130px] p-4">Security</th>
                   <th className="p-4">SSH Command Snippet</th>
-                  <th className="w-[140px] p-4">Created Date</th>
-                  <th className="w-[80px] p-4 text-right">Action</th>
+                  <th className="w-[130px] p-4">Created Date</th>
+                  <th className="w-[70px] p-4 text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-border/60 divide-y">
@@ -336,6 +409,33 @@ export default function TunnelsPage() {
                           />
                           {tunnel.status === "active" ? "Active" : "Reserved"}
                         </span>
+                      </td>
+                      <td className="p-4">
+                        {tunnel.hasPassword || tunnel.password ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPasswordTunnel(tunnel);
+                              setPasswordValue("");
+                            }}
+                            className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[11px] font-medium text-amber-400 transition-colors hover:bg-amber-500/20"
+                          >
+                            <Lock className="h-3 w-3" />
+                            Protected
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPasswordTunnel(tunnel);
+                              setPasswordValue("");
+                            }}
+                            className="border-border/60 bg-muted/30 text-muted-foreground hover:bg-muted/60 hover:text-foreground inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-medium transition-colors"
+                          >
+                            <KeyRound className="h-3 w-3" />
+                            Set Password
+                          </button>
+                        )}
                       </td>
                       <td className="p-4 font-mono">
                         <div className="flex max-w-[360px] items-center gap-2">
@@ -480,6 +580,97 @@ export default function TunnelsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Password Protection Dialog */}
+      <Dialog open={!!passwordTunnel} onOpenChange={(open) => !open && setPasswordTunnel(null)}>
+        <DialogContent className="font-sans sm:max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-2">
+              <div className="bg-primary/10 text-primary flex h-8 w-8 items-center justify-center rounded-lg">
+                <Lock className="h-4 w-4" />
+              </div>
+              <div>
+                <DialogTitle className="text-sm font-semibold">
+                  Tunnel Password Protection
+                </DialogTitle>
+                <DialogDescription className="text-muted-foreground font-mono text-xs">
+                  {passwordTunnel?.subdomain}.tunl.online
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="flex flex-col gap-4 py-2 text-xs">
+            {passwordTunnel?.hasPassword || passwordTunnel?.password ? (
+              <div className="flex items-center gap-2 rounded-md border border-amber-500/20 bg-amber-500/10 p-2.5 text-amber-300">
+                <ShieldCheck className="h-4 w-4 shrink-0 text-amber-400" />
+                <span>
+                  This tunnel is currently password-protected. Visitors must enter HTTP Basic Auth
+                  credentials to access it.
+                </span>
+              </div>
+            ) : (
+              <p className="text-muted-foreground">
+                Set an edge password to protect your tunnel. Visitors will be prompted for Basic
+                Auth before requests reach your local server.
+              </p>
+            )}
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="tunnel-password" className="text-xs">
+                {passwordTunnel?.hasPassword || passwordTunnel?.password
+                  ? "Change Password"
+                  : "Password"}
+              </Label>
+              <Input
+                id="tunnel-password"
+                type="password"
+                placeholder="Enter password (min 4 chars)"
+                value={passwordValue}
+                onChange={(e) => setPasswordValue(e.target.value)}
+                className="h-9 text-xs"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:justify-between">
+            {passwordTunnel?.hasPassword || passwordTunnel?.password ? (
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                onClick={handleRemovePassword}
+                disabled={updatePasswordMutation.isPending}
+                className="text-xs"
+              >
+                Remove Password
+              </Button>
+            ) : (
+              <div />
+            )}
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setPasswordTunnel(null)}
+                className="text-xs"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleSavePassword}
+                disabled={updatePasswordMutation.isPending || passwordValue.trim().length < 4}
+                className="text-xs"
+              >
+                {updatePasswordMutation.isPending ? "Saving..." : "Save Password"}
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

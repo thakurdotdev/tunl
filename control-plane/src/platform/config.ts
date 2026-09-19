@@ -18,6 +18,9 @@ const envSchema = z.object({
   GITHUB_CLIENT_SECRET: z.string().default(""),
   GOOGLE_CLIENT_ID: z.string().default(""),
   GOOGLE_CLIENT_SECRET: z.string().default(""),
+  BASE_DOMAIN: z.string().default("tunl.online"),
+  TUNNEL_URL_SCHEME: z.string().default("https"),
+  TUNNEL_SERVER_HTTP_URL: z.string().default("http://localhost:8080"),
 });
 
 export type Config = z.infer<typeof envSchema>;

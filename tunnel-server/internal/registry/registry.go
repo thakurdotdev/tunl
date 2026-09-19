@@ -31,6 +31,7 @@ type Tunnel struct {
 	BindPort         uint32
 	RemoteIP         string
 	AllowedIPs       []string // optional IP whitelist (IPs or CIDRs) for restricted access
+	Password         string   // SHA-256 hex hash for Basic Auth; empty means no password
 	MaxActiveTunnels int      // from plan; 0 means unlimited
 	CreatedAt        time.Time
 	LastSeen         time.Time
@@ -52,6 +53,7 @@ type TunnelRegistry interface {
 	AnonymousCount() int
 	ReservedCount() int
 	UpdateUserAllowedIPs(userID string, allowedIPs []string)
+	UpdateSubdomainPassword(subdomain string, passwordHash string)
 }
 
 var (
@@ -262,6 +264,14 @@ func (r *InMemoryRegistry) UpdateUserAllowedIPs(userID string, allowedIPs []stri
 		if e.tunnel.UserID == userID {
 			e.tunnel.AllowedIPs = allowedIPs
 		}
+	}
+}
+
+func (r *InMemoryRegistry) UpdateSubdomainPassword(subdomain string, passwordHash string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if e, ok := r.entries[subdomain]; ok {
+		e.tunnel.Password = passwordHash
 	}
 }
 

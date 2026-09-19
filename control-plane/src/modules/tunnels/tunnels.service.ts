@@ -1,7 +1,8 @@
+import { createHash } from "node:crypto";
 import { and, count, desc, eq, sql } from "drizzle-orm";
 import type { Database } from "../../db/client.js";
 import { plans, sshKeys, tunnels, user } from "../../db/schema.js";
-import { conflict, forbidden, notFound } from "../../platform/errors.js";
+import { badRequest, conflict, forbidden, notFound } from "../../platform/errors.js";
 import type { RedisClient } from "../../redis/client.js";
 import { redisKeys } from "../../redis/keys.js";
 import { reservedSubdomains } from "./constant.js";
@@ -10,9 +11,14 @@ export const tunnelOutputSelect = {
   id: tunnels.id,
   subdomain: tunnels.subdomain,
   status: tunnels.status,
+  password: tunnels.password,
   lastConnectedAt: tunnels.lastConnectedAt,
   createdAt: tunnels.createdAt,
 };
+
+function hashPassword(plaintext: string): string {
+  return createHash("sha256").update(plaintext).digest("hex");
+}
 
 export async function listUserTunnels(db: Database, userId: string) {
   return db
@@ -90,6 +96,38 @@ export async function deleteUserTunnel(
   }
 
   await redis.del(`tunl:requests:${deleted[0].subdomain}`);
+}
+
+export async function updateTunnelPassword(
+  db: Database,
+  redis: RedisClient,
+  userId: string,
+  tunnelId: string,
+  password: string | null,
+) {
+  if (password !== null && password.length < 4) {
+    throw badRequest("Password must be at least 4 characters");
+  }
+
+  const hashed = password ? hashPassword(password) : null;
+
+  const [updated] = await db
+    .update(tunnels)
+    .set({ password: hashed, updatedAt: new Date() })
+    .where(and(eq(tunnels.id, tunnelId), eq(tunnels.userId, userId)))
+    .returning({ id: tunnels.id, subdomain: tunnels.subdomain });
+
+  if (!updated) {
+    throw notFound("tunnel not found");
+  }
+
+  // Publish password update so the tunnel server picks it up in real-time
+  await redis.publish(
+    "tunl:tunnel-password-updated",
+    JSON.stringify({ subdomain: updated.subdomain, passwordHash: hashed }),
+  );
+
+  return { id: updated.id, hasPassword: hashed !== null };
 }
 
 function isUniqueViolation(error: unknown): boolean {

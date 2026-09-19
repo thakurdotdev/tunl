@@ -103,7 +103,7 @@
   --chart-1: oklch(0.74 0.18 152);
   --chart-2: oklch(0.76 0.17 195);
   --chart-3: oklch(0.82 0.18 85);
-  --chart-4: oklch(0.74 0.20 310);
+  --chart-4: oklch(0.74 0.2 310);
   --chart-5: oklch(0.68 0.22 25);
   --sidebar: oklch(0.19 0.008 250);
   --sidebar-foreground: oklch(0.985 0.002 250);
@@ -143,7 +143,7 @@
     border-radius: 9999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: oklch(0.50 0.01 250);
+    background: oklch(0.5 0.01 250);
   }
 }
 

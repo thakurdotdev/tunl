@@ -86,6 +86,27 @@ func (p *Publisher) Publish(subdomain string, req *CapturedRequest) {
 	}
 }
 
+func (p *Publisher) pruneExpired(ctx context.Context, key string) {
+	cutoff := time.Now().Add(-keyTTL)
+	for range 10 {
+		tail, err := p.rdb.LIndex(ctx, key, -1).Result()
+		if err != nil || tail == "" {
+			break
+		}
+		var entry struct {
+			Timestamp time.Time `json:"timestamp"`
+		}
+		if err := json.Unmarshal([]byte(tail), &entry); err != nil {
+			break
+		}
+		if entry.Timestamp.Before(cutoff) {
+			_ = p.rdb.RPop(ctx, key).Err()
+		} else {
+			break
+		}
+	}
+}
+
 func (p *Publisher) drain() {
 	ctx := context.Background()
 	for job := range p.queue {
@@ -97,6 +118,7 @@ func (p *Publisher) drain() {
 		if _, err := pipe.Exec(ctx); err != nil {
 			p.log.Warn("redis pipeline failed", "error", err, "subdomain", job.subdomain)
 		}
+		p.pruneExpired(ctx, key)
 		if err := p.rdb.Publish(ctx, liveChannel(job.subdomain), job.data).Err(); err != nil {
 			p.log.Warn("redis publish failed", "error", err, "subdomain", job.subdomain)
 		}

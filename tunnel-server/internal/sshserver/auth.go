@@ -11,13 +11,13 @@ import (
 )
 
 type KeyValidator interface {
-	ValidateKey(fingerprint string) (userID, email, allowedSubdomain string, reservedSubdomains []string, plan string, maxActiveTunnels int, allowedIPs []string, ok bool)
+	ValidateKey(fingerprint string) (userID, email, allowedSubdomain string, reservedSubdomains []string, plan string, maxActiveTunnels int, allowedIPs []string, tunnelPasswords map[string]string, ok bool)
 }
 
 type anonymousKeyValidator struct{}
 
-func (anonymousKeyValidator) ValidateKey(fingerprint string) (string, string, string, []string, string, int, []string, bool) {
-	return "", "", "", nil, "", 0, nil, false
+func (anonymousKeyValidator) ValidateKey(fingerprint string) (string, string, string, []string, string, int, []string, map[string]string, bool) {
+	return "", "", "", nil, "", 0, nil, nil, false
 }
 
 // deviceFingerprintStore captures the first SSH key fingerprint seen per
@@ -48,7 +48,7 @@ func (s *deviceFingerprintStore) take(remoteAddr string) string {
 func buildPublicKeyCallback(kv KeyValidator, fps *deviceFingerprintStore, log *slog.Logger) func(ssh.ConnMetadata, ssh.PublicKey) (*ssh.Permissions, error) {
 	return func(meta ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
 		fingerprint := ssh.FingerprintSHA256(key)
-		userID, email, allowedSubdomain, reservedSubdomains, plan, maxActiveTunnels, allowedIPs, ok := kv.ValidateKey(fingerprint)
+		userID, email, allowedSubdomain, reservedSubdomains, plan, maxActiveTunnels, allowedIPs, tunnelPasswords, ok := kv.ValidateKey(fingerprint)
 		if log != nil {
 			log.Info("ssh key validation", "fingerprint", fingerprint, "valid", ok)
 		}
@@ -56,6 +56,17 @@ func buildPublicKeyCallback(kv KeyValidator, fps *deviceFingerprintStore, log *s
 			fps.store(meta.RemoteAddr().String(), fingerprint)
 			return nil, fmt.Errorf("unknown key")
 		}
+
+		// Encode tunnel passwords as JSON for SSH extensions
+		tunnelPasswordsStr := ""
+		if len(tunnelPasswords) > 0 {
+			pairs := make([]string, 0, len(tunnelPasswords))
+			for sub, hash := range tunnelPasswords {
+				pairs = append(pairs, sub+"="+hash)
+			}
+			tunnelPasswordsStr = strings.Join(pairs, ",")
+		}
+
 		return &ssh.Permissions{
 			Extensions: map[string]string{
 				"user_id":             userID,
@@ -66,6 +77,7 @@ func buildPublicKeyCallback(kv KeyValidator, fps *deviceFingerprintStore, log *s
 				"plan":                plan,
 				"max_active_tunnels":  strconv.Itoa(maxActiveTunnels),
 				"allowed_ips":         strings.Join(allowedIPs, ","),
+				"tunnel_passwords":    tunnelPasswordsStr,
 			},
 		}, nil
 	}

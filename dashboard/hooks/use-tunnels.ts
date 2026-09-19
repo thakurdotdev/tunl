@@ -48,3 +48,19 @@ export function useDeleteTunnelMutation() {
     },
   });
 }
+
+export function useUpdateTunnelPasswordMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, password }: { id: string; password: string | null }) => {
+      const { data } = await client.patch<{ id: string; hasPassword: boolean }>(
+        `/v1/tunnels/${id}/password`,
+        { password },
+      );
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tunnels"] });
+    },
+  });
+}
