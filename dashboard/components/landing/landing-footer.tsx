@@ -1,4 +1,5 @@
 import { Logo } from "@/components/logo";
+import { ModeToggle } from "@/components/mode-toggle";
 import Link from "next/link";
 
 export function LandingFooter() {
@@ -30,6 +31,12 @@ export function LandingFooter() {
                 </Link>
                 <Link href="/inspect" className="hover:text-foreground transition-colors">
                   Inspect Tunnels
+                </Link>
+                <Link href="#comparison" className="hover:text-foreground transition-colors">
+                  Comparison
+                </Link>
+                <Link href="#faq" className="hover:text-foreground transition-colors">
+                  FAQ
                 </Link>
               </nav>
             </div>
@@ -71,17 +78,21 @@ export function LandingFooter() {
         {/* Bottom bar */}
         <div className="border-border/40 text-muted-foreground flex flex-col items-center justify-between gap-3 border-t pt-6 text-[12px] sm:flex-row">
           <span>© {new Date().getFullYear()} tunl. All rights reserved.</span>
-          <span>
-            Designed & built by{" "}
-            <a
-              href="https://thakur.dev"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-foreground hover:text-primary font-medium transition-colors"
-            >
-              Pankaj Thakur
-            </a>
-          </span>
+          <div className="flex items-center gap-4">
+            <span>
+              Designed & built by{" "}
+              <a
+                href="https://thakur.dev"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-foreground hover:text-primary font-medium transition-colors"
+              >
+                Pankaj Thakur
+              </a>
+            </span>
+            <div className="border-border/60 h-3.5 w-px border-l" />
+            <ModeToggle variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-foreground" />
+          </div>
         </div>
       </div>
     </footer>

@@ -1,7 +1,6 @@
 "use client";
 
 import { Logo } from "@/components/logo";
-import { ModeToggle } from "@/components/mode-toggle";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Menu, X } from "lucide-react";
 import Link from "next/link";
@@ -32,6 +31,7 @@ export function LandingNav() {
     { href: "#how-it-works", label: "How it Works" },
     { href: "#use-cases", label: "Use Cases" },
     { href: "#pricing", label: "Pricing" },
+    { href: "#faq", label: "FAQ" },
   ];
 
   return (
@@ -54,7 +54,6 @@ export function LandingNav() {
         </nav>
 
         <div className="hidden items-center gap-2.5 md:flex">
-          <ModeToggle />
           <Link href="/login">
             <Button
               variant="ghost"
@@ -73,7 +72,6 @@ export function LandingNav() {
 
         {/* Mobile controls */}
         <div className="flex items-center gap-1.5 md:hidden">
-          <ModeToggle />
           <button
             type="button"
             onClick={() => setMobileOpen(!mobileOpen)}
