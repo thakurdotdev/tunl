@@ -32,7 +32,9 @@ export async function recordRequestMetrics(db: Database, metrics: MetricItem[]) 
 
   for (const m of metrics) {
     if (!m.subdomain) continue;
-    const userId = userMap.get(m.subdomain) ?? null;
+    const userId = userMap.get(m.subdomain);
+    // Ignore metrics for unregistered subdomains / bot probes to avoid polluting platform telemetry
+    if (!userId) continue;
 
     await db
       .insert(tunnelBandwidth)

@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, gte, ilike, inArray, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, ilike, inArray, isNotNull, or, sql } from "drizzle-orm";
 import type { Database } from "../../db/client.js";
 import {
   activeTunnelSessions,
@@ -402,7 +402,7 @@ export async function getAdminBandwidthAnalytics(
         totalDurationMs: sql<number>`COALESCE(SUM(${tunnelBandwidth.totalDurationMs}), 0)::bigint`,
       })
       .from(tunnelBandwidth)
-      .where(gte(tunnelBandwidth.bucketStart, since))
+      .where(and(gte(tunnelBandwidth.bucketStart, since), isNotNull(tunnelBandwidth.userId)))
       .groupBy(tunnelBandwidth.bucketStart)
       .orderBy(asc(tunnelBandwidth.bucketStart)),
 
@@ -415,7 +415,7 @@ export async function getAdminBandwidthAnalytics(
         totalBytes: sql<number>`COALESCE(SUM(${tunnelBandwidth.bytesIn} + ${tunnelBandwidth.bytesOut}), 0)::bigint`,
       })
       .from(tunnelBandwidth)
-      .where(gte(tunnelBandwidth.bucketStart, since))
+      .where(and(gte(tunnelBandwidth.bucketStart, since), isNotNull(tunnelBandwidth.userId)))
       .groupBy(tunnelBandwidth.subdomain)
       .orderBy(sql`SUM(${tunnelBandwidth.bytesIn} + ${tunnelBandwidth.bytesOut}) DESC`)
       .limit(5),

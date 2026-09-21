@@ -182,13 +182,18 @@ export default function AdminOverviewPage() {
             <div className="text-foreground mt-2 font-mono text-xl font-bold">
               {isBandwidthLoading ? "..." : bwSummary.totalRequests.toLocaleString()}
             </div>
-            <div className="mt-1 flex items-center gap-1.5 font-mono text-[10px]">
+            <div className="mt-1.5 flex flex-col gap-0.5 text-[11px]">
               {bwSummary.totalErrors > 0 ? (
-                <span className="text-rose-400">
-                  {bwSummary.totalErrors} errors ({bwSummary.errorRate}%)
-                </span>
+                <>
+                  <span className="text-amber-400 font-medium">
+                    {bwSummary.totalErrors.toLocaleString()} HTTP 4xx/5xx ({bwSummary.errorRate}%)
+                  </span>
+                  <span className="text-muted-foreground text-[10px]">
+                    Includes client 404s, missing paths & edge drops
+                  </span>
+                </>
               ) : (
-                <span className="text-emerald-400">0 errors logged (100% OK)</span>
+                <span className="text-emerald-400 font-medium">100% clean delivery (0 errors)</span>
               )}
             </div>
           </div>
@@ -213,15 +218,17 @@ export default function AdminOverviewPage() {
           <div className="border-border/60 bg-muted/20 rounded-lg border p-3.5">
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground text-[11px] font-medium tracking-wider uppercase">
-                Overall Success Rate
+                2xx/3xx Edge Delivery
               </span>
               <Zap className="text-muted-foreground/60 h-3.5 w-3.5" />
             </div>
-            <div className="mt-2 font-mono text-xl font-bold text-emerald-400">
+            <div className="mt-2 font-mono text-xl font-bold text-foreground">
               {isBandwidthLoading ? "..." : `${bwSummary.successRate}%`}
             </div>
-            <span className="text-muted-foreground mt-1 block font-mono text-[10px]">
-              HTTP 2xx/3xx edge delivery
+            <span className="text-muted-foreground mt-1 block text-[10px]">
+              {bwSummary.totalRequests > 0
+                ? "HTTP 2xx/3xx successful application responses"
+                : "No tunnel traffic in this window"}
             </span>
           </div>
         </div>

@@ -227,9 +227,9 @@ export default function SubdomainAnalyticsPage() {
               {summary.totalRequests.toLocaleString()}
             </span>
             {summary.totalErrors > 0 ? (
-              <span className="inline-flex items-center gap-1 rounded border border-rose-500/20 bg-rose-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-rose-400">
+              <span className="inline-flex items-center gap-1 rounded border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-400">
                 <ShieldAlert className="h-3 w-3" />
-                {summary.totalErrors} error{summary.totalErrors === 1 ? "" : "s"}
+                {summary.totalErrors.toLocaleString()} (4xx/5xx)
               </span>
             ) : (
               <span className="rounded border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-400">
@@ -311,7 +311,7 @@ export default function SubdomainAnalyticsPage() {
               {successRate.toFixed(1)}%
             </span>
             <span className="text-muted-foreground text-xs font-medium">
-              {summary.errorRate}% error rate
+              {summary.totalRequests > 0 ? `${summary.errorRate}% (4xx/5xx responses)` : "No requests in window"}
             </span>
           </div>
         </div>

@@ -104,7 +104,11 @@ func CaptureMiddleware(next http.Handler, publisher *requestlog.Publisher, metri
 		durationMs := time.Since(start).Milliseconds()
 
 		if metrics != nil {
-			metrics.RecordUsage(subdomain, reqSize, rc.written, durationMs, rc.statusCode >= 400)
+			edgeErr := rc.Header().Get("X-Tunl-Edge-Error")
+			// Only record usage metrics for real tunnels (exclude bot scanner probes hitting unregistered subdomains)
+			if edgeErr != "tunnel not found" && edgeErr != "unknown host" {
+				metrics.RecordUsage(subdomain, reqSize, rc.written, durationMs, rc.statusCode >= 400)
+			}
 		}
 
 		if publisher != nil {
