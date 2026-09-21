@@ -92,10 +92,7 @@ export const metadata: Metadata = {
     images: ["/opengraph-image"],
   },
   icons: {
-    icon: [
-      { url: "/favicon.ico" },
-      { url: "/tunl.svg", type: "image/svg+xml" },
-    ],
+    icon: [{ url: "/favicon.ico" }, { url: "/tunl.svg", type: "image/svg+xml" }],
     apple: [{ url: "/tunl.svg" }],
   },
 };

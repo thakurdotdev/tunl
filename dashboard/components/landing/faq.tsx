@@ -54,7 +54,7 @@ export function Faq() {
   };
 
   return (
-    <section id="faq" className="py-14 md:py-20 border-border/40 border-t">
+    <section id="faq" className="border-border/40 border-t py-14 md:py-20">
       <div className="mx-auto max-w-5xl px-5 sm:px-6">
         <div className="mb-10 max-w-xl">
           <span className="text-muted-foreground mb-2 block font-mono text-[11px] font-medium tracking-wider uppercase">
@@ -64,11 +64,12 @@ export function Faq() {
             Everything You Need to Know About tunl
           </h2>
           <p className="text-muted-foreground text-sm leading-relaxed">
-            Common questions about zero-install SSH reverse tunneling, security, and custom subdomains on <strong className="text-foreground font-semibold">tunl.online</strong>.
+            Common questions about zero-install SSH reverse tunneling, security, and custom
+            subdomains on <strong className="text-foreground font-semibold">tunl.online</strong>.
           </p>
         </div>
 
-        <div className="divide-border/60 border-border/60 divide-y rounded-lg border bg-card">
+        <div className="divide-border/60 border-border/60 bg-card divide-y rounded-lg border">
           {FAQ_ITEMS.map((item, index) => {
             const isOpen = openIndex === index;
             return (
@@ -76,7 +77,7 @@ export function Faq() {
                 <button
                   type="button"
                   onClick={() => toggle(index)}
-                  className="flex w-full items-center justify-between gap-4 p-5 text-left transition-colors hover:bg-muted/20"
+                  className="hover:bg-muted/20 flex w-full items-center justify-between gap-4 p-5 text-left transition-colors"
                   aria-expanded={isOpen}
                   aria-controls={`faq-answer-${index}`}
                 >
@@ -84,15 +85,15 @@ export function Faq() {
                     {item.question}
                   </h3>
                   <ChevronDown
-                    className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 ${
-                      isOpen ? "rotate-180 text-foreground" : ""
+                    className={`text-muted-foreground h-4 w-4 shrink-0 transition-transform duration-200 ${
+                      isOpen ? "text-foreground rotate-180" : ""
                     }`}
                   />
                 </button>
                 {isOpen && (
                   <div
                     id={`faq-answer-${index}`}
-                    className="px-5 pb-5 pt-1 text-xs sm:text-sm text-muted-foreground leading-relaxed"
+                    className="text-muted-foreground px-5 pt-1 pb-5 text-xs leading-relaxed sm:text-sm"
                   >
                     {item.answer}
                   </div>

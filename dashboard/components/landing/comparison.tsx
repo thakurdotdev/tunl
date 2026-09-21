@@ -62,7 +62,7 @@ const COMPARISON_FEATURES: ComparisonFeature[] = [
 
 export function Comparison() {
   return (
-    <section id="comparison" className="py-14 md:py-20 border-border/40 border-t">
+    <section id="comparison" className="border-border/40 border-t py-14 md:py-20">
       <div className="mx-auto max-w-5xl px-5 sm:px-6">
         <div className="mb-10 max-w-xl">
           <span className="text-muted-foreground mb-2 block font-mono text-[11px] font-medium tracking-wider uppercase">
@@ -72,7 +72,9 @@ export function Comparison() {
             tunl vs Traditional Tunneling Tools
           </h2>
           <p className="text-muted-foreground text-sm leading-relaxed">
-            Why developers choose <strong className="text-foreground font-semibold">tunl.online</strong> over proprietary agents like ngrok or cloudflared.
+            Why developers choose{" "}
+            <strong className="text-foreground font-semibold">tunl.online</strong> over proprietary
+            agents like ngrok or cloudflared.
           </p>
         </div>
 
@@ -81,19 +83,25 @@ export function Comparison() {
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="border-border/60 bg-muted/30 border-b font-mono">
-                <th scope="col" className="p-4 sm:px-6 sm:py-3.5 font-semibold text-foreground">
+                <th scope="col" className="text-foreground p-4 font-semibold sm:px-6 sm:py-3.5">
                   Feature
                 </th>
                 <th
                   scope="col"
-                  className="p-4 sm:px-6 sm:py-3.5 font-semibold text-primary bg-primary/5 border-border/60 border-x"
+                  className="text-primary bg-primary/5 border-border/60 border-x p-4 font-semibold sm:px-6 sm:py-3.5"
                 >
                   tunl (tunl.online)
                 </th>
-                <th scope="col" className="p-4 sm:px-6 sm:py-3.5 font-semibold text-muted-foreground">
+                <th
+                  scope="col"
+                  className="text-muted-foreground p-4 font-semibold sm:px-6 sm:py-3.5"
+                >
                   ngrok
                 </th>
-                <th scope="col" className="p-4 sm:px-6 sm:py-3.5 font-semibold text-muted-foreground">
+                <th
+                  scope="col"
+                  className="text-muted-foreground p-4 font-semibold sm:px-6 sm:py-3.5"
+                >
                   Cloudflare Tunnel
                 </th>
               </tr>
@@ -102,32 +110,32 @@ export function Comparison() {
               {COMPARISON_FEATURES.map((feat) => (
                 <tr key={feat.name} className="hover:bg-muted/15 transition-colors">
                   <td className="p-4 sm:px-6">
-                    <div className="font-semibold text-foreground">{feat.name}</div>
+                    <div className="text-foreground font-semibold">{feat.name}</div>
                     <div className="text-muted-foreground mt-0.5 text-[11px]">
                       {feat.description}
                     </div>
                   </td>
-                  <td className="p-4 sm:px-6 bg-primary/[0.02] border-border/60 border-x">
+                  <td className="bg-primary/[0.02] border-border/60 border-x p-4 sm:px-6">
                     {typeof feat.tunl === "boolean" ? (
                       feat.tunl ? (
                         <span className="inline-flex items-center gap-1.5 font-medium text-emerald-400">
                           <Check className="h-4 w-4" /> Yes
                         </span>
                       ) : (
-                        <Minus className="h-4 w-4 text-muted-foreground" />
+                        <Minus className="text-muted-foreground h-4 w-4" />
                       )
                     ) : (
-                      <span className="font-mono text-emerald-400 font-medium">{feat.tunl}</span>
+                      <span className="font-mono font-medium text-emerald-400">{feat.tunl}</span>
                     )}
                   </td>
-                  <td className="p-4 sm:px-6 text-muted-foreground">
+                  <td className="text-muted-foreground p-4 sm:px-6">
                     {typeof feat.ngrok === "boolean" ? (
                       feat.ngrok ? (
-                        <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
+                        <span className="text-foreground inline-flex items-center gap-1.5 font-medium">
                           <Check className="h-4 w-4" /> Yes
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                        <span className="text-muted-foreground inline-flex items-center gap-1.5">
                           <Minus className="h-4 w-4" /> No
                         </span>
                       )
@@ -135,14 +143,14 @@ export function Comparison() {
                       <span className="font-mono">{feat.ngrok}</span>
                     )}
                   </td>
-                  <td className="p-4 sm:px-6 text-muted-foreground">
+                  <td className="text-muted-foreground p-4 sm:px-6">
                     {typeof feat.cloudflare === "boolean" ? (
                       feat.cloudflare ? (
-                        <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
+                        <span className="text-foreground inline-flex items-center gap-1.5 font-medium">
                           <Check className="h-4 w-4" /> Yes
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                        <span className="text-muted-foreground inline-flex items-center gap-1.5">
                           <Minus className="h-4 w-4" /> No
                         </span>
                       )

@@ -91,7 +91,10 @@ export function LandingFooter() {
               </a>
             </span>
             <div className="border-border/60 h-3.5 w-px border-l" />
-            <ModeToggle variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-foreground" />
+            <ModeToggle
+              variant="ghost"
+              className="text-muted-foreground hover:text-foreground h-7 w-7"
+            />
           </div>
         </div>
       </div>
