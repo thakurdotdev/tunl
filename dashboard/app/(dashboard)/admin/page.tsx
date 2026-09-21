@@ -1,19 +1,294 @@
 "use client";
 
+import { useState } from "react";
 import { AdminAnalyticsCards } from "@/components/admin/admin-analytics-cards";
-import { useAdminAnalytics } from "@/hooks/use-admin";
-import { ArrowUpRight, BarChart3, Layers, Radio } from "lucide-react";
+import { useAdminAnalytics, useAdminBandwidthAnalytics } from "@/hooks/use-admin";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import {
+  Activity,
+  ArrowDownLeft,
+  ArrowUpRight,
+  BarChart3,
+  Check,
+  Clock,
+  Copy,
+  Database,
+  Globe,
+  Layers,
+  Radio,
+  RefreshCw,
+  Zap,
+} from "lucide-react";
 import Link from "next/link";
 
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return "0 B";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+}
+
+function formatShortRelativeTime(date: Date | string): string {
+  const ms = Date.now() - new Date(date).getTime();
+  const seconds = Math.floor(Math.max(0, ms) / 1000);
+  if (seconds < 10) return "just now";
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
 export default function AdminOverviewPage() {
-  const { data: analytics, isLoading } = useAdminAnalytics();
+  const { data: analytics, isLoading, isFetching, refetch } = useAdminAnalytics();
+  const [bandwidthPeriod, setBandwidthPeriod] = useState<"24h" | "7d" | "30d">("24h");
+  const {
+    data: bandwidthData,
+    isLoading: isBandwidthLoading,
+    isFetching: isBandwidthFetching,
+    refetch: refetchBandwidth,
+  } = useAdminBandwidthAnalytics(bandwidthPeriod);
+
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   const activeSessions = analytics?.activeSessionsList ?? [];
 
+  const handleCopy = (text: string, label: string, key: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+    toast.success(`Copied ${label} to clipboard`);
+    setTimeout(() => setCopiedKey(null), 1500);
+  };
+
+  const handleRefreshAll = () => {
+    refetch();
+    refetchBandwidth();
+    toast.info("Telemetry metrics refreshed");
+  };
+
+  const bwSummary = bandwidthData?.summary ?? {
+    totalRequests: 0,
+    totalBytesIn: 0,
+    totalBytesOut: 0,
+    totalBandwidth: 0,
+    totalErrors: 0,
+    avgDurationMs: 0,
+    errorRate: 0,
+    successRate: 100,
+  };
+  const topSubdomains = bandwidthData?.topSubdomains ?? [];
+
   return (
     <div className="space-y-6 font-sans">
+      {/* Top Header with Refresh */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-foreground text-sm font-semibold">Infrastructure Telemetry</h2>
+          <p className="text-muted-foreground text-xs">
+            Global tunnel connections, bandwidth transfer, latency, and identity claims overview.
+          </p>
+        </div>
+
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={handleRefreshAll}
+          disabled={isFetching || isBandwidthFetching}
+          className="border-border/60 h-8 gap-1.5 px-3 text-xs"
+        >
+          <RefreshCw
+            className={`h-3.5 w-3.5 ${
+              isFetching || isBandwidthFetching ? "text-primary animate-spin" : ""
+            }`}
+          />
+          <span>Refresh</span>
+        </Button>
+      </div>
+
       {/* Analytics Top KPI Cards */}
       <AdminAnalyticsCards analytics={analytics} isLoading={isLoading} />
+
+      {/* Platform Bandwidth & Traffic Telemetry Section */}
+      <div className="bg-card border-border/60 rounded-xl border p-5 shadow-2xs">
+        <div className="border-border/60 flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-md border border-blue-500/20 bg-blue-500/10 text-blue-400">
+              <Database className="h-4 w-4" />
+            </div>
+            <div>
+              <h3 className="text-foreground text-sm font-semibold">
+                Platform Bandwidth & Traffic Telemetry
+              </h3>
+              <p className="text-muted-foreground text-xs">
+                Global ingress/egress bytes, request volume, average latency, and success rates
+              </p>
+            </div>
+          </div>
+
+          {/* Period Toggle */}
+          <div className="border-border/60 bg-muted/40 flex items-center rounded-lg border p-0.5 text-xs font-medium">
+            {(["24h", "7d", "30d"] as const).map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setBandwidthPeriod(p)}
+                className={`rounded-md px-3 py-1 font-mono text-xs transition-all ${
+                  bandwidthPeriod === p
+                    ? "bg-card text-foreground font-semibold shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 4 Telemetry KPI Cards */}
+        <div className="mt-4 grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Total Bandwidth */}
+          <div className="border-border/60 bg-muted/20 rounded-lg border p-3.5">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground text-[11px] font-medium tracking-wider uppercase">
+                Bandwidth Transferred
+              </span>
+              <Database className="text-muted-foreground/60 h-3.5 w-3.5" />
+            </div>
+            <div className="text-foreground mt-2 font-mono text-xl font-bold">
+              {isBandwidthLoading ? "..." : formatBytes(bwSummary.totalBandwidth)}
+            </div>
+            <div className="text-muted-foreground mt-1 flex items-center gap-2 font-mono text-[10px]">
+              <span className="flex items-center text-emerald-400">
+                <ArrowDownLeft className="mr-0.5 h-3 w-3" /> {formatBytes(bwSummary.totalBytesIn)}
+              </span>
+              <span className="flex items-center text-cyan-400">
+                <ArrowUpRight className="mr-0.5 h-3 w-3" /> {formatBytes(bwSummary.totalBytesOut)}
+              </span>
+            </div>
+          </div>
+
+          {/* Total Requests */}
+          <div className="border-border/60 bg-muted/20 rounded-lg border p-3.5">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground text-[11px] font-medium tracking-wider uppercase">
+                Total Request Volume
+              </span>
+              <Activity className="text-muted-foreground/60 h-3.5 w-3.5" />
+            </div>
+            <div className="text-foreground mt-2 font-mono text-xl font-bold">
+              {isBandwidthLoading ? "..." : bwSummary.totalRequests.toLocaleString()}
+            </div>
+            <div className="mt-1 flex items-center gap-1.5 font-mono text-[10px]">
+              {bwSummary.totalErrors > 0 ? (
+                <span className="text-rose-400">
+                  {bwSummary.totalErrors} errors ({bwSummary.errorRate}%)
+                </span>
+              ) : (
+                <span className="text-emerald-400">0 errors logged (100% OK)</span>
+              )}
+            </div>
+          </div>
+
+          {/* Avg Latency */}
+          <div className="border-border/60 bg-muted/20 rounded-lg border p-3.5">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground text-[11px] font-medium tracking-wider uppercase">
+                Average Platform Latency
+              </span>
+              <Clock className="text-muted-foreground/60 h-3.5 w-3.5" />
+            </div>
+            <div className="text-foreground mt-2 font-mono text-xl font-bold">
+              {isBandwidthLoading ? "..." : `${bwSummary.avgDurationMs}ms`}
+            </div>
+            <span className="text-muted-foreground mt-1 block font-mono text-[10px]">
+              {bwSummary.avgDurationMs < 100 ? "Optimal performance (<100ms)" : "Standard routing"}
+            </span>
+          </div>
+
+          {/* Success Rate */}
+          <div className="border-border/60 bg-muted/20 rounded-lg border p-3.5">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground text-[11px] font-medium tracking-wider uppercase">
+                Overall Success Rate
+              </span>
+              <Zap className="text-muted-foreground/60 h-3.5 w-3.5" />
+            </div>
+            <div className="mt-2 font-mono text-xl font-bold text-emerald-400">
+              {isBandwidthLoading ? "..." : `${bwSummary.successRate}%`}
+            </div>
+            <span className="text-muted-foreground mt-1 block font-mono text-[10px]">
+              HTTP 2xx/3xx edge delivery
+            </span>
+          </div>
+        </div>
+
+        {/* Top Bandwidth Subdomains Table */}
+        <div className="mt-5">
+          <div className="mb-2.5 flex items-center justify-between">
+            <h4 className="text-foreground text-xs font-semibold">
+              Top Bandwidth Consuming Endpoints ({bandwidthPeriod})
+            </h4>
+            <span className="text-muted-foreground text-[11px]">
+              Audit logs viewable • Request inspection private to tunnel owner
+            </span>
+          </div>
+
+          {isBandwidthLoading ? (
+            <div className="text-muted-foreground py-6 text-center font-mono text-xs">
+              Aggregating bandwidth telemetry...
+            </div>
+          ) : topSubdomains.length === 0 ? (
+            <div className="text-muted-foreground border-border/40 bg-muted/10 rounded-lg border py-6 text-center font-mono text-xs">
+              No bandwidth records in the selected timeframe ({bandwidthPeriod}).
+            </div>
+          ) : (
+            <div className="border-border/60 overflow-x-auto rounded-lg border">
+              <table className="w-full text-left font-mono text-xs">
+                <thead className="bg-muted/30 text-muted-foreground border-border/60 border-b text-[10px] uppercase">
+                  <tr>
+                    <th className="p-2.5">Subdomain Endpoint</th>
+                    <th className="p-2.5">Request Count</th>
+                    <th className="p-2.5">Ingress (Bytes In)</th>
+                    <th className="p-2.5">Egress (Bytes Out)</th>
+                    <th className="p-2.5">Total Bandwidth</th>
+                    <th className="p-2.5 text-right">Audit Stream</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-border/40 divide-y">
+                  {topSubdomains.map((sub) => (
+                    <tr key={sub.subdomain} className="hover:bg-muted/20 transition-colors">
+                      <td className="p-2.5">
+                        <span className="inline-flex items-center gap-1 font-bold text-cyan-400">
+                          <Globe className="h-3 w-3 opacity-70" />
+                          {sub.subdomain}.tunl.online
+                        </span>
+                      </td>
+                      <td className="text-foreground p-2.5">{sub.requestCount.toLocaleString()}</td>
+                      <td className="p-2.5 text-emerald-400">{formatBytes(sub.bytesIn)}</td>
+                      <td className="p-2.5 text-cyan-400">{formatBytes(sub.bytesOut)}</td>
+                      <td className="text-foreground p-2.5 font-semibold">
+                        {formatBytes(sub.totalBytes)}
+                      </td>
+                      <td className="p-2.5 text-right">
+                        <Link
+                          href={`/admin/audit?search=${encodeURIComponent(sub.subdomain)}`}
+                          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-[11px] font-semibold"
+                        >
+                          Audit Stream <ArrowUpRight className="h-3 w-3" />
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Main Grid: Live Sessions & Traffic Insights */}
       <div className="grid gap-6 lg:grid-cols-12">
@@ -32,7 +307,8 @@ export default function AdminOverviewPage() {
                   </div>
                 </div>
                 <span className="flex items-center gap-1.5 rounded-md border border-emerald-500/20 bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-400">
-                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" /> Live
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />{" "}
+                  {analytics?.totalActiveSessions ?? activeSessions.length} Live
                 </span>
               </div>
 
@@ -58,13 +334,32 @@ export default function AdminOverviewPage() {
                     {activeSessions.map((session) => (
                       <div
                         key={session.id}
-                        className="hover:bg-muted/20 flex items-center justify-between py-2.5 transition-colors"
+                        className="hover:bg-muted/20 group flex items-center justify-between py-2.5 transition-colors"
                       >
-                        <div className="space-y-0.5">
-                          <div className="flex items-center gap-2 font-mono">
-                            <span className="rounded border border-emerald-500/20 bg-emerald-500/15 px-1.5 py-0.5 text-[11px] font-bold text-emerald-400">
+                        <div className="space-y-0.5 font-mono">
+                          <div className="flex items-center gap-2">
+                            <span className="inline-flex items-center gap-1 rounded border border-emerald-500/20 bg-emerald-500/15 px-1.5 py-0.5 text-[11px] font-bold text-emerald-400">
+                              <Globe className="h-2.5 w-2.5" />
                               {session.subdomain}
                             </span>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleCopy(
+                                  `${session.subdomain}.tunl.online`,
+                                  "subdomain",
+                                  `sub-${session.id}`,
+                                )
+                              }
+                              className="text-muted-foreground/50 hover:text-foreground opacity-0 transition-opacity group-hover:opacity-100"
+                              title="Copy URL"
+                            >
+                              {copiedKey === `sub-${session.id}` ? (
+                                <Check className="h-3 w-3 text-emerald-400" />
+                              ) : (
+                                <Copy className="h-3 w-3" />
+                              )}
+                            </button>
                             <span className="text-muted-foreground text-xs">
                               {session.remoteIp}
                             </span>
@@ -74,14 +369,33 @@ export default function AdminOverviewPage() {
                           </p>
                         </div>
 
-                        <span className="border-border/60 bg-muted/50 text-muted-foreground rounded border px-2 py-0.5 font-mono text-[10px] font-medium">
-                          Active Session
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-muted-foreground font-mono text-[11px]">
+                            {formatShortRelativeTime(session.connectedAt)}
+                          </span>
+                          <Link
+                            href={`/admin/audit?search=${encodeURIComponent(session.subdomain)}`}
+                            className="text-muted-foreground hover:text-foreground border-border/60 bg-muted/40 inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[10px] font-medium transition-colors"
+                            title="Inspect Audit Logs for Subdomain"
+                          >
+                            Audit <ArrowUpRight className="h-2.5 w-2.5" />
+                          </Link>
+                        </div>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
+            </div>
+
+            <div className="border-border/60 mt-4 flex items-center justify-between border-t pt-3 text-xs">
+              <span className="text-muted-foreground">Historical Audit Trail</span>
+              <Link
+                href="/admin/audit"
+                className="text-foreground hover:text-primary inline-flex items-center gap-1 font-semibold transition-colors"
+              >
+                View Live Audit Stream <ArrowUpRight className="h-3.5 w-3.5" />
+              </Link>
             </div>
           </div>
         </div>
@@ -150,12 +464,12 @@ export default function AdminOverviewPage() {
             </div>
 
             <div className="border-border/60 mt-4 flex items-center justify-between border-t pt-4 text-xs">
-              <span className="text-muted-foreground">Historical Audit Events</span>
+              <span className="text-muted-foreground">Manage Directory</span>
               <Link
-                href="/admin/audit"
+                href="/admin/users"
                 className="text-foreground hover:text-primary inline-flex items-center gap-1 font-semibold transition-colors"
               >
-                View Audit Stream <ArrowUpRight className="h-3.5 w-3.5" />
+                Inspect Users <ArrowUpRight className="h-3.5 w-3.5" />
               </Link>
             </div>
           </div>

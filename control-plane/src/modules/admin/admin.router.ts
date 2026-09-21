@@ -7,11 +7,34 @@ import { requireAdmin } from "./admin.middleware.js";
 import {
   createAdminPlan,
   getAdminAnalytics,
+  getAdminAuditEvents,
+  getAdminBandwidthAnalytics,
   getAdminPlans,
   getAdminUsers,
   updateUserPlan,
   updateUserRole,
 } from "./admin.service.js";
+
+const bandwidthQuerySchema = z.object({
+  period: z.enum(["24h", "7d", "30d"]).default("24h"),
+});
+
+const auditQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  search: z.string().optional(),
+  eventType: z.enum(["all", "tunnel.connected", "tunnel.disconnected"]).default("all"),
+});
+
+const usersQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(15),
+  search: z.string().optional(),
+  role: z.enum(["all", "admin", "user"]).default("all"),
+  planId: z.string().optional(),
+  sortBy: z.enum(["createdAt", "email"]).default("createdAt"),
+  sortOrder: z.enum(["asc", "desc"]).default("desc"),
+});
 
 const updatePlanSchema = z.object({
   planId: z.uuid("Invalid planId format"),
@@ -45,11 +68,29 @@ export function createAdminRouter(db: Database): Router {
   );
 
   router.get(
+    "/analytics/bandwidth",
+    asyncRoute(async (req: Request, res: Response) => {
+      const { period } = bandwidthQuerySchema.parse(req.query);
+      const data = await getAdminBandwidthAnalytics(db, period);
+      res.json(data);
+    }),
+  );
+
+  router.get(
+    "/audit",
+    asyncRoute(async (req: Request, res: Response) => {
+      const query = auditQuerySchema.parse(req.query);
+      const data = await getAdminAuditEvents(db, query);
+      res.json(data);
+    }),
+  );
+
+  router.get(
     "/users",
     asyncRoute(async (req: Request, res: Response) => {
-      const search = typeof req.query.search === "string" ? req.query.search : undefined;
-      const usersList = await getAdminUsers(db, search);
-      res.json(usersList);
+      const query = usersQuerySchema.parse(req.query);
+      const data = await getAdminUsers(db, query);
+      res.json(data);
     }),
   );
 

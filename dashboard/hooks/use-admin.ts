@@ -1,7 +1,16 @@
 import { client } from "@/lib/api-client";
 import { authClient } from "@/lib/auth-client";
-import type { AdminAnalytics, AdminPlan, AdminUser } from "@/lib/types";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type {
+  AdminAnalytics,
+  AdminAuditQuery,
+  AdminBandwidthAnalytics,
+  AdminPlan,
+  AdminUsersQuery,
+  AdminUsersResponse,
+  PaginatedResponse,
+  TunnelEventItem,
+} from "@/lib/types";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 export function useAdminAnalytics() {
   return useQuery({
@@ -13,15 +22,73 @@ export function useAdminAnalytics() {
   });
 }
 
-export function useAdminUsers(search?: string) {
+export function useAdminBandwidthAnalytics(period: "24h" | "7d" | "30d" = "24h") {
   return useQuery({
-    queryKey: ["admin", "users", search],
+    queryKey: ["admin", "bandwidth", period],
     queryFn: async () => {
-      const { data } = await client.get<AdminUser[]>(
-        `/v1/admin/users${search ? `?search=${encodeURIComponent(search)}` : ""}`,
+      const { data } = await client.get<AdminBandwidthAnalytics>(
+        `/v1/admin/analytics/bandwidth?period=${period}`,
       );
       return data;
     },
+    placeholderData: keepPreviousData,
+    refetchInterval: 15_000,
+  });
+}
+
+export function useAdminAudit(
+  query: AdminAuditQuery = {},
+  options?: { refetchInterval?: number | false },
+) {
+  const { page = 1, pageSize = 20, search, eventType } = query;
+  return useQuery({
+    queryKey: ["admin", "audit", { page, pageSize, search, eventType }],
+    queryFn: async () => {
+      const searchParams = new URLSearchParams();
+      searchParams.set("page", String(page));
+      searchParams.set("pageSize", String(pageSize));
+      if (search && search.trim()) searchParams.set("search", search.trim());
+      if (eventType && eventType !== "all") searchParams.set("eventType", eventType);
+
+      const { data } = await client.get<PaginatedResponse<TunnelEventItem>>(
+        `/v1/admin/audit?${searchParams.toString()}`,
+      );
+      return data;
+    },
+    placeholderData: keepPreviousData,
+    refetchInterval: options?.refetchInterval ?? false,
+  });
+}
+
+export function useAdminUsers(query: AdminUsersQuery = {}) {
+  const {
+    page = 1,
+    pageSize = 15,
+    search,
+    role,
+    planId,
+    sortBy = "createdAt",
+    sortOrder = "desc",
+  } = query;
+
+  return useQuery({
+    queryKey: ["admin", "users", { page, pageSize, search, role, planId, sortBy, sortOrder }],
+    queryFn: async () => {
+      const searchParams = new URLSearchParams();
+      searchParams.set("page", String(page));
+      searchParams.set("pageSize", String(pageSize));
+      if (search && search.trim()) searchParams.set("search", search.trim());
+      if (role && role !== "all") searchParams.set("role", role);
+      if (planId && planId !== "all") searchParams.set("planId", planId);
+      if (sortBy) searchParams.set("sortBy", sortBy);
+      if (sortOrder) searchParams.set("sortOrder", sortOrder);
+
+      const { data } = await client.get<AdminUsersResponse>(
+        `/v1/admin/users?${searchParams.toString()}`,
+      );
+      return data;
+    },
+    placeholderData: keepPreviousData,
   });
 }
 

@@ -16,8 +16,14 @@ declare global {
 export const requireAuth = (_config?: Config): RequestHandler =>
   asyncRoute(async (req, _res, next) => {
     try {
+      const headers = fromNodeHeaders(req.headers);
+      const queryToken = typeof req.query.token === "string" ? req.query.token : undefined;
+      if (queryToken && !headers.get("authorization")) {
+        headers.set("authorization", `Bearer ${queryToken}`);
+      }
+
       const session = await auth.api.getSession({
-        headers: fromNodeHeaders(req.headers),
+        headers,
       });
       if (session?.user?.id) {
         req.userId = session.user.id;

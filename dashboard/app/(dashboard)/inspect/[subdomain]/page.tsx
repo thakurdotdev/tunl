@@ -5,6 +5,7 @@ import { useInspectorSSE, useRecentRequests, useReplayMutation } from "@/hooks/u
 import { ApiClientError } from "@/lib/api-client";
 import { type CapturedRequest } from "@/lib/types";
 import {
+  AlertCircle,
   ArrowLeft,
   BarChart3,
   Check,
@@ -18,6 +19,7 @@ import {
   Play,
   RotateCw,
   Search,
+  ShieldAlert,
   Terminal,
   Trash2,
   WrapText,
@@ -97,13 +99,21 @@ export default function InspectPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [methodFilter, setMethodFilter] = useState<MethodFilter>("ALL");
 
-  const { data: initialRequests } = useRecentRequests(subdomain);
+  const {
+    data: initialRequests,
+    error: requestsError,
+    isLoading: isRequestsLoading,
+    refetch: refetchRequests,
+  } = useRecentRequests(subdomain);
+
+  const isForbidden = (requestsError as ApiClientError)?.status === 403;
+
   const {
     requests: liveRequests,
     connected,
     clear,
     setRequests,
-  } = useInspectorSSE(subdomain, paused);
+  } = useInspectorSSE(subdomain, paused || isForbidden);
 
   const replayMutation = useReplayMutation(subdomain);
 
@@ -161,6 +171,103 @@ export default function InspectPage() {
     setCleared(true);
     setSelectedId(null);
   };
+
+  if (isForbidden) {
+    return (
+      <div className="border-destructive/30 bg-destructive/10 mx-auto my-16 max-w-lg rounded-xl border p-8 text-center font-sans">
+        <ShieldAlert className="text-destructive mx-auto mb-3 h-10 w-10" />
+        <h2 className="text-foreground text-base font-bold">403 — Private Tunnel Endpoint</h2>
+        <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
+          You do not have permission to inspect{" "}
+          <strong className="text-foreground font-mono">{subdomain}.tunl.online</strong>. Tunnel
+          traffic, request/response headers, and payloads are strictly private to the tunnel owner.
+          Even system administrators cannot inspect other users&apos; private tunnel data.
+        </p>
+        <div className="mt-6 flex items-center justify-center gap-3">
+          <Link href="/dashboard">
+            <Button variant="outline" size="sm" className="border-border text-xs">
+              Return to Dashboard
+            </Button>
+          </Link>
+          <Link href="/inspect">
+            <Button size="sm" className="text-xs">
+              Inspect My Tunnels
+            </Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Proper Loading State / Skeleton
+  if (isRequestsLoading) {
+    return (
+      <div className="flex h-[calc(100vh-56px-64px)] flex-col gap-0 font-sans">
+        {/* Top Bar Skeleton */}
+        <div className="border-border/60 bg-card flex flex-wrap items-center justify-between gap-2.5 border-b px-3 py-2.5 sm:px-4 sm:py-3">
+          <div className="flex items-center gap-3">
+            <div className="bg-muted h-7 w-7 animate-pulse rounded-md" />
+            <div className="bg-muted h-5 w-44 animate-pulse rounded" />
+            <div className="bg-muted h-5 w-20 animate-pulse rounded-md" />
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="bg-muted h-7 w-20 animate-pulse rounded-md" />
+            <div className="bg-muted h-7 w-24 animate-pulse rounded-md" />
+          </div>
+        </div>
+
+        {/* Split View Skeleton */}
+        <div className="flex flex-1 overflow-hidden">
+          {/* Left Request List Skeleton */}
+          <div className="border-border/60 w-full shrink-0 space-y-2.5 border-r p-3 sm:w-[360px] md:w-[420px]">
+            <div className="bg-muted mb-3 h-8 w-full animate-pulse rounded-md" />
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={`req-skel-${i}`}
+                className="border-border/40 bg-card space-y-2 rounded-md border p-2.5"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="bg-muted h-4 w-12 animate-pulse rounded" />
+                  <div className="bg-muted h-3.5 w-14 animate-pulse rounded" />
+                </div>
+                <div className="bg-muted h-3.5 w-48 animate-pulse rounded" />
+              </div>
+            ))}
+          </div>
+
+          {/* Right Inspector Panel Skeleton */}
+          <div className="hidden flex-1 flex-col gap-4 p-6 sm:flex">
+            <div className="bg-muted h-6 w-56 animate-pulse rounded" />
+            <div className="border-border/60 bg-card space-y-3 rounded-lg border p-5">
+              <div className="bg-muted h-4 w-32 animate-pulse rounded" />
+              <div className="bg-muted/40 h-20 w-full animate-pulse rounded-md" />
+            </div>
+            <div className="border-border/60 bg-card space-y-3 rounded-lg border p-5">
+              <div className="bg-muted h-4 w-40 animate-pulse rounded" />
+              <div className="bg-muted/40 h-32 w-full animate-pulse rounded-md" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // General Error State
+  if (requestsError && !isForbidden) {
+    return (
+      <div className="border-border/60 bg-card mx-auto my-12 max-w-md rounded-xl border p-6 text-center font-sans">
+        <AlertCircle className="text-destructive mx-auto mb-2.5 h-8 w-8" />
+        <h3 className="text-foreground text-sm font-bold">Failed to connect to inspector</h3>
+        <p className="text-muted-foreground mt-1 text-xs">
+          {(requestsError as any)?.message ||
+            "An unexpected error occurred while fetching tunnel requests."}
+        </p>
+        <Button size="sm" onClick={() => refetchRequests()} className="mt-4 text-xs">
+          Retry Connection
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-[calc(100vh-56px-64px)] flex-col gap-0 font-sans">

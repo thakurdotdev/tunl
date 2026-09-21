@@ -5,11 +5,11 @@ import { useSubdomainAnalytics } from "@/hooks/use-inspector";
 import { format } from "date-fns";
 import {
   Activity,
+  AlertCircle,
   ArrowDownLeft,
   ArrowLeft,
   ArrowUpRight,
   BarChart3,
-  Calendar,
   Clock,
   Database,
   RefreshCw,
@@ -39,8 +39,101 @@ export default function SubdomainAnalyticsPage() {
     data: analytics,
     isLoading,
     isFetching,
+    error: analyticsError,
     refetch,
   } = useSubdomainAnalytics(subdomain, period);
+
+  const isForbidden = (analyticsError as any)?.status === 403;
+
+  // 403 Security Screen (Enforced for all unauthorized users, including Admins)
+  if (isForbidden) {
+    return (
+      <div className="border-destructive/30 bg-destructive/10 mx-auto my-16 max-w-lg rounded-xl border p-8 text-center font-sans">
+        <ShieldAlert className="text-destructive mx-auto mb-3 h-10 w-10" />
+        <h2 className="text-foreground text-base font-bold">403 — Private Tunnel Endpoint</h2>
+        <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
+          You do not have permission to view analytics for{" "}
+          <strong className="text-foreground font-mono">{subdomain}.tunl.online</strong>. Tunnel
+          traffic, request volume, and bandwidth metrics are strictly private to the tunnel owner.
+          Even system administrators cannot inspect other users&apos; private tunnel analytics.
+        </p>
+        <div className="mt-6 flex items-center justify-center gap-3">
+          <Link href="/dashboard">
+            <Button variant="outline" size="sm" className="border-border text-xs">
+              Return to Dashboard
+            </Button>
+          </Link>
+          <Link href="/inspect">
+            <Button size="sm" className="text-xs">
+              Inspect My Tunnels
+            </Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Proper Loading State / Skeleton
+  if (isLoading) {
+    return (
+      <div className="flex flex-col gap-6 font-sans">
+        {/* Header Skeleton */}
+        <div className="border-border/60 flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="bg-muted h-8 w-8 animate-pulse rounded-md" />
+            <div className="space-y-1.5">
+              <div className="bg-muted h-5 w-48 animate-pulse rounded" />
+              <div className="bg-muted h-3.5 w-64 animate-pulse rounded" />
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="bg-muted h-8 w-28 animate-pulse rounded-lg" />
+            <div className="bg-muted h-8 w-8 animate-pulse rounded-md" />
+          </div>
+        </div>
+
+        {/* 4 KPI Cards Skeleton */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={`kpi-skel-${i}`}
+              className="border-border/60 bg-card rounded-lg border p-4 shadow-2xs"
+            >
+              <div className="flex items-center justify-between">
+                <div className="bg-muted h-3.5 w-24 animate-pulse rounded" />
+                <div className="bg-muted h-7 w-7 animate-pulse rounded-md" />
+              </div>
+              <div className="bg-muted mt-4 h-7 w-32 animate-pulse rounded" />
+              <div className="bg-muted mt-2 h-3.5 w-20 animate-pulse rounded" />
+            </div>
+          ))}
+        </div>
+
+        {/* Chart Skeleton */}
+        <div className="border-border/60 bg-card rounded-lg border p-5 shadow-2xs">
+          <div className="bg-muted h-4 w-40 animate-pulse rounded" />
+          <div className="bg-muted/40 mt-6 h-48 w-full animate-pulse rounded-md" />
+        </div>
+      </div>
+    );
+  }
+
+  // General Error State
+  if (analyticsError) {
+    return (
+      <div className="border-border/60 bg-card mx-auto my-12 max-w-md rounded-xl border p-6 text-center font-sans">
+        <AlertCircle className="text-destructive mx-auto mb-2.5 h-8 w-8" />
+        <h3 className="text-foreground text-sm font-bold">Failed to load tunnel analytics</h3>
+        <p className="text-muted-foreground mt-1 text-xs">
+          {(analyticsError as any)?.message ||
+            "An unexpected error occurred while fetching telemetry."}
+        </p>
+        <Button size="sm" onClick={() => refetch()} className="mt-4 text-xs">
+          Retry Query
+        </Button>
+      </div>
+    );
+  }
 
   const summary = analytics?.summary ?? {
     totalRequests: 0,
@@ -99,20 +192,20 @@ export default function SubdomainAnalyticsPage() {
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {p === "24h" ? "24 Hours" : p === "7d" ? "7 Days" : "30 Days"}
+                {p}
               </button>
             ))}
           </div>
 
           <Button
             variant="outline"
-            size="xs"
+            size="icon-xs"
             onClick={() => refetch()}
             disabled={isFetching}
-            className="gap-1.5 px-2.5 text-xs font-medium"
+            className="h-8 w-8"
+            title="Refresh Analytics"
           >
-            <RefreshCw className={`h-3 w-3 ${isFetching ? "text-primary animate-spin" : ""}`} />
-            Refresh
+            <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "text-primary animate-spin" : ""}`} />
           </Button>
         </div>
       </div>
@@ -198,7 +291,7 @@ export default function SubdomainAnalyticsPage() {
                 ? "Fast"
                 : summary.avgDurationMs < 300
                   ? "Moderate"
-                  : "High Latency"}
+                  : "Slow"}
             </span>
           </div>
         </div>
@@ -214,210 +307,84 @@ export default function SubdomainAnalyticsPage() {
             </div>
           </div>
           <div className="mt-3 flex items-baseline justify-between">
-            <span className="text-foreground font-mono text-2xl font-bold tracking-tight">
+            <span className="font-mono text-2xl font-bold tracking-tight text-emerald-400">
               {successRate.toFixed(1)}%
             </span>
-            <span className="text-muted-foreground font-mono text-[10px]">
-              {summary.totalErrors} error{summary.totalErrors === 1 ? "" : "s"}
+            <span className="text-muted-foreground text-xs font-medium">
+              {summary.errorRate}% error rate
             </span>
           </div>
         </div>
       </div>
 
-      {/* Traffic & Bandwidth Charts */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Request Volume Chart */}
-        <div className="border-border/60 bg-card flex flex-col overflow-hidden rounded-lg border shadow-2xs">
-          <div className="border-border/60 bg-muted/40 flex items-center justify-between border-b px-4 py-2.5">
-            <div className="flex items-center gap-2">
-              <BarChart3 className="text-primary h-3.5 w-3.5" />
-              <span className="text-foreground text-xs font-semibold">Request Volume</span>
-            </div>
-            <span className="text-muted-foreground font-mono text-[11px]">
-              {summary.totalRequests} total
+      {/* Traffic & Request Volume Chart */}
+      <div className="border-border/60 bg-card flex flex-col gap-4 rounded-lg border p-5 shadow-2xs">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-foreground text-sm font-semibold">Traffic & Request Volume</h3>
+            <p className="text-muted-foreground text-xs">
+              Hourly request frequency and error distribution over {period}
+            </p>
+          </div>
+          <div className="text-muted-foreground flex items-center gap-4 text-xs">
+            <span className="flex items-center gap-1.5">
+              <span className="bg-primary h-2 w-2 rounded-full" /> Total Requests
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-rose-500" /> Errors
             </span>
           </div>
-
-          <div className="p-4">
-            {timeSeries.length === 0 ? (
-              <div className="text-muted-foreground flex flex-col items-center justify-center py-12 text-center text-xs">
-                No request volume recorded for this time window.
-              </div>
-            ) : (
-              <div className="flex h-44 items-end gap-1.5 pt-4">
-                {timeSeries.map((bucket, idx) => {
-                  const heightPercent = Math.max(
-                    6,
-                    Math.round((bucket.requestCount / maxRequests) * 100),
-                  );
-                  return (
-                    <div
-                      key={idx}
-                      className="group relative flex h-full flex-1 flex-col items-center justify-end"
-                    >
-                      {/* Tooltip on hover */}
-                      <div className="bg-popover text-popover-foreground border-border/60 pointer-events-none absolute -top-12 z-20 hidden w-max rounded-md border px-2 py-1 text-[10px] shadow-md group-hover:block">
-                        <div className="font-semibold">{bucket.requestCount} requests</div>
-                        <div className="text-muted-foreground font-mono">
-                          {format(new Date(bucket.bucketStart), "MMM d, HH:mm")}
-                        </div>
-                      </div>
-
-                      {/* Bar */}
-                      <div
-                        style={{ height: `${heightPercent}%` }}
-                        className={`w-full rounded-t transition-all ${
-                          bucket.errorCount > 0
-                            ? "from-primary/70 bg-gradient-to-t to-rose-500"
-                            : "from-primary/50 to-primary hover:from-primary/70 hover:to-primary bg-gradient-to-t"
-                        }`}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-            <div className="border-border/40 text-muted-foreground flex items-center justify-between border-t pt-2 font-mono text-[10px]">
-              <span>
-                {period === "24h" ? "24 hours ago" : period === "7d" ? "7 days ago" : "30 days ago"}
-              </span>
-              <span>Now</span>
-            </div>
-          </div>
         </div>
 
-        {/* Bandwidth Volume Chart */}
-        <div className="border-border/60 bg-card flex flex-col overflow-hidden rounded-lg border shadow-2xs">
-          <div className="border-border/60 bg-muted/40 flex items-center justify-between border-b px-4 py-2.5">
-            <div className="flex items-center gap-2">
-              <Database className="h-3.5 w-3.5 text-blue-400" />
-              <span className="text-foreground text-xs font-semibold">Bandwidth Volume</span>
-            </div>
-            <span className="text-muted-foreground font-mono text-[11px]">
-              {formatBytes(totalBandwidth)}
-            </span>
-          </div>
-
-          <div className="p-4">
-            {timeSeries.length === 0 ? (
-              <div className="text-muted-foreground flex flex-col items-center justify-center py-12 text-center text-xs">
-                No bandwidth volume recorded for this time window.
-              </div>
-            ) : (
-              <div className="flex h-44 items-end gap-1.5 pt-4">
-                {timeSeries.map((bucket, idx) => {
-                  const bTotal = bucket.bytesIn + bucket.bytesOut;
-                  const heightPercent = Math.max(6, Math.round((bTotal / maxBandwidth) * 100));
-                  return (
-                    <div
-                      key={idx}
-                      className="group relative flex h-full flex-1 flex-col items-center justify-end"
-                    >
-                      {/* Tooltip */}
-                      <div className="bg-popover text-popover-foreground border-border/60 pointer-events-none absolute -top-12 z-20 hidden w-max rounded-md border px-2 py-1 text-[10px] shadow-md group-hover:block">
-                        <div className="font-semibold">{formatBytes(bTotal)}</div>
-                        <div className="text-muted-foreground font-mono">
-                          {format(new Date(bucket.bucketStart), "MMM d, HH:mm")}
-                        </div>
-                      </div>
-
-                      {/* Bar */}
-                      <div
-                        style={{ height: `${heightPercent}%` }}
-                        className="w-full rounded-t bg-gradient-to-t from-blue-600/50 to-cyan-400 transition-all hover:from-blue-600/70 hover:to-cyan-300"
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-            <div className="border-border/40 text-muted-foreground flex items-center justify-between border-t pt-2 font-mono text-[10px]">
-              <div className="flex items-center gap-3">
-                <span className="flex items-center gap-1">
-                  <span className="h-2 w-2 rounded-full bg-emerald-400" /> Inbound
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="h-2 w-2 rounded-full bg-cyan-400" /> Outbound
-                </span>
-              </div>
-              <span>Now</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Hourly / Time-Bucket Telemetry Table */}
-      <div className="border-border/60 bg-card flex flex-col overflow-hidden rounded-lg border shadow-2xs">
-        <div className="border-border/60 bg-muted/40 flex items-center justify-between border-b px-4 py-2.5 text-xs">
-          <span className="text-foreground text-xs font-semibold">Activity Breakdown</span>
-          <span className="text-muted-foreground font-mono text-[11px]">
-            {timeSeries.length} bucket{timeSeries.length === 1 ? "" : "s"}
-          </span>
-        </div>
-
-        {isLoading ? (
-          <div className="flex flex-col items-center justify-center gap-2 py-14">
-            <div className="border-primary/20 border-t-primary h-5 w-5 animate-spin rounded-full border-2" />
-            <p className="text-muted-foreground text-xs">Loading analytics data...</p>
-          </div>
-        ) : timeSeries.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-3 px-4 py-14 text-center">
-            <BarChart3 className="text-muted-foreground/30 h-8 w-8" />
-            <div className="flex flex-col gap-1">
-              <h3 className="text-sm font-semibold">No activity recorded yet</h3>
-              <p className="text-muted-foreground max-w-sm text-xs">
-                As requests flow through your tunnel, telemetry will be aggregated into hourly
-                buckets here.
-              </p>
-            </div>
+        {timeSeries.length === 0 ? (
+          <div className="text-muted-foreground border-border/40 bg-muted/10 flex h-48 flex-col items-center justify-center gap-2 rounded-md border border-dashed text-xs">
+            <BarChart3 className="text-muted-foreground/40 h-8 w-8" />
+            <span>No traffic recorded during this {period} timeframe</span>
           </div>
         ) : (
-          <div className="no-scrollbar overflow-x-auto">
-            <table className="w-full border-collapse text-left font-sans text-xs">
-              <thead>
-                <tr className="border-border/60 bg-muted/40 text-muted-foreground border-b text-[11px] font-semibold tracking-wider uppercase">
-                  <th className="p-4">Time Window</th>
-                  <th className="p-4 text-right">Requests</th>
-                  <th className="p-4 text-right">Bytes In</th>
-                  <th className="p-4 text-right">Bytes Out</th>
-                  <th className="p-4 text-right">Avg Latency</th>
-                  <th className="p-4 text-right">Error Rate</th>
-                </tr>
-              </thead>
-              <tbody className="divide-border/60 divide-y">
-                {[...timeSeries].reverse().map((bucket, idx) => (
-                  <tr key={idx} className="hover:bg-muted/20 transition-colors">
-                    <td className="text-foreground p-4 font-mono text-xs">
-                      <span className="flex items-center gap-1.5">
-                        <Calendar className="text-muted-foreground h-3.5 w-3.5" />
-                        {format(new Date(bucket.bucketStart), "yyyy-MM-dd HH:mm")} UTC
+          <div className="flex h-48 items-end gap-1 pt-6">
+            {timeSeries.map((bucket, idx) => {
+              const reqPct = Math.round((bucket.requestCount / maxRequests) * 100);
+              const errPct =
+                bucket.requestCount > 0
+                  ? Math.round((bucket.errorCount / bucket.requestCount) * reqPct)
+                  : 0;
+
+              return (
+                <div key={idx} className="group relative flex h-full flex-1 flex-col justify-end">
+                  <div
+                    style={{ height: `${Math.max(4, reqPct)}%` }}
+                    className="bg-primary/20 group-hover:bg-primary/40 relative w-full overflow-hidden rounded-xs transition-all"
+                  >
+                    {errPct > 0 && (
+                      <div
+                        style={{ height: `${errPct}%` }}
+                        className="absolute bottom-0 w-full bg-rose-500/80"
+                      />
+                    )}
+                  </div>
+
+                  {/* Tooltip on hover */}
+                  <div className="border-border/80 bg-card/95 pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 hidden -translate-x-1/2 flex-col gap-1 rounded-md border p-2 text-[10px] whitespace-nowrap shadow-lg group-hover:flex">
+                    <span className="text-muted-foreground font-mono">
+                      {format(new Date(bucket.bucketStart), "MMM d, HH:mm")}
+                    </span>
+                    <span className="text-foreground font-bold">
+                      {bucket.requestCount} request{bucket.requestCount === 1 ? "" : "s"}
+                    </span>
+                    {bucket.errorCount > 0 && (
+                      <span className="font-semibold text-rose-400">
+                        {bucket.errorCount} error{bucket.errorCount === 1 ? "" : "s"}
                       </span>
-                    </td>
-                    <td className="p-4 text-right font-mono font-semibold">
-                      {bucket.requestCount.toLocaleString()}
-                    </td>
-                    <td className="text-muted-foreground p-4 text-right font-mono text-[11px]">
-                      {formatBytes(bucket.bytesIn)}
-                    </td>
-                    <td className="text-muted-foreground p-4 text-right font-mono text-[11px]">
-                      {formatBytes(bucket.bytesOut)}
-                    </td>
-                    <td className="p-4 text-right font-mono text-xs">{bucket.avgDurationMs}ms</td>
-                    <td className="p-4 text-right">
-                      {bucket.errorCount > 0 ? (
-                        <span className="inline-block rounded border border-rose-500/20 bg-rose-500/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-rose-400">
-                          {bucket.errorRate}% ({bucket.errorCount})
-                        </span>
-                      ) : (
-                        <span className="inline-block rounded border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-emerald-400">
-                          0%
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    )}
+                    <span className="text-muted-foreground">
+                      In: {formatBytes(bucket.bytesIn)} | Out: {formatBytes(bucket.bytesOut)}
+                    </span>
+                    <span className="text-muted-foreground">Latency: {bucket.avgDurationMs}ms</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

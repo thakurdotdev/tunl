@@ -25,13 +25,50 @@ export type ActiveSessionItem = {
   userEmail: string | null;
 };
 
+export type PaginationMetadata = {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+};
+
+export type PaginatedResponse<T> = {
+  items: T[];
+  pagination: PaginationMetadata;
+};
+
 export type TunnelEventItem = {
   id: string;
+  eventId?: string;
   eventType: string;
   subdomain: string | null;
   remoteIp: string | null;
+  anonymousId?: string | null;
   occurredAt: string;
   userEmail: string | null;
+  properties?: Record<string, any>;
+};
+
+export type AdminAuditQuery = {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  eventType?: "all" | "tunnel.connected" | "tunnel.disconnected";
+};
+
+export type AdminUsersQuery = {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  role?: "all" | "admin" | "user";
+  planId?: string;
+  sortBy?: "createdAt" | "email";
+  sortOrder?: "asc" | "desc";
+};
+
+export type AdminUsersResponse = {
+  users: AdminUser[];
+  pagination: PaginationMetadata;
 };
 
 export type AdminAnalytics = {
@@ -56,9 +93,46 @@ export type AdminAnalytics = {
   recentEventsList: TunnelEventItem[];
 };
 
+export type BandwidthSummary = {
+  totalRequests: number;
+  totalBytesIn: number;
+  totalBytesOut: number;
+  totalBandwidth: number;
+  totalErrors: number;
+  avgDurationMs: number;
+  errorRate: number;
+  successRate: number;
+};
+
+export type BandwidthTimeSeriesBucket = {
+  bucketStart: string;
+  requestCount: number;
+  bytesIn: number;
+  bytesOut: number;
+  errorCount: number;
+  avgDurationMs: number;
+  errorRate: number;
+};
+
+export type TopBandwidthSubdomain = {
+  subdomain: string;
+  requestCount: number;
+  bytesIn: number;
+  bytesOut: number;
+  totalBytes: number;
+};
+
+export type AdminBandwidthAnalytics = {
+  period: "24h" | "7d" | "30d";
+  summary: BandwidthSummary;
+  timeSeries: BandwidthTimeSeriesBucket[];
+  topSubdomains: TopBandwidthSubdomain[];
+};
+
 export type AdminUser = {
   id: string;
   email: string;
+  name?: string | null;
   role: "user" | "admin";
   planName: string;
   planId: string;
