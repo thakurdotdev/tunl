@@ -1,8 +1,11 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAdminAudit } from "@/hooks/use-admin";
 import type { TunnelEventItem } from "@/lib/types";
 import { toast } from "sonner";
@@ -14,13 +17,11 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Copy,
-  ExternalLink,
   Globe,
   Info,
   MapPin,
   Pause,
   Play,
-  Radio,
   RefreshCw,
   Search,
   Terminal,
@@ -110,10 +111,7 @@ export default function AdminAuditPage() {
       {/* Page Header & Live Stream Bar */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-foreground text-base font-bold">Audit Event Stream</h2>
-          <p className="text-muted-foreground text-xs">
-            Real-time connection telemetry, disconnections, and authenticated session events.
-          </p>
+          <h2 className="text-xl font-semibold tracking-tight text-foreground">Audit stream</h2>
         </div>
 
         <div className="flex items-center gap-2">
@@ -181,56 +179,51 @@ export default function AdminAuditPage() {
 
           <div className="flex flex-wrap items-center gap-2.5">
             {/* Filter Tabs */}
-            <div className="border-border/50 bg-muted/40 flex items-center gap-1 rounded-lg border p-1 font-mono text-xs">
-              <button
-                type="button"
-                onClick={() => handleFilterChange("all")}
-                className={`rounded-md px-3 py-1 font-medium transition-all ${
-                  eventTypeFilter === "all"
-                    ? "bg-card text-foreground font-semibold shadow-2xs"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
+            <Tabs
+              value={eventTypeFilter}
+              onValueChange={(value) => {
+                if (value) handleFilterChange(value as typeof eventTypeFilter);
+              }}
+            >
+              <TabsList
+                aria-label="Filter audit events"
+                className="h-9 rounded-md border border-border/60 bg-muted/40 p-1"
               >
-                All Events
-              </button>
-              <button
-                type="button"
-                onClick={() => handleFilterChange("tunnel.connected")}
-                className={`rounded-md px-3 py-1 font-medium transition-all ${
-                  eventTypeFilter === "tunnel.connected"
-                    ? "bg-card font-semibold text-emerald-400 shadow-2xs"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Connected
-              </button>
-              <button
-                type="button"
-                onClick={() => handleFilterChange("tunnel.disconnected")}
-                className={`rounded-md px-3 py-1 font-medium transition-all ${
-                  eventTypeFilter === "tunnel.disconnected"
-                    ? "bg-card font-semibold text-rose-400 shadow-2xs"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Disconnected
-              </button>
-            </div>
+                <TabsTrigger value="all" className="rounded-sm px-2.5 text-xs">
+                  All events
+                </TabsTrigger>
+                <TabsTrigger value="tunnel.connected" className="rounded-sm px-2.5 text-xs">
+                  Connected
+                </TabsTrigger>
+                <TabsTrigger value="tunnel.disconnected" className="rounded-sm px-2.5 text-xs">
+                  Disconnected
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
 
             {/* Page Size Selector */}
-            <select
-              value={pageSize}
-              onChange={(e) => {
-                setPageSize(Number(e.target.value));
+            <Select
+              value={String(pageSize)}
+              onValueChange={(value) => {
+                if (!value) return;
+                setPageSize(Number(value));
                 setPage(1);
               }}
-              className="border-border/60 bg-background text-foreground focus:ring-primary/40 h-8.5 rounded-lg border px-2.5 font-mono text-xs"
             >
-              <option value={10}>10 / page</option>
-              <option value={20}>20 / page</option>
-              <option value={50}>50 / page</option>
-              <option value={100}>100 / page</option>
-            </select>
+              <SelectTrigger
+                aria-label="Events per page"
+                className="h-9 min-w-28 rounded-md border-border/60 bg-background text-xs"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {[10, 20, 50, 100].map((size) => (
+                  <SelectItem key={size} value={String(size)}>
+                    {size} / page
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -542,22 +535,22 @@ export default function AdminAuditPage() {
       </div>
 
       {/* Event Details Inspection Modal */}
-      {selectedEvent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-xs">
-          <div className="bg-card border-border/80 flex max-h-[85vh] w-full max-w-xl flex-col overflow-hidden rounded-xl border shadow-2xl">
+      <Dialog
+        open={Boolean(selectedEvent)}
+        onOpenChange={(open) => {
+          if (!open) setSelectedEvent(null);
+        }}
+      >
+        {selectedEvent && (
+          <DialogContent className="max-h-[85vh] w-full max-w-xl gap-0 overflow-hidden p-0" showCloseButton>
             {/* Modal Header */}
             <div className="border-border/60 bg-muted/20 flex items-center justify-between border-b p-4">
               <div className="flex items-center gap-2">
                 <Terminal className="text-primary h-4 w-4" />
-                <h3 className="text-foreground text-sm font-bold">Event Telemetry Inspector</h3>
+                <DialogHeader>
+                  <DialogTitle className="text-sm font-semibold">Event telemetry inspector</DialogTitle>
+                </DialogHeader>
               </div>
-              <button
-                type="button"
-                onClick={() => setSelectedEvent(null)}
-                className="text-muted-foreground hover:text-foreground rounded-md p-1"
-              >
-                <X className="h-4 w-4" />
-              </button>
             </div>
 
             {/* Modal Content */}
@@ -657,7 +650,7 @@ export default function AdminAuditPage() {
             </div>
 
             {/* Modal Footer */}
-            <div className="border-border/60 bg-muted/20 flex items-center justify-end border-t p-3">
+            <DialogFooter className="border-border/60 bg-muted/20 flex items-center justify-end border-t p-3">
               <Button
                 size="sm"
                 variant="outline"
@@ -666,10 +659,10 @@ export default function AdminAuditPage() {
               >
                 Close Inspector
               </Button>
-            </div>
-          </div>
-        </div>
-      )}
+            </DialogFooter>
+          </DialogContent>
+        )}
+      </Dialog>
     </div>
   );
 }

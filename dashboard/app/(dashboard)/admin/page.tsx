@@ -22,6 +22,7 @@ import {
   Zap,
 } from "lucide-react";
 import Link from "next/link";
+import { Card } from "@/components/ui/card";
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return "0 B";
@@ -88,10 +89,7 @@ export default function AdminOverviewPage() {
       {/* Top Header with Refresh */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-foreground text-sm font-semibold">Infrastructure Telemetry</h2>
-          <p className="text-muted-foreground text-xs">
-            Global tunnel connections, bandwidth transfer, latency, and identity claims overview.
-          </p>
+          <h2 className="text-xl font-semibold tracking-tight text-foreground">Infrastructure telemetry</h2>
         </div>
 
         <Button
@@ -114,7 +112,7 @@ export default function AdminOverviewPage() {
       <AdminAnalyticsCards analytics={analytics} isLoading={isLoading} />
 
       {/* Platform Bandwidth & Traffic Telemetry Section */}
-      <div className="bg-card border-border/60 rounded-xl border p-5 shadow-2xs">
+      <Card className="gap-5 rounded-xl p-5 shadow-none">
         <div className="border-border/60 flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-md border border-blue-500/20 bg-blue-500/10 text-blue-400">
@@ -296,7 +294,7 @@ export default function AdminOverviewPage() {
             </div>
           )}
         </div>
-      </div>
+      </Card>
 
       {/* Main Grid: Live Sessions & Traffic Insights */}
       <div className="grid gap-6 lg:grid-cols-12">

@@ -1,5 +1,6 @@
 import type { AdminAnalytics } from "@/lib/types";
 import { Activity, Globe, Radio, Users } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 
 interface AdminAnalyticsCardsProps {
   analytics: AdminAnalytics | undefined;
@@ -7,77 +8,60 @@ interface AdminAnalyticsCardsProps {
 }
 
 export function AdminAnalyticsCards({ analytics, isLoading }: AdminAnalyticsCardsProps) {
+  const metrics = [
+    {
+      label: "Registered users",
+      value: analytics?.totalUsers ?? 0,
+      description: "Accounts in database",
+      icon: Users,
+    },
+    {
+      label: "Live tunnels",
+      value: analytics?.totalActiveSessions ?? 0,
+      description: "Active SSH sessions",
+      icon: Radio,
+      highlight: true,
+    },
+    {
+      label: "Reserved subdomains",
+      value: analytics?.totalTunnels ?? 0,
+      description: "Custom domain aliases",
+      icon: Globe,
+    },
+    {
+      label: "Audit events",
+      value: analytics?.totalEvents ?? 0,
+      description: "Connection and disconnect logs",
+      icon: Activity,
+    },
+  ];
+
   return (
-    <div className="grid gap-4 font-sans sm:grid-cols-2 lg:grid-cols-4">
-      <div className="bg-card border-border/60 rounded-lg border p-4 shadow-2xs">
-        <div className="flex items-center justify-between">
-          <span className="text-muted-foreground text-xs font-medium">Total Registered Users</span>
-          <div className="bg-secondary text-foreground border-border/60 flex h-8 w-8 items-center justify-center rounded-md border">
-            <Users className="h-4 w-4" />
-          </div>
-        </div>
-        <div className="text-foreground mt-2 text-2xl font-bold tracking-tight">
-          {isLoading ? (
-            <span className="text-muted-foreground animate-pulse text-lg">...</span>
-          ) : (
-            (analytics?.totalUsers ?? 0)
-          )}
-        </div>
-        <span className="text-muted-foreground mt-1 block text-xs">Accounts in database</span>
-      </div>
-
-      <div className="bg-card border-border/60 rounded-lg border p-4 shadow-2xs">
-        <div className="flex items-center justify-between">
-          <span className="text-muted-foreground text-xs font-medium">Active Live Tunnels</span>
-          <div className="flex h-8 w-8 items-center justify-center rounded-md border border-emerald-500/20 bg-emerald-500/15 text-emerald-400">
-            <Radio className="h-4 w-4" />
-          </div>
-        </div>
-        <div className="mt-2 text-2xl font-bold tracking-tight text-emerald-400">
-          {isLoading ? (
-            <span className="text-muted-foreground animate-pulse text-lg">...</span>
-          ) : (
-            (analytics?.totalActiveSessions ?? 0)
-          )}
-        </div>
-        <span className="text-muted-foreground mt-1 block text-xs">Active SSH sessions</span>
-      </div>
-
-      <div className="bg-card border-border/60 rounded-lg border p-4 shadow-2xs">
-        <div className="flex items-center justify-between">
-          <span className="text-muted-foreground text-xs font-medium">Reserved Subdomains</span>
-          <div className="bg-secondary text-foreground border-border/60 flex h-8 w-8 items-center justify-center rounded-md border">
-            <Globe className="h-4 w-4" />
-          </div>
-        </div>
-        <div className="text-foreground mt-2 text-2xl font-bold tracking-tight">
-          {isLoading ? (
-            <span className="text-muted-foreground animate-pulse text-lg">...</span>
-          ) : (
-            (analytics?.totalTunnels ?? 0)
-          )}
-        </div>
-        <span className="text-muted-foreground mt-1 block text-xs">Custom domain aliases</span>
-      </div>
-
-      <div className="bg-card border-border/60 rounded-lg border p-4 shadow-2xs">
-        <div className="flex items-center justify-between">
-          <span className="text-muted-foreground text-xs font-medium">Total Audit Events</span>
-          <div className="bg-secondary text-foreground border-border/60 flex h-8 w-8 items-center justify-center rounded-md border">
-            <Activity className="h-4 w-4" />
-          </div>
-        </div>
-        <div className="text-foreground mt-2 text-2xl font-bold tracking-tight">
-          {isLoading ? (
-            <span className="text-muted-foreground animate-pulse text-lg">...</span>
-          ) : (
-            (analytics?.totalEvents ?? 0)
-          )}
-        </div>
-        <span className="text-muted-foreground mt-1 block text-xs">
-          Connection & disconnect logs
-        </span>
-      </div>
+    <div className="grid gap-4 font-sans sm:grid-cols-2 xl:grid-cols-4">
+      {metrics.map(({ label, value, description, icon: Icon, highlight }) => (
+        <Card key={label} className="gap-0 p-4 shadow-none">
+          <CardContent className="p-0">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm font-medium text-muted-foreground">{label}</span>
+              <span
+                className={`flex h-9 w-9 items-center justify-center rounded-md border ${
+                  highlight
+                    ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
+                    : "border-border/60 bg-secondary text-foreground"
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+              </span>
+            </div>
+            <div
+              className={`mt-3 text-2xl font-semibold tracking-tight ${highlight ? "text-emerald-400" : "text-foreground"}`}
+            >
+              {isLoading ? <span className="animate-pulse text-muted-foreground">—</span> : value.toLocaleString()}
+            </div>
+            <span className="mt-1 block text-xs text-muted-foreground">{description}</span>
+          </CardContent>
+        </Card>
+      ))}
     </div>
   );
 }

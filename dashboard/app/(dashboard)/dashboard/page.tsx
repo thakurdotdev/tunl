@@ -11,6 +11,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -32,31 +33,20 @@ import {
 import { ApiClientError } from "@/lib/api-client";
 import { type Tunnel } from "@/lib/types";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { format, formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import {
   BarChart3,
-  Calendar,
   CheckCircle2,
   Copy,
   ExternalLink,
   Eye,
   Globe,
-  KeyRound,
   Lock,
-  MoreHorizontal,
   ShieldCheck,
   Trash2,
   Unlock,
   Wifi,
-  WifiOff,
 } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import Link from "next/link";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -77,7 +67,7 @@ type TunnelFormValues = z.infer<typeof tunnelSchema>;
 export default function TunnelsPage() {
   const { user } = useAuth();
   const { data: tunnels = [], isLoading } = useTunnelsQuery();
-  const { data: activeSessions = [] } = useTunnelSessionsQuery();
+  const { data: activeSessions = [], isLoading: isSessionsLoading } = useTunnelSessionsQuery();
   const createMutation = useCreateTunnelMutation();
   const deleteMutation = useDeleteTunnelMutation();
 
@@ -201,14 +191,11 @@ export default function TunnelsPage() {
     : `ssh -t -R 80:localhost:${customPort || "3000"} -p 2222 tunl.online`;
 
   return (
-    <div className="flex flex-col gap-8 font-sans">
-      {/* Top Header & Stats Counter Bar */}
-      <div className="border-border/60 flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-foreground text-xl font-bold tracking-tight">Tunnels & Subdomains</h1>
-          <p className="text-muted-foreground text-xs">
-            Manage static endpoints, configure security passwords, and inspect live HTTP/SSH tunnel telemetry.
-          </p>
+    <div className="flex flex-col gap-6 font-sans">
+      {/* Page title and live status */}
+      <div className="border-border/60 flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-foreground text-2xl font-semibold tracking-tight">Tunnels & subdomains</h1>
         </div>
         <div className="flex flex-wrap items-center gap-2.5 text-xs">
           <div className="border-border/60 bg-card flex items-center gap-2 rounded-lg border px-3 py-1.5 shadow-2xs">
@@ -234,91 +221,81 @@ export default function TunnelsPage() {
       </div>
 
       {/* 2-Column Grid Top Section */}
-      <div className="grid gap-6 lg:grid-cols-12">
+      <div className="grid gap-5 lg:grid-cols-12">
         {/* Reservation Form Column */}
-        <div className="border-border/60 bg-card flex flex-col overflow-hidden rounded-xl border shadow-2xs lg:col-span-6">
+        <Card className="gap-0 rounded-xl p-0 shadow-none lg:col-span-6">
           <div className="border-border/60 bg-muted/30 flex items-center justify-between border-b px-4 py-3 text-xs">
             <div className="text-foreground flex items-center gap-2 font-medium">
               <Globe className="text-primary h-4 w-4" />
-              <span className="font-semibold">Reserve Subdomain</span>
+              <h2 className="font-semibold">Reserve subdomain</h2>
             </div>
-            <span className="text-muted-foreground bg-secondary/70 border-border/50 rounded-full border px-2 py-0.5 text-[10px] font-medium">
-              Static Alias
-            </span>
           </div>
 
-          <div className="flex flex-1 flex-col justify-between gap-5 p-5">
-            <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="subdomain" className="text-foreground text-xs font-medium">
-                  Subdomain Alias
-                </Label>
-                <div className="relative flex items-center">
-                  <Input
-                    id="subdomain"
-                    placeholder="my-app"
-                    disabled={createMutation.isPending || limitReached}
-                    className="border-border/60 bg-background h-9 rounded-lg pr-28 pl-3 font-mono text-xs focus:ring-primary/30"
-                    {...register("subdomain")}
-                    aria-invalid={!!errors.subdomain}
-                  />
-                  <span className="text-muted-foreground pointer-events-none absolute right-3 font-mono text-xs select-none">
-                    .tunl.online
-                  </span>
+          <div className="p-5">
+            {limitReached ? (
+              <div className="flex min-h-20 flex-col justify-center">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Endpoint limit reached</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Your plan allows {maxTunnels} reserved subdomain{maxTunnels === 1 ? "" : "s"}. Revoke one below to add another.
+                  </p>
                 </div>
-                {errors.subdomain && (
-                  <p className="text-destructive text-xs">{errors.subdomain.message}</p>
-                )}
               </div>
-              <Button
-                type="submit"
-                disabled={createMutation.isPending || limitReached}
-                size="sm"
-                className="h-8.5 shrink-0 self-start px-4 text-xs font-semibold shadow-xs"
-              >
-                {createMutation.isPending ? "Reserving..." : "Reserve Subdomain"}
-              </Button>
-            </form>
-            {limitReached && (
-              <p className="text-xs text-amber-400">
-                Reservation limit reached. Revoke an existing subdomain to reserve a new alias.
-              </p>
+            ) : (
+              <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <Label htmlFor="subdomain" className="text-foreground text-xs font-medium">
+                    Subdomain name
+                  </Label>
+                  <div className="relative flex items-center">
+                    <Input
+                      id="subdomain"
+                      placeholder="my-app"
+                      disabled={createMutation.isPending}
+                      className="h-10 rounded-md bg-background pr-28 pl-3 font-mono text-sm"
+                      {...register("subdomain")}
+                      aria-invalid={!!errors.subdomain}
+                    />
+                    <span className="text-muted-foreground pointer-events-none absolute right-3 font-mono text-xs select-none">
+                      .tunl.online
+                    </span>
+                  </div>
+                  {errors.subdomain && (
+                    <p className="text-destructive text-xs">{errors.subdomain.message}</p>
+                  )}
+                </div>
+                <Button
+                  type="submit"
+                  disabled={createMutation.isPending}
+                  size="lg"
+                  className="h-10 shrink-0 px-4 text-sm font-semibold"
+                >
+                  {createMutation.isPending ? "Reserving..." : "Reserve subdomain"}
+                </Button>
+              </form>
             )}
           </div>
-        </div>
+        </Card>
 
         {/* Quick Connect Command Preview Box */}
-        <div className="border-border/60 bg-card flex flex-col overflow-hidden rounded-xl border shadow-2xs lg:col-span-6">
+        <Card className="gap-0 rounded-xl p-0 shadow-none lg:col-span-6">
           <div className="border-border/60 bg-muted/30 flex items-center justify-between border-b px-4 py-3 text-xs">
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5">
-                <span className="inline-block h-2.5 w-2.5 rounded-full bg-rose-500/40" />
-                <span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-500/40" />
-                <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500/40" />
-              </div>
-              <span className="text-foreground ml-1 text-xs font-semibold">
-                Quick Connect Command
-              </span>
+              <span className="text-foreground text-xs font-semibold">Quick connect</span>
             </div>
-            <span className="text-muted-foreground bg-secondary/70 border-border/50 rounded-full border px-2 py-0.5 font-mono text-[10px] font-medium">
-              OpenSSH
-            </span>
           </div>
 
           <div className="flex flex-1 flex-col justify-between gap-4 p-5">
             <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
               <div className="flex flex-col gap-0.5">
-                <span className="text-foreground text-xs font-medium">Generated SSH Command</span>
-                <p className="text-muted-foreground text-xs">
-                  Forward local port {customPort || "3000"} to the internet:
-                </p>
+                <span className="text-muted-foreground text-xs">Forward a local port through your tunnel.</span>
               </div>
               <div className="flex w-24 shrink-0 flex-col gap-1">
                 <Label
                   htmlFor="quickPort"
                   className="text-muted-foreground text-[11px] font-medium"
                 >
-                  Local Port
+                  Local port
                 </Label>
                 <Input
                   id="quickPort"
@@ -361,14 +338,16 @@ export default function TunnelsPage() {
               </Button>
             </div>
           </div>
-        </div>
+        </Card>
       </div>
 
       {/* Reserved Tunnels List Window */}
-      <div className="border-border/60 bg-card flex flex-col overflow-hidden rounded-xl border shadow-2xs">
+      <Card className="gap-0 rounded-xl p-0 shadow-none">
         <div className="border-border/60 bg-muted/30 flex items-center justify-between border-b px-4 py-3 text-xs">
           <div className="flex items-center gap-2">
-            <span className="text-foreground text-xs font-semibold">Reserved Subdomains</span>
+            <div>
+              <h2 className="text-sm font-semibold text-foreground">Endpoints</h2>
+            </div>
             <span className="bg-secondary/80 text-secondary-foreground border-border/60 rounded-md border px-2 py-0.5 text-[11px] font-semibold">
               {tunnels.length}
             </span>
@@ -386,345 +365,123 @@ export default function TunnelsPage() {
             <Globe className="text-muted-foreground/30 h-8 w-8" />
             <div className="flex flex-col gap-1">
               <h3 className="text-sm font-semibold">No subdomains reserved</h3>
-              <p className="text-muted-foreground max-w-sm text-xs">
-                Reserve a subdomain above to create static tunnel endpoints.
-              </p>
+              <p className="text-muted-foreground max-w-sm text-xs">Reserve a subdomain to get started.</p>
             </div>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-left font-sans text-xs">
-              <thead>
-                <tr className="border-border/60 bg-muted/30 text-muted-foreground border-b text-[11px] font-semibold tracking-wider uppercase">
-                  <th className="p-4">Subdomain Endpoint</th>
-                  <th className="p-4">State</th>
-                  <th className="p-4">Security</th>
-                  <th className="p-4">SSH Command Snippet</th>
-                  <th className="p-4">Created Date</th>
-                  <th className="p-4 text-right w-12">
-                    <span className="sr-only">Actions</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-border/50 divide-y">
-                {tunnels.map((tunnel) => {
-                  const sshCommand = `ssh -R 80:localhost:3000 -p 2222 ${tunnel.subdomain}@tunl.online`;
-                  return (
-                    <tr key={tunnel.id} className="hover:bg-muted/20 transition-colors">
+          <div className="divide-y divide-border/60">
+            {tunnels.map((tunnel) => {
+              const sshCommand = `ssh -R 80:localhost:3000 -p 2222 ${tunnel.subdomain}@tunl.online`;
+              const tunnelSessions = activeSessions.filter((session) => session.subdomain === tunnel.subdomain);
+              const isActive = tunnelSessions.length > 0;
+              const oldestSession = tunnelSessions.length
+                ? tunnelSessions.reduce((oldest, session) =>
+                    new Date(session.connectedAt).getTime() < new Date(oldest.connectedAt).getTime()
+                      ? session
+                      : oldest,
+                  )
+                : null;
+              const connectionSummary = oldestSession
+                ? `${tunnelSessions.length} active session${tunnelSessions.length === 1 ? "" : "s"} · connected ${formatDistanceToNow(new Date(oldestSession.connectedAt), { addSuffix: true })}${oldestSession.remoteIp ? ` · IP ${oldestSession.remoteIp}` : ""}`
+                : isSessionsLoading
+                  ? "Checking connection…"
+                  : tunnel.lastConnectedAt
+                    ? `Last connected ${formatDistanceToNow(new Date(tunnel.lastConnectedAt), { addSuffix: true })}`
+                    : "Never connected";
+              return (
+                    <div key={tunnel.id} className="grid gap-4 px-4 py-4 xl:grid-cols-[minmax(220px,1fr)_minmax(260px,340px)_auto] xl:items-center xl:px-5">
                       {/* Subdomain */}
-                      <td className="p-4">
-                        <div className="flex items-center gap-1.5 font-mono text-xs font-semibold">
-                          <span className="text-foreground">{tunnel.subdomain}.tunl.online</span>
-                          <a
-                            href={`https://${tunnel.subdomain}.tunl.online`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-muted-foreground/40 hover:text-foreground transition-colors p-0.5"
-                            title={`Open https://${tunnel.subdomain}.tunl.online`}
-                          >
-                            <ExternalLink className="h-3 w-3" />
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <a href={`https://${tunnel.subdomain}.tunl.online`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 font-mono text-sm font-semibold text-foreground hover:text-primary">
+                            {tunnel.subdomain}.tunl.online
+                            <ExternalLink className="h-3.5 w-3.5" />
                           </a>
-                        </div>
-                      </td>
-
-                      {/* State */}
-                      <td className="p-4">
-                        <span
-                          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium ${
-                            tunnel.status === "active"
-                              ? "border border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
-                              : "border-border/50 bg-secondary/60 text-muted-foreground border"
-                          }`}
-                        >
                           <span
-                            className={`h-1.5 w-1.5 rounded-full ${
-                              tunnel.status === "active"
-                                ? "animate-pulse bg-emerald-400"
-                                : "bg-muted-foreground/60"
+                            className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium ${
+                              isActive
+                                ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
+                                : "border-border/50 bg-secondary/60 text-muted-foreground"
                             }`}
-                          />
-                          {tunnel.status === "active" ? "Live" : "Reserved"}
-                        </span>
-                      </td>
-
-                      {/* Security */}
-                      <td className="p-4">
-                        {tunnel.hasPassword || tunnel.password ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setPasswordTunnel(tunnel);
-                              setPasswordValue("");
-                            }}
-                            className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-[10px] font-medium text-amber-400 transition-colors hover:bg-amber-500/20"
-                            title="Click to manage password"
                           >
-                            <Lock className="h-3 w-3" />
-                            Protected
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setPasswordTunnel(tunnel);
-                              setPasswordValue("");
-                            }}
-                            className="text-muted-foreground/50 hover:text-foreground inline-flex cursor-pointer items-center gap-1 text-[11px] transition-colors"
-                            title="Click to set password"
-                          >
-                            <Unlock className="h-3 w-3 text-muted-foreground/40" />
-                            Public
-                          </button>
-                        )}
-                      </td>
+                            <span className={`h-1.5 w-1.5 rounded-full ${isActive ? "animate-pulse bg-emerald-400" : "bg-muted-foreground/60"}`} />
+                            {isActive ? "Live" : "Reserved"}
+                          </span>
+                        </div>
+                        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                          {tunnel.hasPassword || tunnel.password ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPasswordTunnel(tunnel);
+                                setPasswordValue("");
+                              }}
+                              className="inline-flex cursor-pointer items-center gap-1.5 text-amber-400 transition-colors hover:text-amber-300"
+                              title="Click to manage password"
+                            >
+                              <Lock className="h-3 w-3" />
+                              Protected
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPasswordTunnel(tunnel);
+                                setPasswordValue("");
+                              }}
+                              className="text-muted-foreground inline-flex cursor-pointer items-center gap-1 transition-colors hover:text-foreground"
+                              title="Click to set password"
+                            >
+                              <Unlock className="h-3 w-3" />
+                              Public
+                            </button>
+                          )}
+                          <span className={isActive ? "text-emerald-400" : ""}>{connectionSummary}</span>
+                        </div>
+                      </div>
 
                       {/* SSH Snippet */}
-                      <td className="p-4 font-mono">
-                        <div className="flex max-w-[280px] items-center gap-2">
-                          <code className="bg-muted/50 border-border/60 block flex-1 truncate rounded-md border px-2.5 py-1 text-[11px] font-medium text-emerald-400 select-all">
-                            {sshCommand}
-                          </code>
-                          <Button
-                            variant="outline"
-                            size="icon-xs"
-                            onClick={() => copyToClipboard(sshCommand, tunnel.id)}
-                            className="border-border/60 h-7 w-7 shrink-0"
-                            title="Copy SSH Command"
-                          >
-                            {copiedSnippetId === tunnel.id ? (
-                              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-                            ) : (
-                              <Copy className="h-3.5 w-3.5" />
-                            )}
-                          </Button>
-                        </div>
-                      </td>
-
-                      {/* Created Date */}
-                      <td className="text-muted-foreground p-4 font-sans text-xs whitespace-nowrap">
-                        <span className="flex items-center gap-1.5">
-                          <Calendar className="h-3.5 w-3.5 opacity-70" />
-                          {format(new Date(tunnel.createdAt), "MMM d, yyyy")}
-                        </span>
-                      </td>
-
-                      {/* Actions Menu */}
-                      <td className="p-4 text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger
-                              render={
-                                <Button
-                                  variant="ghost"
-                                  size="icon-xs"
-                                  className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
-                                  aria-label="Subdomain actions"
-                                >
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              }
-                            />
-                            <DropdownMenuContent align="end" className="w-52 font-sans text-xs">
-                              <Link href={`/inspect/${tunnel.subdomain}/analytics`}>
-                                <DropdownMenuItem className="cursor-pointer gap-2 py-2">
-                                  <BarChart3 className="text-primary h-4 w-4" />
-                                  <div className="flex flex-col">
-                                    <span className="font-medium text-foreground">Analytics</span>
-                                    <span className="text-muted-foreground text-[10px]">
-                                      Traffic & bandwidth telemetry
-                                    </span>
-                                  </div>
-                                </DropdownMenuItem>
-                              </Link>
-
-                              <Link href={`/inspect/${tunnel.subdomain}`}>
-                                <DropdownMenuItem className="cursor-pointer gap-2 py-2">
-                                  <Eye className="text-muted-foreground h-4 w-4" />
-                                  <div className="flex flex-col">
-                                    <span className="font-medium text-foreground">Inspect Traffic</span>
-                                    <span className="text-muted-foreground text-[10px]">
-                                      Real-time HTTP requests
-                                    </span>
-                                  </div>
-                                </DropdownMenuItem>
-                              </Link>
-
-                              <a
-                                href={`https://${tunnel.subdomain}.tunl.online`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                <DropdownMenuItem className="cursor-pointer gap-2 py-1.5">
-                                  <ExternalLink className="text-muted-foreground h-4 w-4" />
-                                  <span>Open in Browser</span>
-                                </DropdownMenuItem>
-                              </a>
-
-                              <DropdownMenuItem
-                                className="cursor-pointer gap-2 py-1.5"
-                                onClick={() => copyToClipboard(sshCommand, tunnel.id)}
-                              >
-                                <Copy className="text-muted-foreground h-4 w-4" />
-                                <span>Copy SSH Command</span>
-                              </DropdownMenuItem>
-
-                              <DropdownMenuSeparator />
-
-                              <DropdownMenuItem
-                                className="cursor-pointer gap-2 py-1.5"
-                                onClick={() => {
-                                  setPasswordTunnel(tunnel);
-                                  setPasswordValue("");
-                                }}
-                              >
-                                {tunnel.hasPassword || tunnel.password ? (
-                                  <>
-                                    <KeyRound className="text-amber-400 h-4 w-4" />
-                                    <span>Change Password</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Lock className="text-muted-foreground h-4 w-4" />
-                                    <span>Set Password Protection</span>
-                                  </>
-                                )}
-                              </DropdownMenuItem>
-
-                              <DropdownMenuSeparator />
-
-                              <DropdownMenuItem
-                                variant="destructive"
-                                className="cursor-pointer gap-2 py-1.5"
-                                onClick={() => setDeleteTunnelId(tunnel.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                                <span>Revoke Subdomain</span>
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* Active Sessions Monitor */}
-      <div className="border-border/60 bg-card flex flex-col overflow-hidden rounded-xl border shadow-2xs">
-        <div className="border-border/60 bg-muted/30 flex items-center justify-between border-b px-4 py-3 text-xs">
-          <div className="flex items-center gap-2">
-            <span className="text-foreground text-xs font-semibold">Active Sessions Monitor</span>
-          </div>
-          <span
-            className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-medium ${
-              activeSessions.length > 0
-                ? "border border-emerald-500/20 bg-emerald-500/15 text-emerald-400"
-                : "border-border/60 bg-muted text-muted-foreground border"
-            }`}
-          >
-            <span
-              className={`h-1.5 w-1.5 rounded-full ${
-                activeSessions.length > 0 ? "animate-pulse bg-emerald-400" : "bg-muted-foreground"
-              }`}
-            />
-            {activeSessions.length} Live
-          </span>
-        </div>
-
-        {activeSessions.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-3 px-4 py-12 text-center">
-            <WifiOff className="text-muted-foreground/30 h-8 w-8" />
-            <p className="text-muted-foreground text-xs">
-              No active SSH tunnel connections established.
-            </p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-left font-sans text-xs">
-              <thead>
-                <tr className="border-border/60 bg-muted/30 text-muted-foreground border-b text-[11px] font-semibold tracking-wider uppercase">
-                  <th className="p-4">Subdomain</th>
-                  <th className="p-4">Remote IP</th>
-                  <th className="p-4">Type</th>
-                  <th className="p-4">Connected Time</th>
-                  <th className="p-4 text-right w-12">
-                    <span className="sr-only">Actions</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-border/50 divide-y">
-                {activeSessions.map((session) => (
-                  <tr key={session.id} className="hover:bg-muted/20 transition-colors">
-                    <td className="p-4 font-mono font-semibold text-foreground">
-                      <span className="flex items-center gap-2">
-                        <Wifi className="h-3.5 w-3.5 text-emerald-400" />
-                        {session.subdomain}.tunl.online
-                      </span>
-                    </td>
-                    <td className="text-muted-foreground p-4 font-mono text-[11px]">
-                      {session.remoteIp || "127.0.0.1"}
-                    </td>
-                    <td className="p-4">
-                      <span className="bg-secondary/70 text-secondary-foreground border-border/50 rounded-full border px-2.5 py-0.5 text-[10px] font-medium uppercase">
-                        {session.tunnelId ? "Static" : "Ephemeral"}
-                      </span>
-                    </td>
-                    <td className="text-muted-foreground p-4 font-sans text-xs">
-                      {formatDistanceToNow(new Date(session.connectedAt), { addSuffix: true })}
-                    </td>
-                    <td className="p-4 text-right whitespace-nowrap">
-                      <div className="flex items-center justify-end">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger
-                            render={
-                              <Button
-                                variant="ghost"
-                                size="icon-xs"
-                                className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
-                                aria-label="Session actions"
-                              >
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            }
-                          />
-                          <DropdownMenuContent align="end" className="w-48 font-sans text-xs">
-                            <Link href={`/inspect/${session.subdomain}/analytics`}>
-                              <DropdownMenuItem className="cursor-pointer gap-2 py-1.5">
-                                <BarChart3 className="text-primary h-4 w-4" />
-                                <span>View Analytics</span>
-                              </DropdownMenuItem>
-                            </Link>
-                            <Link href={`/inspect/${session.subdomain}`}>
-                              <DropdownMenuItem className="cursor-pointer gap-2 py-1.5">
-                                <Eye className="text-muted-foreground h-4 w-4" />
-                                <span>Inspect Traffic</span>
-                              </DropdownMenuItem>
-                            </Link>
-                            <a
-                              href={`https://${session.subdomain}.tunl.online`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              <DropdownMenuItem className="cursor-pointer gap-2 py-1.5">
-                                <ExternalLink className="text-muted-foreground h-4 w-4" />
-                                <span>Open in Browser</span>
-                              </DropdownMenuItem>
-                            </a>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                      <div className="flex min-w-0 items-center gap-2 rounded-md border border-border/60 bg-background px-3 py-2 font-mono">
+                        <code className="text-muted-foreground min-w-0 flex-1 truncate text-xs select-all">
+                          {sshCommand}
+                        </code>
+                        <Button
+                          variant="outline"
+                          size="icon-xs"
+                          onClick={() => copyToClipboard(sshCommand, tunnel.id)}
+                          className="h-7 w-7 shrink-0"
+                          aria-label="Copy SSH command"
+                        >
+                          {copiedSnippetId === tunnel.id ? (
+                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                          ) : (
+                            <Copy className="h-3.5 w-3.5" />
+                          )}
+                        </Button>
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+
+                      <div className="flex flex-wrap items-center justify-end gap-1.5 xl:pl-1">
+                        <Button nativeButton={false} render={<Link href={`/inspect/${tunnel.subdomain}/analytics`} />} size="sm" variant="outline" className="whitespace-nowrap">
+                          <BarChart3 className="h-3.5 w-3.5" /> Analytics
+                        </Button>
+                        <Button nativeButton={false} render={<Link href={`/inspect/${tunnel.subdomain}`} />} size="sm" className="whitespace-nowrap">
+                          <Eye className="h-3.5 w-3.5" /> Inspect
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="whitespace-nowrap text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          onClick={() => setDeleteTunnelId(tunnel.id)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" /> Revoke
+                        </Button>
+                      </div>
+                    </div>
+                  );
+            })}
           </div>
         )}
-      </div>
+      </Card>
 
       {/* Delete Modal */}
       <AlertDialog open={!!deleteTunnelId}>

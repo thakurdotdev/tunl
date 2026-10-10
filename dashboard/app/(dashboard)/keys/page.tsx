@@ -11,9 +11,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   useCreateSshKeyMutation,
   useDeleteSshKeyMutation,
@@ -136,243 +139,152 @@ export default function SshKeysPage() {
   };
 
   return (
-    <div className="flex flex-col gap-8 font-sans">
-      {/* Page Header */}
-      <div className="border-border/60 flex flex-col gap-1 border-b pb-5">
-        <h1 className="text-foreground text-xl font-bold tracking-tight">SSH Public Keys</h1>
-        <p className="text-muted-foreground text-xs">
-          Register OpenSSH public keys to authorize client connections and reserved subdomains.
-        </p>
+    <div className="space-y-6 font-sans">
+      <div className="border-b border-border/60 pb-5">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">SSH public keys</h1>
       </div>
 
-      {/* 2-Column Split Grid Layout */}
-      <div className="grid gap-6 lg:grid-cols-12">
-        {/* Left Column: Register Key & Guide Box */}
-        <div className="border-border/60 bg-card flex flex-col overflow-hidden rounded-lg border shadow-2xs lg:col-span-5">
-          <div className="border-border/60 bg-muted/40 flex items-center justify-between border-b px-4 py-2.5 font-sans text-xs">
-            <div className="text-foreground flex items-center gap-2 font-medium">
-              <Key className="text-primary h-4 w-4" />
-              <span>Register SSH Public Key</span>
+      <div className="grid items-stretch gap-5 lg:grid-cols-2">
+        <Card className="flex h-full flex-col gap-0 p-0 shadow-none">
+          <CardHeader className="flex min-h-[74px] flex-row flex-wrap items-center justify-between gap-3 border-b border-border/60 px-5 py-4">
+            <div className="min-w-0">
+              <CardTitle className="text-sm">Generate or copy a key</CardTitle>
             </div>
-            <div className="bg-background border-border/60 flex rounded-md border p-0.5 text-[11px]">
-              <button
-                type="button"
-                onClick={() => setActiveOs("mac")}
-                className={`rounded-xs px-2 py-0.5 font-medium transition-colors ${
-                  activeOs === "mac"
-                    ? "bg-secondary text-foreground font-semibold"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                macOS
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveOs("linux")}
-                className={`rounded-xs px-2 py-0.5 font-medium transition-colors ${
-                  activeOs === "linux"
-                    ? "bg-secondary text-foreground font-semibold"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Linux
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveOs("windows")}
-                className={`rounded-xs px-2 py-0.5 font-medium transition-colors ${
-                  activeOs === "windows"
-                    ? "bg-secondary text-foreground font-semibold"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Windows
-              </button>
+            <Tabs
+              value={activeOs}
+              onValueChange={(value) => {
+                if (value) setActiveOs(value as typeof activeOs);
+              }}
+            >
+              <TabsList aria-label="Select operating system" className="h-8 rounded-md p-0.5">
+                <TabsTrigger value="mac" className="rounded-sm px-2 text-[11px]">macOS</TabsTrigger>
+                <TabsTrigger value="linux" className="rounded-sm px-2 text-[11px]">Linux</TabsTrigger>
+                <TabsTrigger value="windows" className="rounded-sm px-2 text-[11px]">Windows</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </CardHeader>
+          <CardContent className="flex-1 space-y-4 p-5">
+            <div className="flex gap-2.5 border-l-2 border-amber-500/60 py-1 pl-3">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                If <code className="font-mono text-foreground">~/.ssh/id_ed25519.pub</code> exists, skip generation to avoid overwriting a key you already use.
+              </p>
             </div>
-          </div>
-
-          <div className="flex flex-col gap-6 p-5">
-            {/* Guide Section */}
-            <div className="flex flex-col gap-3">
-              <span className="text-muted-foreground text-[11px] font-semibold tracking-wider uppercase">
-                1. Generate & Copy Key ({activeOs.toUpperCase()})
-              </span>
-
-              <div className="border-border/60 bg-muted/30 flex flex-col gap-1 rounded-md border p-3 text-xs">
-                <div className="flex items-center gap-1.5 text-xs font-medium text-amber-400">
-                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                  <span>Existing Key Detected?</span>
-                </div>
-                <p className="text-muted-foreground text-xs leading-relaxed">
-                  If <code className="text-foreground font-mono">~/.ssh/id_ed25519.pub</code>{" "}
-                  exists, skip generation to avoid overwriting keys used elsewhere.
-                </p>
-              </div>
-
-              <div className="bg-muted/60 text-foreground border-border/60 flex items-center justify-between gap-2 rounded-md border p-2.5 font-mono text-xs select-all">
-                <code className="truncate text-emerald-400">$ {osCommands[activeOs].generate}</code>
-                <Button
-                  variant="outline"
-                  size="icon-xs"
-                  onClick={() => copyCommand(osCommands[activeOs].generate, "Generate")}
-                  className="shrink-0"
-                >
-                  <Copy className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-              <div className="bg-muted/60 text-foreground border-border/60 flex items-center justify-between gap-2 rounded-md border p-2.5 font-mono text-xs select-all">
-                <code className="truncate text-emerald-400">$ {osCommands[activeOs].copy}</code>
-                <Button
-                  variant="outline"
-                  size="icon-xs"
-                  onClick={() => copyCommand(osCommands[activeOs].copy, "Copy")}
-                  className="shrink-0"
-                >
-                  <Copy className="h-3.5 w-3.5" />
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">Generate an Ed25519 key</p>
+              <div className="flex min-w-0 items-center gap-2 rounded-lg border border-border/60 bg-background p-2.5">
+                <code className="min-w-0 flex-1 truncate font-mono text-xs text-primary">$ {osCommands[activeOs].generate}</code>
+                <Button variant="outline" size="icon-sm" aria-label="Copy key generation command" onClick={() => copyCommand(osCommands[activeOs].generate, "Generate")}>
+                  <Copy />
                 </Button>
               </div>
             </div>
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">Print and copy the public key</p>
+              <div className="flex min-w-0 items-center gap-2 rounded-lg border border-border/60 bg-background p-2.5">
+                <code className="min-w-0 flex-1 truncate font-mono text-xs text-primary">$ {osCommands[activeOs].copy}</code>
+                <Button variant="outline" size="icon-sm" aria-label="Copy public key command" onClick={() => copyCommand(osCommands[activeOs].copy, "Copy")}>
+                  <Copy />
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-            <div className="border-border/60 border-t" />
-
-            {/* Registration Form */}
+        <Card className="flex h-full flex-col gap-0 p-0 shadow-none">
+          <CardHeader className="flex min-h-[74px] flex-row items-center border-b border-border/60 px-5 py-4">
+            <CardTitle className="text-sm">Add a public key</CardTitle>
+          </CardHeader>
+          <CardContent className="flex-1 p-5">
             <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-              <span className="text-muted-foreground text-[11px] font-semibold tracking-wider uppercase">
-                2. Paste Public Key
-              </span>
-
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="label" className="text-foreground text-xs font-medium">
-                  Key Label / Identifier
-                </Label>
+                <Label htmlFor="label">Key label</Label>
                 <Input
                   id="label"
-                  placeholder="e.g. dev-laptop-macbook"
+                  placeholder="e.g. work-laptop"
                   disabled={createMutation.isPending}
-                  className="border-border/60 bg-background h-9 rounded-md font-sans text-xs"
                   {...register("label")}
                   aria-invalid={!!errors.label}
                 />
-                {errors.label && <p className="text-destructive text-xs">{errors.label.message}</p>}
+                {errors.label && <p className="text-xs text-destructive">{errors.label.message}</p>}
               </div>
-
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="publicKey" className="text-foreground text-xs font-medium">
-                  Public Key String (id_ed25519.pub)
-                </Label>
+                <Label htmlFor="publicKey">Public key</Label>
                 <Textarea
                   id="publicKey"
                   rows={4}
                   placeholder="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... user@machine"
                   disabled={createMutation.isPending}
-                  className="border-border/60 bg-background resize-none rounded-md font-mono text-xs"
+                  className="resize-y font-mono text-xs"
                   {...register("publicKey")}
                   aria-invalid={!!errors.publicKey}
                 />
-                {errors.publicKey && (
-                  <p className="text-destructive text-xs">{errors.publicKey.message}</p>
-                )}
+                {errors.publicKey && <p className="text-xs text-destructive">{errors.publicKey.message}</p>}
               </div>
-
-              <Button
-                type="submit"
-                disabled={createMutation.isPending}
-                size="sm"
-                className="h-8 gap-1.5 self-start px-4 text-xs font-semibold"
-              >
-                {createMutation.isPending ? "Registering..." : "Add Public Key"}
+              <Button type="submit" disabled={createMutation.isPending} className="self-start">
+                <Key className="h-4 w-4" />
+                {createMutation.isPending ? "Registering key..." : "Authorize key"}
               </Button>
             </form>
-          </div>
-        </div>
-
-        {/* Right Column: Registered Keys List */}
-        <div className="border-border/60 bg-card flex flex-col overflow-hidden rounded-lg border shadow-2xs lg:col-span-7">
-          <div className="border-border/60 bg-muted/40 flex items-center justify-between border-b px-4 py-2.5 font-sans text-xs">
-            <div className="flex items-center gap-2">
-              <span className="text-foreground text-xs font-semibold">Authorized SSH Keys</span>
-              <span className="bg-secondary text-secondary-foreground border-border/60 rounded-md border px-2 py-0.5 text-[11px] font-semibold">
-                {keys.length}
-              </span>
-            </div>
-            <span className="text-[11px] font-semibold text-emerald-400">Authorized</span>
-          </div>
-
-          {isLoading ? (
-            <div className="flex flex-col items-center justify-center gap-2 py-16">
-              <div className="border-primary/20 border-t-primary h-5 w-5 animate-spin rounded-full border-2" />
-              <p className="text-muted-foreground text-xs">Reading authorized keys...</p>
-            </div>
-          ) : keys.length === 0 ? (
-            <div className="flex flex-1 flex-col items-center justify-center gap-3 px-4 py-16 text-center">
-              <Key className="text-muted-foreground/30 h-8 w-8" />
-              <div className="flex flex-col gap-1">
-                <h3 className="text-sm font-semibold">No authorized keys found</h3>
-                <p className="text-muted-foreground max-w-xs text-xs">
-                  Register your SSH public key to authenticate client tunnels.
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="no-scrollbar flex-1 overflow-x-auto">
-              <table className="w-full border-collapse text-left font-sans text-xs">
-                <thead>
-                  <tr className="border-border/60 bg-muted/40 text-muted-foreground border-b text-[11px] font-semibold tracking-wider uppercase">
-                    <th className="w-[160px] p-4">Key Label</th>
-                    <th className="p-4">SHA256 Fingerprint</th>
-                    <th className="w-[130px] p-4">Added Date</th>
-                    <th className="w-[70px] p-4 text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-border/60 divide-y">
-                  {keys.map((key) => (
-                    <tr key={key.id} className="hover:bg-muted/20 transition-colors">
-                      <td className="text-foreground p-4 font-semibold">
-                        <div className="flex items-center gap-2">
-                          <span className="bg-secondary text-secondary-foreground border-border/60 rounded border px-1.5 py-0.5 font-mono text-[10px]">
-                            ED25519
-                          </span>
-                          <span className="max-w-[100px] truncate">{key.label || "Untitled"}</span>
-                        </div>
-                      </td>
-                      <td className="p-4 font-mono">
-                        <div className="flex max-w-[210px] items-center gap-1.5">
-                          <code className="bg-muted/60 text-muted-foreground border-border/60 block flex-1 truncate rounded border px-2 py-0.5 text-[11px] select-all">
-                            {key.fingerprint}
-                          </code>
-                          <Button
-                            variant="outline"
-                            size="icon-xs"
-                            onClick={() => copyCommand(key.fingerprint, "Fingerprint")}
-                            className="shrink-0"
-                          >
-                            <Copy className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </td>
-                      <td className="text-muted-foreground p-4 text-[11px] whitespace-nowrap">
-                        <span className="flex items-center gap-1.5">
-                          <Calendar className="h-3.5 w-3.5" />
-                          {format(new Date(key.createdAt), "MMM d, yyyy")}
-                        </span>
-                      </td>
-                      <td className="p-4 text-right">
-                        <Button
-                          variant="destructive"
-                          size="icon-xs"
-                          onClick={() => setDeleteKeyId(key.id)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+          </CardContent>
+        </Card>
       </div>
+
+      <Card className="gap-0 p-0 shadow-none">
+        <div className="flex flex-col justify-between gap-2 border-b border-border/60 px-5 py-4 sm:flex-row sm:items-center">
+          <div>
+            <h2 className="text-sm font-semibold">Authorized devices</h2>
+          </div>
+          <span className="rounded-md border border-border/60 bg-muted/50 px-2.5 py-1 text-xs font-medium text-muted-foreground">{keys.length} {keys.length === 1 ? "key" : "keys"}</span>
+        </div>
+
+        {isLoading ? (
+          <CardContent className="space-y-3 p-5">
+            <div className="h-8 animate-pulse rounded bg-muted" />
+            <div className="h-10 animate-pulse rounded bg-muted/70" />
+          </CardContent>
+        ) : keys.length === 0 ? (
+          <CardContent className="px-5 py-7">
+            <h3 className="text-sm font-medium">No keys registered</h3>
+            <p className="mt-1 text-xs text-muted-foreground">Add a public key above to authorize a device.</p>
+          </CardContent>
+        ) : (
+          <Table className="min-w-[580px] text-left text-xs">
+            <TableHeader className="bg-muted/30 text-[11px] uppercase tracking-wider text-muted-foreground">
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="w-[190px] px-5">Device</TableHead>
+                <TableHead>SHA256 fingerprint</TableHead>
+                <TableHead className="w-[160px]">Added</TableHead>
+                <TableHead className="w-[76px] text-right">Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {keys.map((key) => (
+                <TableRow key={key.id}>
+                  <TableCell className="px-5 font-medium">
+                    <div className="flex items-center gap-2">
+                      <span className="rounded border border-border/60 bg-secondary px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">ED25519</span>
+                      <span className="max-w-[130px] truncate">{key.label || "Untitled device"}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex max-w-md items-center gap-2">
+                      <code className="min-w-0 flex-1 truncate rounded border border-border/60 bg-muted/50 px-2 py-1 font-mono text-[11px] text-muted-foreground">{key.fingerprint}</code>
+                      <Button variant="outline" size="icon-xs" aria-label="Copy fingerprint" onClick={() => copyCommand(key.fingerprint, "Fingerprint")}><Copy /></Button>
+                    </div>
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap text-muted-foreground">
+                    <span className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" />{format(new Date(key.createdAt), "MMM d, yyyy")}</span>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="destructive" size="icon-xs" aria-label={`Revoke ${key.label || "SSH key"}`} onClick={() => setDeleteKeyId(key.id)}><Trash2 /></Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </Card>
 
       {/* Delete Modal */}
       <AlertDialog open={!!deleteKeyId}>

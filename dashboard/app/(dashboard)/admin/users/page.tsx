@@ -12,6 +12,7 @@ import { UserManagementTable } from "@/components/admin/user-management-table";
 import { AssignPlanModal } from "@/components/admin/assign-plan-modal";
 import { toast } from "sonner";
 import { Shield, Users, UserCheck } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 
 export default function AdminUsersPage() {
   const [searchInput, setSearchInput] = useState("");
@@ -95,9 +96,12 @@ export default function AdminUsersPage() {
 
   return (
     <div className="space-y-6 font-sans">
+      <div>
+        <h2 className="text-xl font-semibold tracking-tight">User directory</h2>
+      </div>
       {/* KPI Metric Summary Strip */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <div className="bg-card border-border/60 flex items-center justify-between rounded-lg border p-4 shadow-2xs">
+        <Card className="shadow-none"><CardContent className="flex items-center justify-between p-4">
           <div>
             <span className="text-muted-foreground block text-xs font-medium">
               Total Directory Users
@@ -109,9 +113,9 @@ export default function AdminUsersPage() {
           <div className="bg-secondary text-foreground border-border/60 flex h-9 w-9 items-center justify-center rounded-lg border">
             <Users className="h-4.5 w-4.5" />
           </div>
-        </div>
+        </CardContent></Card>
 
-        <div className="bg-card border-border/60 flex items-center justify-between rounded-lg border p-4 shadow-2xs">
+        <Card className="shadow-none"><CardContent className="flex items-center justify-between p-4">
           <div>
             <span className="text-muted-foreground block text-xs font-medium">
               Role Filter Status
@@ -123,9 +127,9 @@ export default function AdminUsersPage() {
           <div className="border-border/60 flex h-9 w-9 items-center justify-center rounded-lg border bg-purple-500/10 text-purple-400">
             <Shield className="h-4.5 w-4.5" />
           </div>
-        </div>
+        </CardContent></Card>
 
-        <div className="bg-card border-border/60 flex items-center justify-between rounded-lg border p-4 shadow-2xs">
+        <Card className="shadow-none"><CardContent className="flex items-center justify-between p-4">
           <div>
             <span className="text-muted-foreground block text-xs font-medium">
               Active Plan Tiers
@@ -137,7 +141,7 @@ export default function AdminUsersPage() {
           <div className="bg-secondary text-foreground border-border/60 flex h-9 w-9 items-center justify-center rounded-lg border">
             <UserCheck className="h-4.5 w-4.5" />
           </div>
-        </div>
+        </CardContent></Card>
       </div>
 
       {/* Main Directory Table */}

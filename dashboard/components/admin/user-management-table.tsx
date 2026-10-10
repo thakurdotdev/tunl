@@ -4,6 +4,15 @@ import { useState } from "react";
 import type { AdminPlan, AdminUser, PaginationMetadata } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Card } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { toast } from "sonner";
 import {
@@ -121,7 +130,7 @@ export function UserManagementTable({
 
   return (
     <>
-      <div className="bg-card border-border/70 flex flex-col overflow-hidden rounded-xl border font-sans shadow-2xs">
+      <Card className="gap-0 rounded-xl p-0 font-sans shadow-none">
         {/* Header Section */}
         <div className="border-border/60 bg-muted/20 flex flex-col gap-3 border-b p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -165,41 +174,31 @@ export function UserManagementTable({
           {/* Filters Group */}
           <div className="flex flex-wrap items-center gap-2">
             {/* Role Filter */}
-            <select
-              value={roleFilter}
-              onChange={(e) => onRoleFilterChange(e.target.value as "all" | "admin" | "user")}
-              className="border-border/70 bg-background text-foreground focus:ring-primary/40 focus:border-primary/50 h-8.5 rounded-lg border px-2.5 text-xs font-normal focus:outline-none"
-            >
-              <option value="all">All Roles</option>
-              <option value="admin">Admins</option>
-              <option value="user">Standard Users</option>
-            </select>
+            <Select value={roleFilter} onValueChange={(value) => value && onRoleFilterChange(value as "all" | "admin" | "user")}>
+              <SelectTrigger aria-label="Filter by role" className="h-8 min-w-32 rounded-md border-border/70 bg-background text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All roles</SelectItem>
+                <SelectItem value="admin">Admins</SelectItem>
+                <SelectItem value="user">Standard users</SelectItem>
+              </SelectContent>
+            </Select>
 
             {/* Plan Filter */}
-            <select
-              value={planFilter}
-              onChange={(e) => onPlanFilterChange(e.target.value)}
-              className="border-border/70 bg-background text-foreground focus:ring-primary/40 focus:border-primary/50 h-8.5 rounded-lg border px-2.5 text-xs font-normal focus:outline-none"
-            >
-              <option value="all">All Plans</option>
-              {availablePlans?.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name.charAt(0).toUpperCase() + p.name.slice(1)} Plan
-                </option>
-              ))}
-            </select>
+            <Select value={planFilter} onValueChange={(value) => value && onPlanFilterChange(value)}>
+              <SelectTrigger aria-label="Filter by plan" className="h-8 min-w-32 rounded-md border-border/70 bg-background text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All plans</SelectItem>
+                {availablePlans?.map((p) => <SelectItem key={p.id} value={p.id}>{p.name.charAt(0).toUpperCase() + p.name.slice(1)} plan</SelectItem>)}
+              </SelectContent>
+            </Select>
 
             {/* Page Size */}
-            <select
-              value={pageSize}
-              onChange={(e) => onPageSizeChange(Number(e.target.value))}
-              className="border-border/70 bg-background text-foreground focus:ring-primary/40 focus:border-primary/50 h-8.5 rounded-lg border px-2.5 text-xs font-normal focus:outline-none"
-            >
-              <option value={10}>10 / page</option>
-              <option value={15}>15 / page</option>
-              <option value={25}>25 / page</option>
-              <option value={50}>50 / page</option>
-            </select>
+            <Select value={String(pageSize)} onValueChange={(value) => value && onPageSizeChange(Number(value))}>
+              <SelectTrigger aria-label="Users per page" className="h-8 min-w-28 rounded-md border-border/70 bg-background text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {[10, 15, 25, 50].map((size) => <SelectItem key={size} value={String(size)}>{size} / page</SelectItem>)}
+              </SelectContent>
+            </Select>
 
             {hasActiveFilters && (
               <Button
@@ -216,49 +215,49 @@ export function UserManagementTable({
 
         {/* Users Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="border-border/60 bg-muted/30 text-muted-foreground border-b text-[11px] font-semibold tracking-wider uppercase">
-              <tr>
-                <th className="px-4 py-3">User Account</th>
-                <th className="px-4 py-3">Role</th>
-                <th className="px-4 py-3">Assigned Plan</th>
-                <th className="px-4 py-3">SSH Keys</th>
-                <th className="px-4 py-3">Registered Subdomains</th>
-                <th className="px-4 py-3">Joined Date</th>
-                <th className="px-4 py-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-border/30 divide-y">
+          <Table className="min-w-[920px] text-left text-xs">
+            <TableHeader className="bg-muted/30 text-muted-foreground text-[11px] font-semibold tracking-wider uppercase">
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="px-4 py-3">User Account</TableHead>
+                <TableHead className="px-4 py-3">Role</TableHead>
+                <TableHead className="px-4 py-3">Assigned Plan</TableHead>
+                <TableHead className="px-4 py-3">SSH Keys</TableHead>
+                <TableHead className="px-4 py-3">Registered Subdomains</TableHead>
+                <TableHead className="px-4 py-3">Joined Date</TableHead>
+                <TableHead className="px-4 py-3 text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody className="divide-border/30 divide-y">
               {isLoading ? (
                 Array.from({ length: 6 }).map((_, i) => (
-                  <tr key={`user-skel-${i}`} className="animate-pulse">
-                    <td className="px-4 py-3">
+                <TableRow key={`user-skel-${i}`} className="animate-pulse hover:bg-transparent">
+                    <TableCell className="px-4 py-3">
                       <div className="bg-muted h-4 w-36 rounded" />
                       <div className="bg-muted/60 mt-1 h-3 w-20 rounded" />
-                    </td>
-                    <td className="px-4 py-3">
+                    </TableCell>
+                    <TableCell className="px-4 py-3">
                       <div className="bg-muted h-5 w-16 rounded-full" />
-                    </td>
-                    <td className="px-4 py-3">
+                    </TableCell>
+                    <TableCell className="px-4 py-3">
                       <div className="bg-muted h-5 w-20 rounded-full" />
-                    </td>
-                    <td className="px-4 py-3">
+                    </TableCell>
+                    <TableCell className="px-4 py-3">
                       <div className="bg-muted h-4 w-12 rounded" />
-                    </td>
-                    <td className="px-4 py-3">
+                    </TableCell>
+                    <TableCell className="px-4 py-3">
                       <div className="bg-muted h-5 w-24 rounded" />
-                    </td>
-                    <td className="px-4 py-3">
+                    </TableCell>
+                    <TableCell className="px-4 py-3">
                       <div className="bg-muted h-4 w-20 rounded" />
-                    </td>
-                    <td className="px-4 py-3 text-right">
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-right">
                       <div className="bg-muted ml-auto h-7 w-28 rounded" />
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))
               ) : users?.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="py-14 text-center">
+                <TableRow>
+                  <TableCell colSpan={7} className="py-14 text-center">
                     <div className="text-muted-foreground flex flex-col items-center justify-center gap-1.5">
                       <Users className="text-muted-foreground/40 mb-1 h-7 w-7" />
                       <span className="text-foreground text-xs font-semibold">
@@ -280,13 +279,13 @@ export function UserManagementTable({
                         </Button>
                       )}
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ) : (
                 users?.map((u) => (
-                  <tr key={u.id} className="hover:bg-muted/20 group transition-colors">
+                  <TableRow key={u.id} className="group transition-colors">
                     {/* User Account */}
-                    <td className="px-4 py-3">
+                    <TableCell className="px-4 py-3">
                       <div className="flex items-center gap-1.5">
                         <span className="text-foreground font-medium">{u.email}</span>
                         <button
@@ -305,10 +304,10 @@ export function UserManagementTable({
                       {u.name && (
                         <p className="text-muted-foreground mt-0.5 text-[11px] font-normal">{u.name}</p>
                       )}
-                    </td>
+                    </TableCell>
 
                     {/* Role */}
-                    <td className="px-4 py-3">
+                    <TableCell className="px-4 py-3">
                       {u.role === "admin" ? (
                         <span className="inline-flex items-center gap-1 rounded-full border border-purple-500/25 bg-purple-500/10 px-2.5 py-0.5 text-[10px] font-semibold text-purple-400 whitespace-nowrap">
                           <Shield className="h-3 w-3" /> Admin
@@ -318,23 +317,23 @@ export function UserManagementTable({
                           User
                         </span>
                       )}
-                    </td>
+                    </TableCell>
 
                     {/* Plan */}
-                    <td className="px-4 py-3">
+                    <TableCell className="px-4 py-3">
                       {renderPlanBadge(u.planName)}
-                    </td>
+                    </TableCell>
 
                     {/* SSH Keys */}
-                    <td className="text-muted-foreground px-4 py-3">
+                    <TableCell className="text-muted-foreground px-4 py-3">
                       <span className="inline-flex items-center gap-1.5 text-xs font-normal">
                         <Key className="text-muted-foreground/60 h-3.5 w-3.5" />
                         <span>{u.sshKeyCount}</span>
                       </span>
-                    </td>
+                    </TableCell>
 
                     {/* Registered Subdomains */}
-                    <td className="px-4 py-3">
+                    <TableCell className="px-4 py-3">
                       {u.reservedSubdomains && u.reservedSubdomains.length > 0 ? (
                         <div className="flex max-w-xs flex-wrap items-center gap-1.5">
                           {u.reservedSubdomains.slice(0, 2).map((sub) => (
@@ -358,19 +357,19 @@ export function UserManagementTable({
                       ) : (
                         <span className="text-muted-foreground/40 text-xs">—</span>
                       )}
-                    </td>
+                    </TableCell>
 
                     {/* Joined Date */}
-                    <td className="text-muted-foreground px-4 py-3 text-xs font-normal">
+                    <TableCell className="text-muted-foreground px-4 py-3 text-xs font-normal">
                       {new Date(u.createdAt).toLocaleDateString("en-US", {
                         month: "short",
                         day: "numeric",
                         year: "numeric",
                       })}
-                    </td>
+                    </TableCell>
 
                     {/* Actions */}
-                    <td className="px-4 py-3 text-right">
+                    <TableCell className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         <Button
                           size="sm"
@@ -407,12 +406,12 @@ export function UserManagementTable({
                           )}
                         </Button>
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
 
         {/* Server-Side Pagination Bar */}
@@ -494,7 +493,7 @@ export function UserManagementTable({
             </Button>
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Confirmation Modal before Role Update */}
       <ConfirmationModal

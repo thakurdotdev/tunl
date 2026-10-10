@@ -1,15 +1,20 @@
 "use client";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { useTunnelSessionsQuery, useTunnelsQuery } from "@/hooks/use-tunnels";
+import { formatDistanceToNow } from "date-fns";
 import {
   Activity,
   ArrowUpRight,
+  BarChart3,
   Check,
   Copy,
+  Globe,
   Radio,
   Search,
-  ShieldCheck,
   WifiOff,
 } from "lucide-react";
 import Link from "next/link";
@@ -21,188 +26,172 @@ export default function InspectLandingPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [copiedDomain, setCopiedDomain] = useState<string | null>(null);
 
-  const activeSubdomains = useMemo(() => sessions.map((s) => s.subdomain), [sessions]);
-
+  const activeSubdomains = useMemo(() => sessions.map((session) => session.subdomain), [sessions]);
   const allSubdomains = useMemo(() => {
-    const set = new Set([...sessions.map((s) => s.subdomain), ...tunnels.map((t) => t.subdomain)]);
-    return Array.from(set);
+    const subdomains = new Set([
+      ...sessions.map((session) => session.subdomain),
+      ...tunnels.map((tunnel) => tunnel.subdomain),
+    ]);
+    return Array.from(subdomains);
   }, [sessions, tunnels]);
 
   const filteredSubdomains = useMemo(() => {
-    if (!searchQuery.trim()) return allSubdomains;
-    const q = searchQuery.toLowerCase();
-    return allSubdomains.filter((subdomain) => subdomain.toLowerCase().includes(q));
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return allSubdomains;
+    return allSubdomains.filter((subdomain) => subdomain.toLowerCase().includes(query));
   }, [allSubdomains, searchQuery]);
 
-  const copyUrl = (e: React.MouseEvent, subdomain: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    navigator.clipboard.writeText(`https://${subdomain}.tunl.online`);
+  const copyUrl = async (subdomain: string) => {
+    await navigator.clipboard.writeText(`https://${subdomain}.tunl.online`);
     setCopiedDomain(subdomain);
     setTimeout(() => setCopiedDomain(null), 2000);
   };
 
   return (
-    <div className="flex flex-col gap-6 font-sans">
-      {/* Top Header */}
-      <div className="border-border/60 flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-col gap-1 text-left">
-          <div className="flex items-center gap-2">
-            <h1 className="text-foreground text-xl font-bold tracking-tight">Request Inspector</h1>
-            <span className="rounded-md border border-emerald-500/20 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
-              Live Capture
-            </span>
-          </div>
-          <p className="text-muted-foreground text-xs leading-relaxed">
-            Inspect real-time HTTP requests, response payloads, headers, and cURL commands for your
-            tunnel endpoints.
-          </p>
+    <div className="space-y-6 font-sans">
+      <div className="flex flex-col justify-between gap-4 border-b border-border/60 pb-5 sm:flex-row sm:items-end">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+            Request inspector
+          </h1>
         </div>
 
-        {/* Search & Stats Bar */}
-        <div className="flex items-center gap-3">
-          <div className="border-border/60 bg-muted/20 flex items-center gap-3 rounded-lg border px-3 py-1.5 text-xs font-medium">
-            <div className="flex items-center gap-1.5">
-              <Radio className="h-3.5 w-3.5 text-emerald-400" />
-              <span>
-                <strong className="text-foreground">{activeSubdomains.length}</strong> Live
-              </span>
-            </div>
-            <span className="bg-border/60 h-3 w-px" />
-            <div className="text-muted-foreground flex items-center gap-1.5">
-              <Activity className="h-3.5 w-3.5" />
-              <span>30m Retention</span>
-            </div>
+        <Card size="sm" className="flex-row items-center gap-0 self-start p-0 sm:self-auto">
+          <div className="flex items-center gap-2 px-3 py-2 text-sm">
+            <Radio className="h-4 w-4 text-emerald-400" />
+            <span className="font-semibold tabular-nums">{activeSubdomains.length}</span>
+            <span className="text-muted-foreground">live</span>
           </div>
-        </div>
+          <div className="h-5 w-px bg-border/60" />
+          <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
+            <Activity className="h-4 w-4" />
+            <span>30m retention</span>
+          </div>
+        </Card>
       </div>
 
-      {/* Filter / Search Control */}
       {allSubdomains.length > 0 && (
-        <div className="flex items-center justify-between gap-3">
-          <div className="relative w-full sm:w-72">
-            <Search className="text-muted-foreground absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Filter endpoint subdomain..."
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative w-full sm:max-w-sm">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              aria-label="Filter endpoints"
+              placeholder="Filter endpoints..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="border-border/60 bg-background placeholder:text-muted-foreground focus:ring-primary w-full rounded-md border py-1.5 pr-3 pl-9 text-xs focus:ring-1 focus:outline-none"
+              onChange={(event) => setSearchQuery(event.target.value)}
+              className="h-9 pl-9"
             />
           </div>
-          <span className="text-muted-foreground text-xs">
-            Showing {filteredSubdomains.length} of {allSubdomains.length} endpoint
-            {allSubdomains.length !== 1 ? "s" : ""}
-          </span>
+          <p className="text-xs text-muted-foreground">
+            Showing <span className="font-medium text-foreground">{filteredSubdomains.length}</span> of {allSubdomains.length} endpoint
+            {allSubdomains.length === 1 ? "" : "s"}
+          </p>
         </div>
       )}
 
-      {/* Grid of Subdomains */}
       {allSubdomains.length === 0 ? (
-        <div className="border-border/60 bg-card flex flex-col items-center justify-center gap-4 rounded-lg border py-16 text-center shadow-2xs">
-          <div className="border-border/60 bg-muted/40 flex h-12 w-12 items-center justify-center rounded-xl border">
-            <WifiOff className="text-muted-foreground/40 h-6 w-6" />
-          </div>
-          <div className="flex flex-col items-center gap-1">
-            <h3 className="text-foreground text-sm font-semibold">No active endpoints found</h3>
-            <p className="text-muted-foreground max-w-sm text-xs leading-relaxed">
-              Reserve a subdomain or establish an SSH tunnel session to begin inspecting HTTP
-              traffic and payloads.
+        <Card className="border-dashed shadow-none">
+          <CardContent className="flex flex-col items-center justify-center px-5 py-14 text-center">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-border/60 bg-muted/40">
+              <WifiOff className="h-6 w-6 text-muted-foreground/60" />
+            </div>
+            <h2 className="text-base font-semibold">No endpoints to inspect</h2>
+            <p className="mt-1 max-w-md text-sm text-muted-foreground">
+              Reserve a subdomain or connect an SSH tunnel. Its requests will appear here while it is active.
             </p>
-          </div>
-          <Link href="/dashboard">
-            <Button size="sm" className="text-xs font-semibold">
-              Create Tunnel
+            <Button nativeButton={false} render={<Link href="/dashboard" />} size="sm" className="mt-5">
+              <Globe className="h-4 w-4" /> Go to tunnels
             </Button>
-          </Link>
-        </div>
+          </CardContent>
+        </Card>
       ) : filteredSubdomains.length === 0 ? (
-        <div className="border-border/60 bg-card flex flex-col items-center justify-center gap-2 rounded-lg border py-12 text-center shadow-2xs">
-          <p className="text-muted-foreground text-xs">
-            No subdomains match &quot;<strong className="text-foreground">{searchQuery}</strong>
-            &quot;
-          </p>
-          <Button
-            variant="ghost"
-            size="xs"
-            onClick={() => setSearchQuery("")}
-            className="text-primary text-xs"
-          >
-            Clear Filter
-          </Button>
-        </div>
+        <Card className="border-dashed shadow-none">
+          <CardContent className="flex flex-col items-center py-10 text-center">
+            <Search className="mb-3 h-6 w-6 text-muted-foreground/60" />
+            <p className="text-sm text-muted-foreground">
+              No endpoints match <span className="font-medium text-foreground">“{searchQuery}”</span>.
+            </p>
+            <Button variant="ghost" size="sm" onClick={() => setSearchQuery("")} className="mt-2">
+              Clear filter
+            </Button>
+          </CardContent>
+        </Card>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredSubdomains.map((subdomain) => {
-            const isActive = activeSubdomains.includes(subdomain);
-            return (
-              <Link
-                key={subdomain}
-                href={`/inspect/${subdomain}`}
-                className="border-border/60 bg-card hover:border-border/80 hover:bg-muted/20 group relative flex flex-col justify-between gap-4 rounded-xl border p-5 shadow-2xs transition-all"
-              >
-                <div className="flex flex-col gap-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 font-mono">
-                      <span className="text-primary text-xs font-semibold">&gt;_</span>
-                      <h3 className="text-foreground group-hover:text-primary font-mono text-sm font-bold tracking-tight transition-colors">
-                        {subdomain}
-                      </h3>
+        <Card className="gap-0 p-0 shadow-none">
+          <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
+            <div>
+              <h2 className="text-sm font-semibold">Your endpoints</h2>
+            </div>
+            <Badge variant="secondary">{filteredSubdomains.length}</Badge>
+          </div>
+          <div className="divide-y divide-border/60">
+            {filteredSubdomains.map((subdomain) => {
+              const session = sessions.find((item) => item.subdomain === subdomain);
+              const isActive = Boolean(session);
+              const tunnel = tunnels.find((item) => item.subdomain === subdomain);
+              const connectionSummary = session
+                ? `Connected ${formatDistanceToNow(new Date(session.connectedAt), { addSuffix: true })}`
+                : tunnel?.lastConnectedAt
+                  ? `Last connected ${formatDistanceToNow(new Date(tunnel.lastConnectedAt), { addSuffix: true })}`
+                  : "Never connected";
+              const url = `https://${subdomain}.tunl.online`;
+
+              return (
+                <div
+                  key={subdomain}
+                  className="flex flex-col gap-4 px-4 py-4 transition-colors hover:bg-muted/20 sm:flex-row sm:items-center sm:justify-between sm:px-5"
+                >
+                  <div className="flex min-w-0 items-start gap-3">
+                    <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
+                      <Globe className="h-4 w-4" />
                     </div>
-
-                    <span
-                      className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[10px] font-semibold ${
-                        isActive
-                          ? "border-emerald-500/20 bg-emerald-500/15 text-emerald-400"
-                          : "bg-muted text-muted-foreground border-border/60"
-                      }`}
-                    >
-                      {isActive ? (
-                        <>
-                          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-                          Live
-                        </>
-                      ) : (
-                        <>
-                          <span className="bg-muted-foreground/40 h-1.5 w-1.5 rounded-full" />
-                          Offline
-                        </>
-                      )}
-                    </span>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="font-mono text-sm font-semibold text-foreground">
+                          <a href={url} target="_blank" rel="noopener noreferrer" className="hover:text-primary">
+                            {subdomain}.tunl.online
+                          </a>
+                        </h3>
+                        <Badge
+                          variant={isActive ? "default" : "secondary"}
+                          className={isActive ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400" : ""}
+                        >
+                          <span className={`h-1.5 w-1.5 rounded-full ${isActive ? "animate-pulse bg-emerald-400" : "bg-muted-foreground/50"}`} />
+                          {isActive ? "Live" : "Reserved"}
+                        </Badge>
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">{connectionSummary}</p>
+                    </div>
                   </div>
 
-                  <div className="border-border/40 bg-muted/40 flex items-center justify-between rounded-lg border px-3 py-2">
-                    <span className="text-muted-foreground truncate font-mono text-xs">
-                      https://{subdomain}.tunl.online
-                    </span>
-                    <button
-                      type="button"
-                      onClick={(e) => copyUrl(e, subdomain)}
-                      className="text-muted-foreground hover:text-foreground ml-2 shrink-0 transition-colors"
-                      title="Copy Public URL"
+                  <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
+                    <Button
+                      size="icon-sm"
+                      variant="outline"
+                      aria-label={`Copy ${subdomain} URL`}
+                      title="Copy public URL"
+                      onClick={() => void copyUrl(subdomain)}
                     >
-                      {copiedDomain === subdomain ? (
-                        <Check className="h-3.5 w-3.5 text-emerald-400" />
-                      ) : (
-                        <Copy className="h-3.5 w-3.5" />
-                      )}
-                    </button>
+                      {copiedDomain === subdomain ? <Check className="text-emerald-400" /> : <Copy />}
+                    </Button>
+                    <Button
+                      nativeButton={false}
+                      render={<Link href={`/inspect/${subdomain}/analytics`} />}
+                      size="sm"
+                      variant="outline"
+                    >
+                      <BarChart3 className="h-3.5 w-3.5" /> Analytics
+                    </Button>
+                    <Button nativeButton={false} render={<Link href={`/inspect/${subdomain}`} />} size="sm">
+                      Inspect <ArrowUpRight className="h-3.5 w-3.5" />
+                    </Button>
                   </div>
                 </div>
-
-                <div className="border-border/60 flex items-center justify-between border-t pt-3 font-sans text-xs">
-                  <div className="text-muted-foreground flex items-center gap-1 text-[11px]">
-                    <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
-                    <span>HTTPS Proxy</span>
-                  </div>
-                  <span className="text-foreground group-hover:text-primary inline-flex items-center gap-1 font-semibold transition-colors">
-                    Inspect Traffic <ArrowUpRight className="h-3.5 w-3.5" />
-                  </span>
-                </div>
-              </Link>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        </Card>
       )}
     </div>
   );
