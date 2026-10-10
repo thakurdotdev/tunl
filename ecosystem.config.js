@@ -4,6 +4,7 @@ module.exports = {
       name: "tunl-control-plane",
       cwd: "./control-plane",
       script: "dist/index.js",
+      interpreter: "bun",
       env: {
         NODE_ENV: "production",
         PORT: 3091,

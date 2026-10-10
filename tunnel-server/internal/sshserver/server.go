@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	randv2 "math/rand/v2"
 	"net"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -30,6 +31,36 @@ type connLimiter struct {
 	mu     sync.Mutex
 	counts map[string]int
 	max    int
+}
+
+// sessionChannels tracks accepted session channels and prevents new ones from
+// being added once connection teardown starts. The lock makes the transition
+// to waiting atomic with channel registration.
+type sessionChannels struct {
+	mu      sync.Mutex
+	closing bool
+	wg      sync.WaitGroup
+}
+
+func (c *sessionChannels) start() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.closing {
+		return false
+	}
+	c.wg.Add(1)
+	return true
+}
+
+func (c *sessionChannels) done() {
+	c.wg.Done()
+}
+
+func (c *sessionChannels) stopAndWait() {
+	c.mu.Lock()
+	c.closing = true
+	c.mu.Unlock()
+	c.wg.Wait()
 }
 
 func newConnLimiter(max int) *connLimiter {
@@ -316,6 +347,30 @@ func (s *Server) handleConn(ctx context.Context, conn net.Conn) {
 		sshConn.Close()
 	}()
 
+	var sessionGroup sessionChannels
+
+	// Graceful connection teardown: when the session terminates (e.g. user hits Ctrl+C),
+	// wait for active session channels to render goodbye banners and send exit-status
+	// before tearing down the underlying TCP connection.
+	go func() {
+		select {
+		case <-ctx.Done():
+		case <-sess.Done():
+		}
+		done := make(chan struct{})
+		go func() {
+			sessionGroup.stopAndWait()
+			close(done)
+		}()
+		select {
+		case <-done:
+			// Brief flush buffer so OpenSSH client receives channel close & exit-status
+			time.Sleep(50 * time.Millisecond)
+		case <-time.After(500 * time.Millisecond):
+		}
+		_ = sshConn.Close()
+	}()
+
 	keepaliveCtx, cancelKeepalive := context.WithCancel(ctx)
 	defer cancelKeepalive()
 
@@ -348,7 +403,7 @@ func (s *Server) handleConn(ctx context.Context, conn net.Conn) {
 	}()
 
 	go s.handleGlobalRequests(ctx, reqs, sess, connLog)
-	s.handleChannels(chans, sess, connLog)
+	s.handleChannels(chans, sess, &sessionGroup, connLog)
 }
 
 func extractPermissions(perms *ssh.Permissions) (userID, email, allowedSubdomain string, reservedSubdomains []string, plan string, maxActiveTunnels int, allowedIPs []string, tunnelPasswords map[string]string) {
@@ -422,11 +477,18 @@ func (s *Server) handleGlobalRequests(ctx context.Context, reqs <-chan *ssh.Requ
 	}
 }
 
-func (s *Server) handleChannels(chans <-chan ssh.NewChannel, sess *sshSession, log *slog.Logger) {
+func (s *Server) handleChannels(chans <-chan ssh.NewChannel, sess *sshSession, sessionGroup *sessionChannels, log *slog.Logger) {
 	for newCh := range chans {
 		switch newCh.ChannelType() {
 		case "session":
-			go s.handleSessionChannel(newCh, sess, log)
+			if !sessionGroup.start() {
+				_ = newCh.Reject(ssh.Prohibited, "session is closing")
+				continue
+			}
+			go func(nc ssh.NewChannel) {
+				defer sessionGroup.done()
+				s.handleSessionChannel(nc, sess, log)
+			}(newCh)
 		default:
 			newCh.Reject(ssh.UnknownChannelType, "unsupported channel type")
 		}
@@ -452,7 +514,22 @@ func (s *Server) handleSessionChannel(newCh ssh.NewChannel, sess *sshSession, lo
 				if req.WantReply {
 					req.Reply(true, nil)
 				}
-			case "pty-req", "shell", "exec", "env", "window-change":
+			case "exec":
+				var execMsg struct {
+					Command string
+				}
+				if err := ssh.Unmarshal(req.Payload, &execMsg); err == nil && execMsg.Command != "" {
+					cmd := strings.TrimSpace(execMsg.Command)
+					if strings.HasPrefix(cmd, "http://") || strings.HasPrefix(cmd, "https://") {
+						sess.setLocalTarget(cmd)
+					} else if n, _ := strconv.Atoi(cmd); n > 0 && n < 65536 {
+						sess.setLocalTarget(fmt.Sprintf("http://localhost:%d", n))
+					}
+				}
+				if req.WantReply {
+					req.Reply(true, nil)
+				}
+			case "pty-req", "shell", "env", "window-change":
 				if req.WantReply {
 					req.Reply(true, nil)
 				}
@@ -491,10 +568,15 @@ func (s *Server) handleSessionChannel(newCh ssh.NewChannel, sess *sshSession, lo
 	case <-sess.errorReady():
 		renderTerminalError(ch, s, sess.RegisterError())
 		sess.Close()
+		_, _ = ch.SendRequest("exit-status", false, ssh.Marshal(&exitStatusMsg{Status: 1}))
 		return
 	case <-sess.Done():
 		if errMsg := sess.RegisterError(); errMsg != "" {
 			renderTerminalError(ch, s, errMsg)
+			_, _ = ch.SendRequest("exit-status", false, ssh.Marshal(&exitStatusMsg{Status: 1}))
+		} else {
+			renderTerminalClose(ch)
+			_, _ = ch.SendRequest("exit-status", false, ssh.Marshal(&exitStatusMsg{Status: 0}))
 		}
 		return
 	}
@@ -514,6 +596,8 @@ func (s *Server) handleSessionChannel(newCh ssh.NewChannel, sess *sshSession, lo
 	}
 
 	<-sess.Done()
+	renderTerminalClose(ch)
+	_, _ = ch.SendRequest("exit-status", false, ssh.Marshal(&exitStatusMsg{Status: 0}))
 }
 
 func sessionID() string {

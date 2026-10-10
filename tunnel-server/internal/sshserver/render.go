@@ -16,9 +16,9 @@ func renderTerminalBanner(ch io.Writer, s *Server, sess *sshSession) {
 		accountStr = fmt.Sprintf("%s (%s plan)", accountStr, plan)
 	}
 
-	localTarget := "http://localhost"
-	if sess.BindPort() != 0 && sess.BindPort() != 80 {
-		localTarget = fmt.Sprintf("http://localhost:%d", sess.BindPort())
+	localTarget := "\033[1;33mLocal port\033[0m \033[90m(via ssh -R)\033[0m"
+	if target := sess.LocalTarget(); target != "" {
+		localTarget = fmt.Sprintf("\033[1;33m%s\033[0m", target)
 	}
 
 	inspectorURL := fmt.Sprintf("%s://%s/inspect/%s", s.tunnelScheme, s.baseDomain, sess.Subdomain())
@@ -26,11 +26,16 @@ func renderTerminalBanner(ch io.Writer, s *Server, sess *sshSession) {
 	fmt.Fprintf(ch, "\r\033[2K  \033[1;32m>_\033[0m \033[1;37mtunl\033[0m \033[1;32m█\033[0m  \033[90m•\033[0m  \033[1;32m● Online\033[0m\r\n")
 	fmt.Fprintf(ch, "  \033[90m──────────────────────────────────────────────────────────\033[0m\r\n")
 	fmt.Fprintf(ch, "  \033[90mAccount    \033[0m \033[1;37m%s\033[0m\r\n", accountStr)
-	fmt.Fprintf(ch, "  \033[90mForwarding \033[0m \033[1;33m%s\033[0m\r\n", localTarget)
+	fmt.Fprintf(ch, "  \033[90mForwarding \033[0m %s\r\n", localTarget)
 	fmt.Fprintf(ch, "  \033[90mPublic URL \033[0m \033[4;34m%s\033[0m\r\n", sess.TunnelURL())
 	fmt.Fprintf(ch, "  \033[90mInspector  \033[0m \033[4;34m%s\033[0m\r\n", inspectorURL)
 	fmt.Fprintf(ch, "  \033[90m──────────────────────────────────────────────────────────\033[0m\r\n")
 	fmt.Fprintf(ch, "  \033[90mPress \033[1;37mCtrl+C\033[0m \033[90mor\033[0m \033[1;37mCtrl+D\033[0m \033[90mto stop the tunnel\033[0m\r\n\r\n")
+}
+
+func renderTerminalClose(ch io.Writer) {
+	fmt.Fprintf(ch, "\r\033[2K\r\n  \033[90m──────────────────────────────────────────────────────────\033[0m\r\n")
+	fmt.Fprintf(ch, "  \033[1;33m●\033[0m \033[1;37mTunnel closed\033[0m  \033[90mSession ended. Goodbye!\033[0m\r\n\r\n")
 }
 
 func renderTerminalExpiry(ch io.Writer, s *Server) {

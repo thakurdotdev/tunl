@@ -28,3 +28,8 @@ type tcpipForwardRequest struct {
 type tcpipForwardReply struct {
 	BoundPort uint32
 }
+
+// exitStatusMsg is the payload of the "exit-status" channel request (RFC 4254 §6.10).
+type exitStatusMsg struct {
+	Status uint32
+}

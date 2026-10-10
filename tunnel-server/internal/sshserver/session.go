@@ -43,6 +43,7 @@ type sshSession struct {
 	bindPort        uint32
 	tunnelURL       string
 	forwarded       bool
+	localTarget     string
 	regErr          string
 	termWriter      io.Writer
 	termRW          io.ReadWriter
@@ -234,6 +235,19 @@ func (s *sshSession) BindPort() uint32 {
 	return s.bindPort
 }
 
+func (s *sshSession) setLocalTarget(target string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.localTarget = target
+}
+
+func (s *sshSession) LocalTarget() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.localTarget
+}
+
+
 // markForwarded returns true on the first call (one tcpip-forward per session).
 func (s *sshSession) markForwarded() bool {
 	s.mu.Lock()
@@ -246,24 +260,24 @@ func (s *sshSession) markForwarded() bool {
 }
 
 // Close is safe to call concurrently, any number of times, from any number
-// of goroutines — only the first call actually closes anything, and every
-// caller (concurrent or later) observes the same result. This matters here
-// specifically because up to four different goroutines per connection can
-// call Close() around the same time: the Ctrl+C/Ctrl+D scanner, the
-// "signal" request handler, the keepalive-failure path, and handleConn's
-// own deferred cleanup. The previous select-based "check then close"
-// pattern was not safe under that concurrency — two goroutines could both
-// observe s.done as open and both call close(s.done), panicking.
+// of goroutines. It signals session termination by closing s.done. The underlying
+// network connection is gracefully drained by handleConn after session channels
+// finish emitting closing banners and exit codes.
 func (s *sshSession) Close() error {
 	s.closeOnce.Do(func() {
 		close(s.done)
-		s.closeErr = s.sshConn.Close()
 	})
-	return s.closeErr
+	return nil
 }
 
 // Dial opens a "forwarded-tcpip" channel back to the connected SSH client.
 func (s *sshSession) Dial(ctx context.Context, remoteAddr string, remotePort uint32) (io.ReadWriteCloser, error) {
+	select {
+	case <-s.done:
+		return nil, fmt.Errorf("tunnel session is closed")
+	default:
+	}
+
 	msg := channelOpenForwardMsg{
 		ConnectedAddr: remoteAddr,
 		ConnectedPort: remotePort,
