@@ -38,18 +38,37 @@ func (r *responseCapture) Write(b []byte) (int, error) {
 	return n, err
 }
 
+type readCloserWrapper struct {
+	io.Reader
+	io.Closer
+}
+
 func captureRequestBody(r *http.Request, maxSize int) (string, int64) {
-	if r.Body == nil {
+	if r.Body == nil || r.Body == http.NoBody {
 		return "", 0
 	}
+	if maxSize <= 0 {
+		return "", r.ContentLength
+	}
+
 	var capturedBuf bytes.Buffer
 	lr := io.LimitReader(r.Body, int64(maxSize))
-	nCaptured, _ := io.Copy(&capturedBuf, lr)
-	remaining, _ := io.Copy(io.Discard, r.Body)
-	totalSize := nCaptured + remaining
+	nCaptured, err := io.Copy(&capturedBuf, lr)
+	if err != nil {
+		return "", 0
+	}
 
-	// Reconstruct r.Body so downstream proxying can still read it
-	r.Body = io.NopCloser(io.MultiReader(bytes.NewReader(capturedBuf.Bytes()), r.Body))
+	totalSize := r.ContentLength
+	if totalSize < nCaptured {
+		totalSize = nCaptured
+	}
+
+	// Reconstruct r.Body with the captured prefix + the unread remainder of r.Body.
+	// Do NOT drain the remaining body to io.Discard, which would truncate the request!
+	r.Body = &readCloserWrapper{
+		Reader: io.MultiReader(bytes.NewReader(capturedBuf.Bytes()), r.Body),
+		Closer: r.Body,
+	}
 
 	return capturedBuf.String(), totalSize
 }

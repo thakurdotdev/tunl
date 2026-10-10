@@ -44,6 +44,9 @@ func registerAnonymous(reg registry.TunnelRegistry, sess *sshSession, bindAddr s
 			return sub, nil
 		} else {
 			lastErr = err
+			if err != registry.ErrSubdomainTaken {
+				return "", err
+			}
 		}
 	}
 	return "", lastErr
@@ -69,7 +72,6 @@ func (s *Server) handleForwardRequest(_ context.Context, req *ssh.Request, sess 
 
 	sess.setBindInfo(fwd.BindAddr, fwd.BindPort)
 
-	sess.setBindInfo(fwd.BindAddr, fwd.BindPort)
 
 	sub, err := s.resolveSubdomain(sess, fwd.BindAddr, fwd.BindPort)
 	if err != nil {
@@ -81,6 +83,8 @@ func (s *Server) handleForwardRequest(_ context.Context, req *ssh.Request, sess 
 			sess.setRegisterError(fmt.Sprintf("Active tunnel limit reached for your account (max %d).", sess.MaxActiveTunnels()))
 		case registry.ErrSubdomainTaken:
 			sess.setRegisterError(fmt.Sprintf("Reserved subdomain '%s' is already in use by an active session.", sess.AllowedSubdomain()))
+		case registry.ErrServerAtCapacity:
+			sess.setRegisterError("The tunnel server has reached maximum capacity. Please try again later.")
 		default:
 			sess.setRegisterError(fmt.Sprintf("Failed to register tunnel subdomain: %v", err))
 		}

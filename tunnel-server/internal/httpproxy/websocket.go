@@ -7,12 +7,17 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/thakurdotdev/tunl/tunnel-server/internal/registry"
 )
 
-const wsIdleTimeout = 15 * time.Minute
+const (
+	wsIdleTimeout  = 15 * time.Minute
+	wsBytesPerTick = 50 * 1024 * 1024 // 50 MB/sec bandwidth cap per direction
+	wsTickInterval = 1 * time.Second
+)
 
 func IsWebSocketUpgrade(r *http.Request) bool {
 	return strings.EqualFold(r.Header.Get("Upgrade"), "websocket") &&
@@ -91,14 +96,50 @@ func splice(client net.Conn, backend io.ReadWriteCloser, idleTimeout time.Durati
 
 	done := make(chan struct{}, 2)
 	go func() {
-		io.Copy(&activityWriter{w: backend, onWrite: resetDeadline}, client)
+		io.Copy(&activityWriter{w: &throttledWriter{w: backend}, onWrite: resetDeadline}, client)
 		done <- struct{}{}
 	}()
 	go func() {
-		io.Copy(&activityWriter{w: client, onWrite: resetDeadline}, backend)
+		io.Copy(&activityWriter{w: &throttledWriter{w: client}, onWrite: resetDeadline}, backend)
 		done <- struct{}{}
 	}()
 	<-done
 	client.Close()
 	backend.Close()
+}
+
+// throttledWriter limits the write throughput to wsBytesPerTick per
+// wsTickInterval. This prevents a single WebSocket connection from
+// monopolizing the server's bandwidth and SSH channel capacity.
+type throttledWriter struct {
+	w       io.Writer
+	mu      sync.Mutex
+	written int64
+	last    time.Time
+}
+
+func (t *throttledWriter) Write(p []byte) (int, error) {
+	t.mu.Lock()
+	now := time.Now()
+	if now.Sub(t.last) >= wsTickInterval {
+		t.written = 0
+		t.last = now
+	}
+
+	// If we've exceeded the budget for this tick, sleep until the next one.
+	if t.written >= wsBytesPerTick {
+		sleepDur := wsTickInterval - now.Sub(t.last)
+		t.mu.Unlock()
+		if sleepDur > 0 {
+			time.Sleep(sleepDur)
+		}
+		t.mu.Lock()
+		t.written = 0
+		t.last = time.Now()
+	}
+
+	t.written += int64(len(p))
+	t.mu.Unlock()
+
+	return t.w.Write(p)
 }

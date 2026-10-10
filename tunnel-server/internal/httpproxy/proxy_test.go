@@ -13,7 +13,7 @@ import (
 )
 
 func TestIPWhitelistEnforcementHTMLAndCLI(t *testing.T) {
-	reg := registry.New(10*time.Second, nil)
+	reg := registry.New(10*time.Second, nil, 0)
 	_ = reg.Register(&registry.Tunnel{
 		Subdomain:  "app",
 		UserID:     "user-123",
@@ -67,7 +67,7 @@ func TestIPWhitelistEnforcementHTMLAndCLI(t *testing.T) {
 }
 
 func TestTunnelNotFoundHTML(t *testing.T) {
-	reg := registry.New(10*time.Second, nil)
+	reg := registry.New(10*time.Second, nil, 0)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	handler := NewHandler(Options{
 		Registry:   reg,

@@ -164,6 +164,8 @@ export const activeTunnelSessions = pgTable(
     tunnelId: uuid("tunnel_id").references(() => tunnels.id, { onDelete: "set null" }),
     subdomain: text("subdomain").notNull(),
     remoteIp: text("remote_ip").notNull().default(""),
+    country: text("country"),
+    city: text("city"),
     connectedAt: timestamp("connected_at", { withTimezone: true }).notNull().defaultNow(),
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
   },

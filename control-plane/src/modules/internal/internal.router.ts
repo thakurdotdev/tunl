@@ -18,6 +18,7 @@ import { asyncRoute } from "../../platform/http.js";
 import type { RedisClient } from "../../redis/client.js";
 import { redisKeys } from "../../redis/keys.js";
 import { recordRequestMetrics } from "../inspect/analytics.service.js";
+import { lookupGeo } from "../../lib/geo.js";
 
 export const validateKeyBody = z.object({
   fingerprint: z.string().min(1),
@@ -49,6 +50,7 @@ const sessionDisconnectedBody = z.object({
   userId: z.string().optional(),
   anonymousId: z.string().default(""),
   subdomain: z.string().min(1),
+  remoteIp: z.string().optional(),
   durationMs: z.number().int().nonnegative(),
   disconnectReason: z.string().default("client_closed"),
   occurredAt: z.string().min(1),
@@ -156,6 +158,8 @@ export function internalRouter(db: Database, redis: RedisClient, config: Config)
         `[internal-api] /tunnel-connected userId=${userId ?? "none"} subdomain=${subdomain} sessionType=${sessionType}`,
       );
 
+      const geo = lookupGeo(remoteIp);
+
       // Analytics: fire-and-forget — must never block or fail the operational write.
       db.insert(tunnelEvents)
         .values({
@@ -163,7 +167,14 @@ export function internalRouter(db: Database, redis: RedisClient, config: Config)
           eventType: "tunnel.connected",
           anonymousId,
           userId: userId ?? null,
-          properties: { subdomain, remoteIp, plan: plan ?? null, sessionType },
+          properties: {
+            subdomain,
+            remoteIp,
+            country: geo.country,
+            city: geo.city,
+            plan: plan ?? null,
+            sessionType,
+          },
           occurredAt: new Date(occurredAt),
         })
         .onConflictDoNothing()
@@ -208,6 +219,8 @@ export function internalRouter(db: Database, redis: RedisClient, config: Config)
             tunnelId: reservation?.id ?? null,
             subdomain,
             remoteIp,
+            country: geo.country,
+            city: geo.city,
           });
 
           if (reservation) {
@@ -236,6 +249,21 @@ export function internalRouter(db: Database, redis: RedisClient, config: Config)
     asyncRoute(async (req, res) => {
       const { userId, anonymousId, subdomain, durationMs, disconnectReason, occurredAt, eventId } =
         sessionDisconnectedBody.parse(req.body);
+      let remoteIp = req.body.remoteIp as string | undefined;
+
+      // If remoteIp was not passed in disconnect body, look it up from activeTunnelSessions before deleting
+      if (!remoteIp && userId) {
+        const [active] = await db
+          .select({ remoteIp: activeTunnelSessions.remoteIp })
+          .from(activeTunnelSessions)
+          .where(and(eq(activeTunnelSessions.userId, userId), eq(activeTunnelSessions.subdomain, subdomain)))
+          .limit(1);
+        if (active) {
+          remoteIp = active.remoteIp;
+        }
+      }
+
+      const geo = lookupGeo(remoteIp);
 
       // Analytics: fire-and-forget.
       db.insert(tunnelEvents)
@@ -246,6 +274,9 @@ export function internalRouter(db: Database, redis: RedisClient, config: Config)
           userId: userId ?? null,
           properties: {
             subdomain,
+            remoteIp: remoteIp ?? null,
+            country: geo.country,
+            city: geo.city,
             durationMs: durationMs ?? null,
             disconnectReason: disconnectReason ?? "unknown",
           },

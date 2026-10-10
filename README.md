@@ -2,7 +2,7 @@
 
 Expose local HTTP services to the internet over native OpenSSH (`ssh -p 2222 -R 80:localhost:3000 tunl.online`). No client installation, background daemon, or account required for ephemeral tunnels.
 
-`tunl` is an open-source reverse tunnel platform consisting of an OpenSSH-compatible tunnel daemon (Go), a REST control plane (Node.js/Express/PostgreSQL), and a web dashboard (Next.js 15).
+`tunl` is an open-source reverse tunnel platform consisting of an OpenSSH-compatible tunnel daemon (Go), a REST control plane (Node.js/Express/PostgreSQL), and a web dashboard (Next.js 16).
 
 ```bash
 ssh -p 2222 -R 80:localhost:3000 tunl.online
@@ -120,7 +120,7 @@ ssh -R 80:localhost:3000 myapp@tunl
                           API / Session State
                                   |
 +-------------------------------------------------------------------+
-|                        dashboard (Next.js 15)                     |
+|                        dashboard (Next.js 16)                     |
 |  - Subdomain Reservations       - Live Traffic Inspector (SSE)    |
 |  - Profile & Security           - Bandwidth Analytics             |
 +-------------------------------------------------------------------+

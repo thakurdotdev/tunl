@@ -20,24 +20,14 @@ import { auth } from "./lib/auth.js";
 export function createApp(db: Database, redis: RedisClient, config: Config) {
   const app = express();
 
-  // Trust proxy headers for reverse proxies and SSH tunnels (X-Forwarded-Proto, X-Forwarded-Host)
-  app.set("trust proxy", true);
+  // Trust exactly 2 proxy hops (Hop 1 = local Nginx, Hop 2 = Cloudflare)
+  // This prevents IP spoofing in X-Forwarded-For while correctly identifying client IPs.
+  app.set("trust proxy", 2);
   app.disable("x-powered-by");
 
   app.use(
     cors({
-      origin: (origin, callback) => {
-        if (
-          !origin ||
-          origin === config.DASHBOARD_URL ||
-          origin.endsWith(".tunl.online") ||
-          origin.includes("localhost")
-        ) {
-          callback(null, true);
-        } else {
-          callback(null, true);
-        }
-      },
+      origin: config.DASHBOARD_URL.replace(/\/+$/, ""),
       credentials: true,
     }),
   );

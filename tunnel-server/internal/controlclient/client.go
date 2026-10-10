@@ -134,13 +134,14 @@ func (c *Client) ReportConnected(ctx context.Context, userID, deviceID, subdomai
 	return c.postWithRetry(ctx, "/internal/tunnel-connected", payload, "tunnel-connected", 3)
 }
 
-func (c *Client) ReportDisconnected(ctx context.Context, userID, deviceID, subdomain string, connectedAt time.Time) error {
+func (c *Client) ReportDisconnected(ctx context.Context, userID, deviceID, subdomain, remoteIP string, connectedAt time.Time) error {
 	now := time.Now().UTC()
 	durationMs := now.Sub(connectedAt).Milliseconds()
 
 	payload := map[string]any{
 		"anonymousId":      deviceID,
 		"subdomain":        subdomain,
+		"remoteIp":         remoteIP,
 		"durationMs":       durationMs,
 		"disconnectReason": "client_closed",
 		"occurredAt":       now.Format(time.RFC3339Nano),

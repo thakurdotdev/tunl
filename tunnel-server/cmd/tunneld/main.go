@@ -49,7 +49,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	reg := registry.New(cfg.ReconnectGraceWindow, cfg.ReservedSubdomains)
+	reg := registry.New(cfg.ReconnectGraceWindow, cfg.ReservedSubdomains, cfg.MaxTotalTunnels)
 
 	ccClient := controlclient.New(controlclient.Options{
 		BaseURL:      cfg.ControlPlaneURL,
@@ -153,6 +153,14 @@ func main() {
 				}
 			}()
 		}
+	}
+
+	// Apply rate limiting as the outermost middleware — after capture/Redis
+	// wiring so it wraps whichever capture handler was selected above.
+	if cfg.RateLimitEnabled {
+		rlCfg := httpproxy.DefaultRateLimitConfig()
+		finalHandler = httpproxy.RateLimitMiddleware(finalHandler, rlCfg, subdomainExtractor)
+		logger.Info("http rate limiting enabled", "subdomain_rate", rlCfg.SubdomainRate, "ip_rate", rlCfg.IPRate)
 	}
 
 	healthHandler := health.NewHandler(reg)

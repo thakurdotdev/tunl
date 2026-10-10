@@ -25,8 +25,10 @@ type Config struct {
 	SubdomainRetries      int
 	ReconnectGraceWindow  time.Duration
 	MaxConnsPerIP         int
+	MaxTotalTunnels       int
 	AnonTunnelMaxDuration time.Duration
 	ReservedSubdomains    map[string]struct{}
+	RateLimitEnabled      bool
 
 	RedisURL              string
 	RequestLogEnabled     bool
@@ -48,6 +50,8 @@ func Load() (*Config, error) {
 		InternalSharedSecret: strings.TrimSpace(getEnv("INTERNAL_SHARED_SECRET", "changeme-shared-secret-at-least-16-chars")),
 		SubdomainRetries:     getEnvInt("SUBDOMAIN_RETRIES", 5),
 		MaxConnsPerIP:        getEnvInt("MAX_CONNS_PER_IP", 10),
+		MaxTotalTunnels:      getEnvInt("MAX_TOTAL_TUNNELS", 10000),
+		RateLimitEnabled:     getEnv("RATE_LIMIT_ENABLED", "true") == "true",
 	}
 
 	graceSeconds := getEnvInt("RECONNECT_GRACE_SECONDS", 12)

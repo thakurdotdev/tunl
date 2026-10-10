@@ -7,6 +7,8 @@ export const tunnelSessionOutputSelect = {
   tunnelId: activeTunnelSessions.tunnelId,
   subdomain: activeTunnelSessions.subdomain,
   remoteIp: activeTunnelSessions.remoteIp,
+  country: activeTunnelSessions.country,
+  city: activeTunnelSessions.city,
   connectedAt: activeTunnelSessions.connectedAt,
   lastSeenAt: activeTunnelSessions.lastSeenAt,
 };

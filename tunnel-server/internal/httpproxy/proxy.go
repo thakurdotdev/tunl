@@ -16,6 +16,8 @@ import (
 	"github.com/thakurdotdev/tunl/tunnel-server/internal/registry"
 )
 
+const maxRequestBodySize = 5 * 1024 * 1024 // 5 MB
+
 type ctxKey string
 
 const tunnelCtxKey ctxKey = "tunnel"
@@ -49,6 +51,7 @@ func NewHandler(opts Options) http.Handler {
 		Director: func(req *http.Request) {
 			req.URL.Scheme = "http"
 			req.URL.Host = "tunnel"
+			req.Header.Del("X-Tunl-Internal-Secret")
 		},
 		Transport: &http.Transport{
 			DialContext:       h.dialTunnel,
@@ -133,6 +136,16 @@ func formatTerminalLog(now time.Time, method, path string, statusCode int, durat
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Enforce request body size limit to prevent memory exhaustion attacks.
+	if r.Body != nil {
+		r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
+	}
+
+	// Read internal secret header if provided (e.g. from control-plane replay),
+	// then immediately delete it from request headers so it is never leaked downstream.
+	internalSecret := r.Header.Get("X-Tunl-Internal-Secret")
+	r.Header.Del("X-Tunl-Internal-Secret")
+
 	subdomain := h.subdomainFromHost(r.Host)
 	if subdomain == "" {
 		renderProxyError(w, r, http.StatusNotFound,
@@ -179,8 +192,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if tunnel.Password != "" {
 		isReplay := false
-		if h.internalSharedSecret != "" && r.Header.Get("X-Tunl-Internal-Secret") == h.internalSharedSecret {
-			isReplay = true
+		if h.internalSharedSecret != "" && internalSecret != "" {
+			if subtle.ConstantTimeCompare([]byte(internalSecret), []byte(h.internalSharedSecret)) == 1 {
+				isReplay = true
+			}
 		}
 		if !isReplay {
 			_, pass, ok := r.BasicAuth()
@@ -251,21 +266,28 @@ func (h *Handler) subdomainFromHost(host string) string {
 	return sub
 }
 
+// getClientIP extracts the real client IP from trusted proxy headers.
+// Header priority: CF-Connecting-IP → X-Real-IP → X-Forwarded-For → RemoteAddr.
+// Each header value is validated as a parseable IP to reject garbage/injection.
 func getClientIP(r *http.Request) string {
-	if cfIP := r.Header.Get("CF-Connecting-IP"); cfIP != "" {
-		return strings.TrimSpace(cfIP)
+	if cfIP := strings.TrimSpace(r.Header.Get("CF-Connecting-IP")); cfIP != "" {
+		if net.ParseIP(cfIP) != nil {
+			return cfIP
+		}
+	}
+	if xri := strings.TrimSpace(r.Header.Get("X-Real-IP")); xri != "" {
+		if net.ParseIP(xri) != nil {
+			return xri
+		}
 	}
 	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
 		parts := strings.Split(xff, ",")
 		if len(parts) > 0 {
 			ip := strings.TrimSpace(parts[0])
-			if ip != "" {
+			if ip != "" && net.ParseIP(ip) != nil {
 				return ip
 			}
 		}
-	}
-	if xri := r.Header.Get("X-Real-IP"); xri != "" {
-		return strings.TrimSpace(xri)
 	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {

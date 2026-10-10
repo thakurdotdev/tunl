@@ -60,6 +60,7 @@ var (
 	ErrSubdomainTaken         = fmt.Errorf("subdomain already registered")
 	ErrUserTunnelLimitReached = fmt.Errorf("active tunnel limit reached for user")
 	ErrAnonymousTunnelExists  = fmt.Errorf("anonymous tunnel already active for this device")
+	ErrServerAtCapacity       = fmt.Errorf("server has reached maximum tunnel capacity")
 )
 
 type entry struct {
@@ -75,9 +76,10 @@ type InMemoryRegistry struct {
 	entries     map[string]*entry
 	reserved    map[string]struct{}
 	graceWindow time.Duration
+	maxTotal    int // 0 means unlimited
 }
 
-func New(graceWindow time.Duration, reserved map[string]struct{}) *InMemoryRegistry {
+func New(graceWindow time.Duration, reserved map[string]struct{}, maxTotal int) *InMemoryRegistry {
 	if reserved == nil {
 		reserved = make(map[string]struct{})
 	}
@@ -85,12 +87,18 @@ func New(graceWindow time.Duration, reserved map[string]struct{}) *InMemoryRegis
 		entries:     make(map[string]*entry),
 		reserved:    reserved,
 		graceWindow: graceWindow,
+		maxTotal:    maxTotal,
 	}
 }
 
 func (r *InMemoryRegistry) Register(t *Tunnel) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+
+	// Global capacity check — prevents unbounded memory growth.
+	if r.maxTotal > 0 && len(r.entries) >= r.maxTotal {
+		return ErrServerAtCapacity
+	}
 
 	if t.UserID != "" && t.MaxActiveTunnels > 0 {
 		active := 0

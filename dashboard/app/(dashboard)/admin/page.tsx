@@ -16,6 +16,7 @@ import {
   Database,
   Globe,
   Layers,
+  MapPin,
   Radio,
   RefreshCw,
   Zap,
@@ -370,6 +371,14 @@ export default function AdminOverviewPage() {
                             <span className="text-muted-foreground text-xs">
                               {session.remoteIp}
                             </span>
+                            {(session.city || session.country) && (
+                              <span className="text-cyan-400 text-[11px] inline-flex items-center gap-1 font-sans font-medium">
+                                <MapPin className="h-2.5 w-2.5 shrink-0" />
+                                {session.city && session.country
+                                  ? `${session.city}, ${session.country}`
+                                  : session.city || session.country}
+                              </span>
+                            )}
                           </div>
                           <p className="text-muted-foreground font-sans text-xs">
                             {session.userEmail ?? "Anonymous user"}

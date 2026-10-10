@@ -17,6 +17,7 @@ import {
   ExternalLink,
   Globe,
   Info,
+  MapPin,
   Pause,
   Play,
   Radio,
@@ -390,23 +391,33 @@ export default function AdminAuditPage() {
 
                       <td className="text-muted-foreground p-3.5 font-mono">
                         {evt.remoteIp ? (
-                          <div className="flex items-center gap-1.5">
-                            <span>{evt.remoteIp}</span>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleCopy(evt.remoteIp!, "IP address", `ip-${evt.id}`);
-                              }}
-                              className="text-muted-foreground/60 hover:text-foreground opacity-0 transition-opacity group-hover:opacity-100"
-                              title="Copy IP"
-                            >
-                              {copiedKey === `ip-${evt.id}` ? (
-                                <Check className="h-3 w-3 text-emerald-400" />
-                              ) : (
-                                <Copy className="h-3 w-3" />
-                              )}
-                            </button>
+                          <div className="flex flex-col gap-0.5">
+                            <div className="flex items-center gap-1.5">
+                              <span>{evt.remoteIp}</span>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleCopy(evt.remoteIp!, "IP address", `ip-${evt.id}`);
+                                }}
+                                className="text-muted-foreground/60 hover:text-foreground opacity-0 transition-opacity group-hover:opacity-100"
+                                title="Copy IP"
+                              >
+                                {copiedKey === `ip-${evt.id}` ? (
+                                  <Check className="h-3 w-3 text-emerald-400" />
+                                ) : (
+                                  <Copy className="h-3 w-3" />
+                                )}
+                              </button>
+                            </div>
+                            {(evt.city || evt.country) && (
+                              <span className="text-[10px] text-muted-foreground/80 flex items-center gap-1 font-sans">
+                                <MapPin className="h-2.5 w-2.5 shrink-0 text-cyan-400" />
+                                {evt.city && evt.country
+                                  ? `${evt.city}, ${evt.country}`
+                                  : evt.city || evt.country}
+                              </span>
+                            )}
                           </div>
                         ) : (
                           <span className="text-muted-foreground/40">-</span>
@@ -592,6 +603,14 @@ export default function AdminAuditPage() {
                   <span className="text-foreground mt-1 block font-medium">
                     {selectedEvent.remoteIp || "N/A"}
                   </span>
+                  {(selectedEvent.city || selectedEvent.country) && (
+                    <span className="text-cyan-400 text-[10px] mt-1 flex items-center gap-1 font-sans font-medium">
+                      <MapPin className="h-3 w-3 shrink-0" />
+                      {selectedEvent.city && selectedEvent.country
+                        ? `${selectedEvent.city}, ${selectedEvent.country}`
+                        : selectedEvent.city || selectedEvent.country}
+                    </span>
+                  )}
                 </div>
               </div>
 

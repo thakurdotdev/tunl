@@ -21,6 +21,8 @@ export type ActiveSessionItem = {
   id: string;
   subdomain: string;
   remoteIp: string;
+  country?: string | null;
+  city?: string | null;
   connectedAt: string;
   userEmail: string | null;
 };
@@ -43,6 +45,8 @@ export type TunnelEventItem = {
   eventType: string;
   subdomain: string | null;
   remoteIp: string | null;
+  country?: string | null;
+  city?: string | null;
   anonymousId?: string | null;
   occurredAt: string;
   userEmail: string | null;

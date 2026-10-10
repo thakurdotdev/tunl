@@ -58,6 +58,8 @@ export async function getAdminAnalytics(db: Database) {
         id: activeTunnelSessions.id,
         subdomain: activeTunnelSessions.subdomain,
         remoteIp: activeTunnelSessions.remoteIp,
+        country: activeTunnelSessions.country,
+        city: activeTunnelSessions.city,
         connectedAt: activeTunnelSessions.connectedAt,
         userEmail: user.email,
       })
@@ -143,6 +145,8 @@ export async function getAdminAuditEvents(db: Database, params: GetAdminAuditEve
         sql`(${tunnelEvents.properties}->>'subdomain') ILIKE ${term}`,
         sql`(${tunnelEvents.properties}->>'remote_ip') ILIKE ${term}`,
         sql`(${tunnelEvents.properties}->>'remoteIp') ILIKE ${term}`,
+        sql`(${tunnelEvents.properties}->>'country') ILIKE ${term}`,
+        sql`(${tunnelEvents.properties}->>'city') ILIKE ${term}`,
       ),
     );
   }
@@ -185,6 +189,8 @@ export async function getAdminAuditEvents(db: Database, params: GetAdminAuditEve
         : props.remoteIp
           ? String(props.remoteIp)
           : null,
+      country: props.country ? String(props.country) : null,
+      city: props.city ? String(props.city) : null,
       anonymousId: e.anonymousId,
       occurredAt: e.occurredAt,
       userEmail: e.userEmail,
