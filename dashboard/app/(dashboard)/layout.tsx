@@ -52,7 +52,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div className="bg-background flex min-h-screen flex-col font-sans">
         <header className="border-border/60 bg-card/90 sticky top-0 z-50 border-b backdrop-blur-xs">
           <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-2 px-3 sm:px-6">
-            <div className="flex items-center gap-2 overflow-hidden sm:gap-6">
+            <div className="flex min-w-0 items-center gap-2 sm:gap-6">
               <Link href="/dashboard" className="flex shrink-0 items-center gap-2">
                 <Logo />
               </Link>
@@ -172,9 +172,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </header>
         <main
-          className={`mx-auto w-full flex-1 px-4 py-6 sm:px-6 sm:py-8 ${
-            pathname.startsWith("/admin") ? "max-w-screen-2xl" : "max-w-6xl"
-          }`}
+          className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-8"
         >
           {children}
         </main>

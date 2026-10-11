@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
+import { countryName, countryFlagUrl } from "@/lib/utils";
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return "0 B";
@@ -234,11 +235,11 @@ export default function AdminOverviewPage() {
 
         {/* Top Bandwidth Subdomains Table */}
         <div className="mt-5">
-          <div className="mb-2.5 flex items-center justify-between">
+          <div className="mb-2.5 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
             <h4 className="text-foreground text-xs font-semibold">
               Top Bandwidth Consuming Endpoints ({bandwidthPeriod})
             </h4>
-            <span className="text-muted-foreground text-[11px]">
+            <span className="text-muted-foreground hidden text-[11px] sm:block">
               Audit logs viewable • Request inspection private to tunnel owner
             </span>
           </div>
@@ -371,10 +372,14 @@ export default function AdminOverviewPage() {
                             </span>
                             {(session.city || session.country) && (
                               <span className="text-cyan-400 text-[11px] inline-flex items-center gap-1 font-sans font-medium">
-                                <MapPin className="h-2.5 w-2.5 shrink-0" />
+                                {session.country && countryFlagUrl(session.country) ? (
+                                  <img src={countryFlagUrl(session.country, 16)!} alt={countryName(session.country) ?? ""} className="h-2.5 w-3.5 shrink-0 rounded-[1px] object-cover" />
+                                ) : (
+                                  <MapPin className="h-2.5 w-2.5 shrink-0" />
+                                )}
                                 {session.city && session.country
-                                  ? `${session.city}, ${session.country}`
-                                  : session.city || session.country}
+                                  ? `${session.city}, ${countryName(session.country)}`
+                                  : session.city || countryName(session.country)}
                               </span>
                             )}
                           </div>

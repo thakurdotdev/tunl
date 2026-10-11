@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/lib/auth-context";
 import { Activity, BarChart3, Layers, ShieldAlert, Users } from "lucide-react";
 import Link from "next/link";
@@ -46,34 +46,33 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { href: "/admin/plans", label: "Plan Tiers", icon: Layers },
   ];
 
+  const activeTab =
+    adminTabs.find((tab) =>
+      tab.exact ? pathname === tab.href : pathname.startsWith(tab.href),
+    )?.href ?? "/admin";
+
   return (
     <div className="font-sans">
-      <div className="grid items-start gap-6 lg:grid-cols-[210px_minmax(0,1fr)]">
-        <Card className="p-2 lg:sticky lg:top-20">
-          <nav aria-label="Admin navigation" className="flex gap-1 overflow-x-auto lg:flex-col">
-            {adminTabs.map((tab) => {
-              const isActive = tab.exact ? pathname === tab.href : pathname.startsWith(tab.href);
-              const Icon = tab.icon;
-              return (
-                <Link
-                  key={tab.href}
-                  href={tab.href}
-                  aria-current={isActive ? "page" : undefined}
-                  className={`flex shrink-0 items-center gap-2.5 rounded-md px-3 py-2.5 text-sm transition-colors ${
-                    isActive
-                      ? "bg-primary/10 font-medium text-primary"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  <span>{tab.label}</span>
-                </Link>
-              );
-            })}
-          </nav>
-        </Card>
-        <div className="min-w-0">{children}</div>
-      </div>
+      <Tabs value={activeTab} className="mb-6">
+        <TabsList className="no-scrollbar w-full overflow-x-auto sm:w-fit">
+          {adminTabs.map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <TabsTrigger
+                key={tab.href}
+                value={tab.href}
+                render={<Link href={tab.href} />}
+              >
+                <Icon />
+                {tab.label}
+              </TabsTrigger>
+            );
+          })}
+        </TabsList>
+      </Tabs>
+
+      <div className="min-w-0">{children}</div>
     </div>
   );
 }
+

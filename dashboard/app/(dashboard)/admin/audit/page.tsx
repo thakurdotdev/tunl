@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAdminAudit } from "@/hooks/use-admin";
 import type { TunnelEventItem } from "@/lib/types";
+import { countryName, countryFlagUrl } from "@/lib/utils";
 import { toast } from "sonner";
 import {
   Activity,
@@ -405,10 +406,14 @@ export default function AdminAuditPage() {
                             </div>
                             {(evt.city || evt.country) && (
                               <span className="text-[10px] text-muted-foreground/80 flex items-center gap-1 font-sans">
-                                <MapPin className="h-2.5 w-2.5 shrink-0 text-cyan-400" />
+                                {evt.country && countryFlagUrl(evt.country) ? (
+                                  <img src={countryFlagUrl(evt.country, 16)!} alt={countryName(evt.country) ?? ""} className="h-2.5 w-3.5 shrink-0 rounded-[1px] object-cover" />
+                                ) : (
+                                  <MapPin className="h-2.5 w-2.5 shrink-0 text-cyan-400" />
+                                )}
                                 {evt.city && evt.country
-                                  ? `${evt.city}, ${evt.country}`
-                                  : evt.city || evt.country}
+                                  ? `${evt.city}, ${countryName(evt.country)}`
+                                  : evt.city || countryName(evt.country)}
                               </span>
                             )}
                           </div>
@@ -598,10 +603,14 @@ export default function AdminAuditPage() {
                   </span>
                   {(selectedEvent.city || selectedEvent.country) && (
                     <span className="text-cyan-400 text-[10px] mt-1 flex items-center gap-1 font-sans font-medium">
-                      <MapPin className="h-3 w-3 shrink-0" />
+                      {selectedEvent.country && countryFlagUrl(selectedEvent.country) ? (
+                        <img src={countryFlagUrl(selectedEvent.country, 16)!} alt={countryName(selectedEvent.country) ?? ""} className="h-3 w-4 shrink-0 rounded-[1px] object-cover" />
+                      ) : (
+                        <MapPin className="h-3 w-3 shrink-0" />
+                      )}
                       {selectedEvent.city && selectedEvent.country
-                        ? `${selectedEvent.city}, ${selectedEvent.country}`
-                        : selectedEvent.city || selectedEvent.country}
+                        ? `${selectedEvent.city}, ${countryName(selectedEvent.country)}`
+                        : selectedEvent.city || countryName(selectedEvent.country)}
                     </span>
                   )}
                 </div>
