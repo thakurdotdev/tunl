@@ -19,6 +19,7 @@ import type { RedisClient } from "../../redis/client.js";
 import { redisKeys } from "../../redis/keys.js";
 import { recordRequestMetrics } from "../inspect/analytics.service.js";
 import { lookupGeo } from "../../lib/geo.js";
+import { linkConvertedIdentity } from "./identity.service.js";
 
 export const validateKeyBody = z.object({
   fingerprint: z.string().min(1),
@@ -182,6 +183,12 @@ export function internalRouter(db: Database, redis: RedisClient, config: Config)
           console.error({ err, eventId }, "failed to write tunnel.connected event"),
         );
 
+      if (userId && sessionType === "authenticated" && (anonymousId || remoteIp)) {
+        linkConvertedIdentity(db, userId, anonymousId, remoteIp, new Date(occurredAt)).catch(
+          (err: unknown) => console.error({ err, eventId }, "failed to link converted identity"),
+        );
+      }
+
       // Operational session tracking — authenticated only.
       // Wrapped in a transaction so orphan cleanup + session upsert are atomic.
       if (userId && sessionType === "authenticated") {
@@ -256,7 +263,12 @@ export function internalRouter(db: Database, redis: RedisClient, config: Config)
         const [active] = await db
           .select({ remoteIp: activeTunnelSessions.remoteIp })
           .from(activeTunnelSessions)
-          .where(and(eq(activeTunnelSessions.userId, userId), eq(activeTunnelSessions.subdomain, subdomain)))
+          .where(
+            and(
+              eq(activeTunnelSessions.userId, userId),
+              eq(activeTunnelSessions.subdomain, subdomain),
+            ),
+          )
           .limit(1);
         if (active) {
           remoteIp = active.remoteIp;

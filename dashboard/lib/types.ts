@@ -97,6 +97,51 @@ export type AdminAnalytics = {
   recentEventsList: TunnelEventItem[];
 };
 
+export type AdminOverviewAnalytics = Pick<
+  AdminAnalytics,
+  "totalUsers" | "totalActiveSessions" | "totalTunnels" | "totalEvents" | "planDistribution"
+>;
+
+export type AdminEngagementAnalytics = {
+  newUsersLast24h: number;
+  newUsersLast7d: number;
+  newUsersLast30d: number;
+  dauCount: number;
+  wauCount: number;
+  mauCount: number;
+  totalConversions: number;
+  totalLinkedIdentities: number;
+  uniqueAnonymousDevices: number;
+  conversionRate: number;
+  recentConversions: Array<{
+    anonymousId: string;
+    userId: string;
+    userEmail: string;
+    linkedAt: string;
+  }>;
+};
+
+export type AdminSessionAnalytics = {
+  totalActiveSessions: number;
+  totalAuthEvents: number;
+  totalAnonEvents: number;
+  avgSessionDurationMs: number | null;
+  medianSessionDurationMs: number | null;
+  completedSessions: number;
+  peakConcurrentTunnelsLast24h: number;
+  activeSessionsList: ActiveSessionItem[];
+  recentEventsList: TunnelEventItem[];
+};
+
+export type AdminGrowthAnalytics = {
+  days: Array<{ day: string; signups: number }>;
+};
+
+export type AdminGeoAnalytics = {
+  uniqueIpsLast24h: number;
+  countries: Array<{ country: string; sessionCount: number; uniqueDevices: number }>;
+};
+
 export type BandwidthSummary = {
   totalRequests: number;
   totalBytesIn: number;

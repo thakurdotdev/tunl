@@ -92,6 +92,13 @@
       "when": 1791634005166,
       "tag": "0012_familiar_mentor",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1791785584489,
+      "tag": "0013_admin_analytics",
+      "breakpoints": true
     }
   ]
 }

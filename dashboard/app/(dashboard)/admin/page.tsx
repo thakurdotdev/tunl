@@ -2,7 +2,15 @@
 
 import { useState } from "react";
 import { AdminAnalyticsCards } from "@/components/admin/admin-analytics-cards";
-import { useAdminAnalytics, useAdminBandwidthAnalytics } from "@/hooks/use-admin";
+import { AdminAnalyticsInsights } from "@/components/admin/admin-analytics-insights";
+import {
+  useAdminOverviewAnalytics,
+  useAdminEngagementAnalytics,
+  useAdminSessionAnalytics,
+  useAdminGrowthAnalytics,
+  useAdminGeoAnalytics,
+  useAdminBandwidthAnalytics,
+} from "@/hooks/use-admin";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -22,6 +30,7 @@ import {
   Zap,
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { Card } from "@/components/ui/card";
 import { countryName, countryFlagUrl } from "@/lib/utils";
 
@@ -47,7 +56,16 @@ function formatShortRelativeTime(date: Date | string): string {
 }
 
 export default function AdminOverviewPage() {
-  const { data: analytics, isLoading, isFetching, refetch } = useAdminAnalytics();
+  const overview = useAdminOverviewAnalytics();
+  const engagement = useAdminEngagementAnalytics();
+  const sessions = useAdminSessionAnalytics();
+  const growth = useAdminGrowthAnalytics();
+  const geo = useAdminGeoAnalytics();
+  const analytics = overview.data;
+  const isLoading = overview.isPending;
+  const isFetching = [overview, engagement, sessions, growth, geo].some(
+    (query) => query.isFetching,
+  );
   const [bandwidthPeriod, setBandwidthPeriod] = useState<"24h" | "7d" | "30d">("24h");
   const {
     data: bandwidthData,
@@ -58,7 +76,7 @@ export default function AdminOverviewPage() {
 
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
-  const activeSessions = analytics?.activeSessionsList ?? [];
+  const activeSessions = sessions.data?.activeSessionsList ?? [];
 
   const handleCopy = (text: string, label: string, key: string) => {
     navigator.clipboard.writeText(text);
@@ -67,10 +85,18 @@ export default function AdminOverviewPage() {
     setTimeout(() => setCopiedKey(null), 1500);
   };
 
-  const handleRefreshAll = () => {
-    refetch();
-    refetchBandwidth();
-    toast.info("Telemetry metrics refreshed");
+  const handleRefreshAll = async () => {
+    const results = await Promise.all([
+      overview.refetch(),
+      engagement.refetch(),
+      sessions.refetch(),
+      growth.refetch(),
+      geo.refetch(),
+      refetchBandwidth(),
+    ]);
+    if (results.some((result) => result.isError))
+      toast.error("Some analytics could not be refreshed");
+    else toast.success("Analytics refreshed (metrics use short server-side caches)");
   };
 
   const bwSummary = bandwidthData?.summary ?? {
@@ -90,7 +116,9 @@ export default function AdminOverviewPage() {
       {/* Top Header with Refresh */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight text-foreground">Infrastructure telemetry</h2>
+          <h2 className="text-foreground text-xl font-semibold tracking-tight">
+            Platform analytics
+          </h2>
         </div>
 
         <Button
@@ -110,7 +138,21 @@ export default function AdminOverviewPage() {
       </div>
 
       {/* Analytics Top KPI Cards */}
-      <AdminAnalyticsCards analytics={analytics} isLoading={isLoading} />
+      {[overview, engagement, sessions].some((query) => query.isError) && (
+        <p
+          role="alert"
+          className="border-destructive/30 text-destructive rounded-lg border p-3 text-sm"
+        >
+          Some analytics are unavailable. Refresh to retry.
+        </p>
+      )}
+      <AdminAnalyticsCards
+        analytics={analytics}
+        engagement={engagement.data}
+        isLoading={isLoading}
+        isEngagementLoading={engagement.isPending}
+      />
+      <AdminAnalyticsInsights growth={growth} geo={geo} sessions={sessions} />
 
       {/* Platform Bandwidth & Traffic Telemetry Section */}
       <Card className="gap-5 rounded-xl p-5 shadow-none">
@@ -185,7 +227,7 @@ export default function AdminOverviewPage() {
             <div className="mt-1.5 flex flex-col gap-0.5 text-[11px]">
               {bwSummary.totalErrors > 0 ? (
                 <>
-                  <span className="text-amber-400 font-medium">
+                  <span className="font-medium text-amber-400">
                     {bwSummary.totalErrors.toLocaleString()} HTTP 4xx/5xx ({bwSummary.errorRate}%)
                   </span>
                   <span className="text-muted-foreground text-[10px]">
@@ -193,7 +235,7 @@ export default function AdminOverviewPage() {
                   </span>
                 </>
               ) : (
-                <span className="text-emerald-400 font-medium">100% clean delivery (0 errors)</span>
+                <span className="font-medium text-emerald-400">100% clean delivery (0 errors)</span>
               )}
             </div>
           </div>
@@ -222,7 +264,7 @@ export default function AdminOverviewPage() {
               </span>
               <Zap className="text-muted-foreground/60 h-3.5 w-3.5" />
             </div>
-            <div className="mt-2 font-mono text-xl font-bold text-foreground">
+            <div className="text-foreground mt-2 font-mono text-xl font-bold">
               {isBandwidthLoading ? "..." : `${bwSummary.successRate}%`}
             </div>
             <span className="text-muted-foreground mt-1 block text-[10px]">
@@ -298,56 +340,65 @@ export default function AdminOverviewPage() {
       </Card>
 
       {/* Main Grid: Live Sessions & Traffic Insights */}
-      <div className="grid gap-6 lg:grid-cols-12">
+      <div className="grid min-w-0 items-stretch gap-6 lg:auto-rows-[32rem] lg:grid-cols-2">
         {/* Live Active Sessions Section */}
-        <div className="lg:col-span-6">
-          <div className="bg-card border-border/60 flex h-full flex-col justify-between rounded-lg border p-5 shadow-2xs">
-            <div>
-              <div className="border-border/60 flex items-center justify-between border-b pb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-md border border-emerald-500/20 bg-emerald-500/15">
+        <div className="flex min-h-0 min-w-0">
+          <div className="bg-card border-border/60 flex min-h-0 min-w-0 flex-1 flex-col rounded-xl border p-4 shadow-none sm:p-5">
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+              <div className="border-border/60 flex shrink-0 flex-wrap items-center justify-between gap-3 border-b pb-4">
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-emerald-500/20 bg-emerald-500/10">
                     <Radio className="h-4 w-4 text-emerald-400" />
                   </div>
-                  <div>
-                    <h3 className="text-foreground text-sm font-semibold">Live Active Tunnels</h3>
-                    <p className="text-muted-foreground text-xs">Active SSH proxy sessions</p>
+                  <div className="min-w-0">
+                    <h3 className="text-foreground text-sm font-semibold">Active tunnels</h3>
+                    <p className="text-muted-foreground mt-0.5 text-xs">
+                      Live authenticated sessions
+                    </p>
                   </div>
                 </div>
-                <span className="flex items-center gap-1.5 rounded-md border border-emerald-500/20 bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-400">
+                <span className="flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium whitespace-nowrap text-emerald-400">
                   <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />{" "}
-                  {analytics?.totalActiveSessions ?? activeSessions.length} Live
+                  {sessions.data?.totalActiveSessions ?? "—"} Live
                 </span>
               </div>
 
-              <div className="mt-4">
-                {isLoading ? (
-                  <div className="text-muted-foreground py-8 text-center text-xs">
+              <div className="mt-3 flex min-h-0 min-w-0 flex-1 flex-col">
+                {sessions.isError ? (
+                  <p className="text-destructive flex flex-1 items-center justify-center py-8 text-center text-xs">
+                    Unable to load active sessions.
+                  </p>
+                ) : sessions.isPending ? (
+                  <div className="text-muted-foreground flex flex-1 items-center justify-center py-8 text-center text-xs">
                     Loading active sessions...
                   </div>
                 ) : activeSessions.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-10 text-center">
-                    <div className="border-border/60 bg-muted/40 mb-2 flex h-9 w-9 items-center justify-center rounded-md border">
-                      <Radio className="text-muted-foreground h-4 w-4" />
+                  <div className="bg-muted/10 flex min-h-48 flex-1 flex-col items-center justify-center rounded-lg px-4 py-8 text-center">
+                    <div className="border-border/60 bg-muted/40 mb-3 flex h-11 w-11 items-center justify-center rounded-xl border">
+                      <Radio className="text-muted-foreground h-5 w-5" />
                     </div>
-                    <p className="text-muted-foreground text-xs font-medium">
-                      No active tunnel sessions
-                    </p>
-                    <p className="text-muted-foreground mt-0.5 text-xs">
-                      Live sessions will appear here when connected
+                    <p className="text-foreground text-sm font-medium">No active tunnel sessions</p>
+                    <p className="text-muted-foreground mt-1 max-w-56 text-xs leading-relaxed">
+                      Connected tunnels will appear here in real time.
                     </p>
                   </div>
                 ) : (
-                  <div className="divide-border/60 divide-y">
+                  <div
+                    className="divide-border/60 max-h-[26rem] min-h-0 min-w-0 flex-1 [scrollbar-width:thin] divide-y overflow-y-auto overscroll-contain pr-1 lg:max-h-none"
+                    tabIndex={0}
+                    role="region"
+                    aria-label="Active tunnel sessions"
+                  >
                     {activeSessions.map((session) => (
-                      <div
-                        key={session.id}
-                        className="hover:bg-muted/20 group flex items-center justify-between py-2.5 transition-colors"
-                      >
-                        <div className="space-y-0.5 font-mono">
-                          <div className="flex items-center gap-2">
-                            <span className="inline-flex items-center gap-1 rounded border border-emerald-500/20 bg-emerald-500/15 px-1.5 py-0.5 text-[11px] font-bold text-emerald-400">
-                              <Globe className="h-2.5 w-2.5" />
-                              {session.subdomain}
+                      <div key={session.id} className="group min-w-0 space-y-2 py-3.5">
+                        <div className="flex min-w-0 items-center justify-between gap-2">
+                          <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                            <span
+                              className="inline-flex min-w-0 items-center gap-1.5 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 font-mono text-xs font-medium text-emerald-400"
+                              title={session.subdomain}
+                            >
+                              <Globe className="h-3 w-3 shrink-0" />
+                              <span className="truncate">{session.subdomain}</span>
                             </span>
                             <button
                               type="button"
@@ -358,8 +409,9 @@ export default function AdminOverviewPage() {
                                   `sub-${session.id}`,
                                 )
                               }
-                              className="text-muted-foreground/50 hover:text-foreground opacity-0 transition-opacity group-hover:opacity-100"
+                              className="text-muted-foreground hover:text-foreground hover:bg-muted focus-visible:outline-primary flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors focus-visible:outline-2"
                               title="Copy URL"
+                              aria-label={`Copy URL for ${session.subdomain}`}
                             >
                               {copiedKey === `sub-${session.id}` ? (
                                 <Check className="h-3 w-3 text-emerald-400" />
@@ -367,38 +419,51 @@ export default function AdminOverviewPage() {
                                 <Copy className="h-3 w-3" />
                               )}
                             </button>
-                            <span className="text-muted-foreground text-xs">
-                              {session.remoteIp}
-                            </span>
-                            {(session.city || session.country) && (
-                              <span className="text-cyan-400 text-[11px] inline-flex items-center gap-1 font-sans font-medium">
-                                {session.country && countryFlagUrl(session.country) ? (
-                                  <img src={countryFlagUrl(session.country, 16)!} alt={countryName(session.country) ?? ""} className="h-2.5 w-3.5 shrink-0 rounded-[1px] object-cover" />
-                                ) : (
-                                  <MapPin className="h-2.5 w-2.5 shrink-0" />
-                                )}
-                                {session.city && session.country
-                                  ? `${session.city}, ${countryName(session.country)}`
-                                  : session.city || countryName(session.country)}
-                              </span>
-                            )}
                           </div>
-                          <p className="text-muted-foreground font-sans text-xs">
-                            {session.userEmail ?? "Anonymous user"}
-                          </p>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <span className="text-muted-foreground font-mono text-[11px]">
-                            {formatShortRelativeTime(session.connectedAt)}
-                          </span>
                           <Link
                             href={`/admin/audit?search=${encodeURIComponent(session.subdomain)}`}
-                            className="text-muted-foreground hover:text-foreground border-border/60 bg-muted/40 inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[10px] font-medium transition-colors"
+                            className="text-muted-foreground hover:text-foreground border-border/60 hover:bg-muted inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium transition-colors"
                             title="Inspect Audit Logs for Subdomain"
                           >
                             Audit <ArrowUpRight className="h-2.5 w-2.5" />
                           </Link>
+                        </div>
+                        <div className="flex min-w-0 items-center justify-between gap-3 text-xs">
+                          <p
+                            className="text-muted-foreground min-w-0 truncate"
+                            title={session.userEmail ?? "Anonymous user"}
+                          >
+                            {session.userEmail ?? "Anonymous user"}
+                          </p>
+                          <span className="text-muted-foreground shrink-0 text-[11px] whitespace-nowrap">
+                            {formatShortRelativeTime(session.connectedAt)}
+                          </span>
+                        </div>
+                        <div className="text-muted-foreground flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+                          <span className="min-w-0 font-mono break-all">
+                            {session.remoteIp || "Unknown IP"}
+                          </span>
+                          {(session.city || session.country) && (
+                            <span className="inline-flex min-w-0 items-center gap-1.5">
+                              {session.country && countryFlagUrl(session.country) ? (
+                                <Image
+                                  unoptimized
+                                  width={16}
+                                  height={12}
+                                  src={countryFlagUrl(session.country, 16)!}
+                                  alt=""
+                                  className="h-3 w-4 shrink-0 rounded-[1px] object-cover"
+                                />
+                              ) : (
+                                <MapPin className="h-3 w-3 shrink-0" />
+                              )}
+                              <span className="min-w-0 break-words">
+                                {[session.city, countryName(session.country)]
+                                  .filter(Boolean)
+                                  .join(", ")}
+                              </span>
+                            </span>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -407,50 +472,68 @@ export default function AdminOverviewPage() {
               </div>
             </div>
 
-            <div className="border-border/60 mt-4 flex items-center justify-between border-t pt-3 text-xs">
-              <span className="text-muted-foreground">Historical Audit Trail</span>
+            <div className="border-border/60 mt-4 flex shrink-0 flex-wrap items-center justify-between gap-2 border-t pt-3 text-xs">
+              <span className="text-muted-foreground">
+                Showing {activeSessions.length} of {sessions.data?.totalActiveSessions ?? "—"}
+              </span>
               <Link
                 href="/admin/audit"
-                className="text-foreground hover:text-primary inline-flex items-center gap-1 font-semibold transition-colors"
+                className="text-foreground hover:text-primary inline-flex items-center gap-1 font-medium transition-colors"
               >
-                View Live Audit Stream <ArrowUpRight className="h-3.5 w-3.5" />
+                View audit stream <ArrowUpRight className="h-3.5 w-3.5 shrink-0" />
               </Link>
             </div>
           </div>
         </div>
 
         {/* Traffic & Conversion Analytics */}
-        <div className="lg:col-span-6">
-          <div className="bg-card border-border/60 flex h-full flex-col justify-between rounded-lg border p-5 shadow-2xs">
-            <div>
-              <div className="border-border/60 flex items-center justify-between border-b pb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="bg-secondary text-foreground border-border/60 flex h-8 w-8 items-center justify-center rounded-md border">
+        <div className="flex min-h-0 min-w-0">
+          <div className="bg-card border-border/60 flex min-h-0 min-w-0 flex-1 flex-col rounded-xl border p-4 shadow-none sm:p-5">
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+              <div className="border-border/60 flex shrink-0 flex-wrap items-center justify-between gap-3 border-b pb-4">
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <div className="bg-secondary text-foreground border-border/60 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border">
                     <BarChart3 className="h-4 w-4" />
                   </div>
-                  <div>
-                    <h3 className="text-foreground text-sm font-semibold">Traffic & Conversion</h3>
-                    <p className="text-muted-foreground text-xs">
-                      Session distribution & identity claims
+                  <div className="min-w-0">
+                    <h3 className="text-foreground text-sm font-semibold">Traffic & conversion</h3>
+                    <p className="text-muted-foreground mt-0.5 text-xs">
+                      Activity & account attribution
                     </p>
                   </div>
                 </div>
-                <span className="border-border/60 bg-secondary text-secondary-foreground rounded-md border px-2.5 py-0.5 text-[10px] font-semibold">
-                  Insights
+                <span className="border-border/60 bg-secondary text-muted-foreground shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-medium whitespace-nowrap">
+                  Last 24h
                 </span>
               </div>
 
-              <div className="mt-4 space-y-4 text-xs">
-                <div>
-                  <div className="text-muted-foreground mb-1.5 flex justify-between text-xs font-medium">
-                    <span>Auth Users ({analytics?.totalAuthEvents ?? 0})</span>
-                    <span>Anonymous ({analytics?.totalAnonEvents ?? 0})</span>
+              <div className="mt-4 flex min-h-0 min-w-0 flex-1 flex-col gap-3 text-xs">
+                <div className="shrink-0">
+                  <div className="mb-3 grid min-w-0 grid-cols-2 gap-3">
+                    <div className="min-w-0">
+                      <p className="text-muted-foreground flex items-center gap-1.5 text-[11px]">
+                        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
+                        Authenticated
+                      </p>
+                      <p className="mt-1 text-2xl font-semibold tracking-tight break-all">
+                        {sessions.data?.totalAuthEvents.toLocaleString() ?? "—"}
+                      </p>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-muted-foreground flex items-center gap-1.5 text-[11px]">
+                        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-zinc-500" />
+                        Anonymous
+                      </p>
+                      <p className="mt-1 text-2xl font-semibold tracking-tight break-all">
+                        {sessions.data?.totalAnonEvents.toLocaleString() ?? "—"}
+                      </p>
+                    </div>
                   </div>
                   {(() => {
-                    const auth = analytics?.totalAuthEvents ?? 0;
-                    const anon = analytics?.totalAnonEvents ?? 0;
+                    const auth = sessions.data?.totalAuthEvents ?? 0;
+                    const anon = sessions.data?.totalAnonEvents ?? 0;
                     const total = auth + anon;
-                    const authPct = total > 0 ? Math.round((auth / total) * 100) : 50;
+                    const authPct = total > 0 ? Math.round((auth / total) * 100) : 0;
                     return (
                       <div className="bg-muted flex h-2 w-full overflow-hidden rounded-full">
                         <div
@@ -458,7 +541,7 @@ export default function AdminOverviewPage() {
                           className="bg-emerald-400 transition-all duration-500"
                         />
                         <div
-                          style={{ width: `${100 - authPct}%` }}
+                          style={{ width: `${total > 0 ? 100 - authPct : 0}%` }}
                           className="bg-zinc-600 transition-all duration-500"
                         />
                       </div>
@@ -466,29 +549,74 @@ export default function AdminOverviewPage() {
                   })()}
                 </div>
 
-                <div className="border-border/60 bg-muted/20 flex items-center justify-between rounded-md border p-3">
-                  <div>
-                    <span className="text-foreground block text-xs font-medium">
-                      Converted Anonymous Devices
-                    </span>
-                    <span className="text-muted-foreground text-xs">
-                      Devices linked to authenticated accounts
-                    </span>
+                <div className="grid min-w-0 shrink-0 gap-3 sm:grid-cols-2">
+                  <div className="border-border/60 bg-muted/20 min-w-0 rounded-lg border p-3.5">
+                    <p className="text-muted-foreground text-xs">Converted devices</p>
+                    <p className="mt-2 text-2xl font-semibold tracking-tight break-all">
+                      {engagement.data?.totalLinkedIdentities.toLocaleString() ?? "—"}
+                    </p>
+                    <p className="text-muted-foreground mt-1 text-[11px]">
+                      Linked accounts · all time
+                    </p>
                   </div>
-                  <span className="text-foreground text-xl font-bold">
-                    {isLoading ? "..." : (analytics?.totalLinkedIdentities ?? 0)}
-                  </span>
+                  <div className="border-border/60 bg-muted/20 min-w-0 rounded-lg border p-3.5">
+                    <p className="text-muted-foreground text-xs">Conversion rate</p>
+                    <p className="mt-2 text-2xl font-semibold tracking-tight break-all">
+                      {engagement.data ? `${engagement.data.conversionRate}%` : "—"}
+                    </p>
+                    <p className="text-muted-foreground mt-1 text-[11px]">
+                      Device cohort · all time
+                    </p>
+                  </div>
+                </div>
+                <p className="text-muted-foreground shrink-0 text-[11px]">
+                  Based on {engagement.data?.uniqueAnonymousDevices.toLocaleString() ?? "—"}{" "}
+                  observed anonymous devices.
+                </p>
+                <div className="border-border/60 flex min-h-0 min-w-0 flex-1 flex-col border-t pt-3">
+                  <h4 className="mb-2 shrink-0 font-semibold">Recent conversions</h4>
+                  {engagement.isPending ? (
+                    <p className="text-muted-foreground">Loading conversions...</p>
+                  ) : engagement.isError ? (
+                    <p className="text-destructive">Unable to load conversions.</p>
+                  ) : engagement.data.recentConversions.length === 0 ? (
+                    <div className="bg-muted/10 flex min-h-20 flex-1 flex-col justify-center rounded-lg px-4 py-3 text-center">
+                      <p className="text-foreground font-medium">No conversions yet</p>
+                      <p className="text-muted-foreground mx-auto mt-1 max-w-64 text-[11px] leading-relaxed">
+                        Anonymous devices linked to accounts appear here.
+                      </p>
+                    </div>
+                  ) : (
+                    <ul className="divide-border/60 max-h-60 min-h-0 min-w-0 flex-1 [scrollbar-width:thin] divide-y overflow-y-auto overscroll-contain pr-1 lg:max-h-none">
+                      {engagement.data.recentConversions.map((conversion) => (
+                        <li
+                          key={conversion.anonymousId}
+                          className="flex min-w-0 items-center justify-between gap-3 py-2.5"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate font-mono" title={conversion.anonymousId}>
+                              {conversion.anonymousId}
+                            </p>
+                            <p className="text-muted-foreground truncate">{conversion.userEmail}</p>
+                          </div>
+                          <span className="text-muted-foreground shrink-0">
+                            {formatShortRelativeTime(conversion.linkedAt)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               </div>
             </div>
 
-            <div className="border-border/60 mt-4 flex items-center justify-between border-t pt-4 text-xs">
-              <span className="text-muted-foreground">Manage Directory</span>
+            <div className="border-border/60 mt-4 flex shrink-0 flex-wrap items-center justify-between gap-2 border-t pt-3 text-xs">
+              <span className="text-muted-foreground">Account directory</span>
               <Link
                 href="/admin/users"
-                className="text-foreground hover:text-primary inline-flex items-center gap-1 font-semibold transition-colors"
+                className="text-foreground hover:text-primary inline-flex items-center gap-1 font-medium transition-colors"
               >
-                Inspect Users <ArrowUpRight className="h-3.5 w-3.5" />
+                View users <ArrowUpRight className="h-3.5 w-3.5 shrink-0" />
               </Link>
             </div>
           </div>

@@ -2,6 +2,11 @@ import { client } from "@/lib/api-client";
 import { authClient } from "@/lib/auth-client";
 import type {
   AdminAnalytics,
+  AdminOverviewAnalytics,
+  AdminEngagementAnalytics,
+  AdminSessionAnalytics,
+  AdminGrowthAnalytics,
+  AdminGeoAnalytics,
   AdminAuditQuery,
   AdminBandwidthAnalytics,
   AdminPlan,
@@ -22,6 +27,38 @@ export function useAdminAnalytics() {
   });
 }
 
+function useAnalyticsSection<T>(section: string, ttlMs: number) {
+  return useQuery({
+    queryKey: ["admin", "analytics", section],
+    queryFn: async () => {
+      const { data } = await client.get<T>(`/v1/admin/analytics/${section}`);
+      return data;
+    },
+    staleTime: ttlMs,
+    refetchInterval: ttlMs,
+  });
+}
+
+export function useAdminOverviewAnalytics() {
+  return useAnalyticsSection<AdminOverviewAnalytics>("overview", 30_000);
+}
+
+export function useAdminEngagementAnalytics() {
+  return useAnalyticsSection<AdminEngagementAnalytics>("engagement", 60_000);
+}
+
+export function useAdminSessionAnalytics() {
+  return useAnalyticsSection<AdminSessionAnalytics>("sessions", 15_000);
+}
+
+export function useAdminGrowthAnalytics() {
+  return useAnalyticsSection<AdminGrowthAnalytics>("growth", 300_000);
+}
+
+export function useAdminGeoAnalytics() {
+  return useAnalyticsSection<AdminGeoAnalytics>("geo", 120_000);
+}
+
 export function useAdminBandwidthAnalytics(period: "24h" | "7d" | "30d" = "24h") {
   return useQuery({
     queryKey: ["admin", "bandwidth", period],
@@ -32,6 +69,7 @@ export function useAdminBandwidthAnalytics(period: "24h" | "7d" | "30d" = "24h")
       return data;
     },
     placeholderData: keepPreviousData,
+    staleTime: 15_000,
     refetchInterval: 15_000,
   });
 }

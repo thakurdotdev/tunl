@@ -40,21 +40,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   const adminTabs = [
-    { href: "/admin", label: "Overview", icon: BarChart3, exact: true },
-    { href: "/admin/users", label: "User Directory", icon: Users },
-    { href: "/admin/audit", label: "Audit Stream", icon: Activity },
-    { href: "/admin/plans", label: "Plan Tiers", icon: Layers },
+    { href: "/admin", label: "Overview", mobileLabel: "Overview", icon: BarChart3, exact: true },
+    { href: "/admin/users", label: "User Directory", mobileLabel: "Users", icon: Users },
+    { href: "/admin/audit", label: "Audit Stream", mobileLabel: "Audit", icon: Activity },
+    { href: "/admin/plans", label: "Plan Tiers", mobileLabel: "Plans", icon: Layers },
   ];
 
   const activeTab =
-    adminTabs.find((tab) =>
-      tab.exact ? pathname === tab.href : pathname.startsWith(tab.href),
-    )?.href ?? "/admin";
+    adminTabs.find((tab) => (tab.exact ? pathname === tab.href : pathname.startsWith(tab.href)))
+      ?.href ?? "/admin";
 
   return (
-    <div className="font-sans">
-      <Tabs value={activeTab} className="mb-6">
-        <TabsList className="no-scrollbar w-full overflow-x-auto sm:w-fit">
+    <div className="min-w-0 font-sans">
+      <Tabs value={activeTab} className="mb-6 min-w-0">
+        <TabsList
+          aria-label="Admin navigation"
+          className="grid w-full grid-cols-2 gap-1 rounded-xl group-data-horizontal/tabs:h-auto sm:inline-flex sm:w-fit sm:group-data-horizontal/tabs:h-9"
+        >
           {adminTabs.map((tab) => {
             const Icon = tab.icon;
             return (
@@ -62,9 +64,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 key={tab.href}
                 value={tab.href}
                 render={<Link href={tab.href} />}
+                className="h-9 min-w-0 rounded-lg px-3 text-xs sm:h-8 sm:flex-none sm:text-sm"
               >
                 <Icon />
-                {tab.label}
+                <span className="sm:hidden">{tab.mobileLabel}</span>
+                <span className="hidden sm:inline">{tab.label}</span>
               </TabsTrigger>
             );
           })}
@@ -75,4 +79,3 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     </div>
   );
 }
-

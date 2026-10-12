@@ -11,6 +11,11 @@ import {
   getAdminBandwidthAnalytics,
   getAdminPlans,
   getAdminUsers,
+  getAdminOverviewAnalytics,
+  getAdminUserAnalytics,
+  getAdminSessionAnalytics,
+  getAdminGrowthAnalytics,
+  getAdminGeoAnalytics,
   updateUserPlan,
   updateUserRole,
 } from "./admin.service.js";
@@ -58,6 +63,24 @@ export function createAdminRouter(db: Database): Router {
   const router = Router();
 
   router.use(requireAdmin(db));
+
+  const analyticsEndpoints = [
+    ["overview", getAdminOverviewAnalytics],
+    ["engagement", getAdminUserAnalytics],
+    ["users", getAdminUserAnalytics],
+    ["sessions", getAdminSessionAnalytics],
+    ["growth", getAdminGrowthAnalytics],
+    ["geo", getAdminGeoAnalytics],
+  ] as const;
+  for (const [path, query] of analyticsEndpoints) {
+    router.get(
+      `/analytics/${path}`,
+      asyncRoute(async (_req, res) => {
+        res.setHeader("Cache-Control", "private, no-store");
+        res.json(await query(db));
+      }),
+    );
+  }
 
   router.get(
     "/analytics",

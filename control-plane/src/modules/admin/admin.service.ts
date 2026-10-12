@@ -11,111 +11,241 @@ import {
   user,
 } from "../../db/schema.js";
 import { badRequest, conflict, notFound } from "../../platform/errors.js";
+import { cachedAnalytics } from "./analytics-cache.js";
 
 export async function getAdminAnalytics(db: Database) {
-  const [
-    [{ totalUsers }],
-    [{ totalActiveSessions }],
-    [{ totalTunnels }],
-    [{ totalEvents }],
-    [{ totalLinkedIdentities }],
-    [{ totalAuthEvents, totalAnonEvents }],
-    planDistribution,
-    eventTypeCounts,
-    activeSessionsList,
-    recentEventsList,
-  ] = await Promise.all([
-    db.select({ totalUsers: count() }).from(user),
-    db.select({ totalActiveSessions: count() }).from(activeTunnelSessions),
-    db.select({ totalTunnels: count() }).from(tunnels),
-    db.select({ totalEvents: count() }).from(tunnelEvents),
-    db.select({ totalLinkedIdentities: count() }).from(identityLinks),
-    db
-      .select({
-        totalAuthEvents: count(tunnelEvents.userId),
-        totalAnonEvents: count(sql`CASE WHEN ${tunnelEvents.userId} IS NULL THEN 1 END`),
-      })
-      .from(tunnelEvents),
-    db
-      .select({
-        planName: plans.name,
-        userCount: count(user.id),
-        maxSubdomains: plans.maxReservedSubdomains,
-        maxActiveTunnels: plans.maxActiveTunnels,
-      })
-      .from(plans)
-      .leftJoin(user, eq(user.planId, plans.id))
-      .groupBy(plans.id, plans.name, plans.maxReservedSubdomains, plans.maxActiveTunnels),
-    db
-      .select({
-        eventType: tunnelEvents.eventType,
-        eventCount: count(),
-      })
-      .from(tunnelEvents)
-      .groupBy(tunnelEvents.eventType),
-    db
-      .select({
-        id: activeTunnelSessions.id,
-        subdomain: activeTunnelSessions.subdomain,
-        remoteIp: activeTunnelSessions.remoteIp,
-        country: activeTunnelSessions.country,
-        city: activeTunnelSessions.city,
-        connectedAt: activeTunnelSessions.connectedAt,
-        userEmail: user.email,
-      })
-      .from(activeTunnelSessions)
-      .leftJoin(user, eq(activeTunnelSessions.userId, user.id))
-      .orderBy(sql`${activeTunnelSessions.connectedAt} DESC`)
-      .limit(20),
-    db
-      .select({
-        id: tunnelEvents.id,
-        eventType: tunnelEvents.eventType,
-        properties: tunnelEvents.properties,
-        occurredAt: tunnelEvents.occurredAt,
-        userEmail: user.email,
-      })
-      .from(tunnelEvents)
-      .leftJoin(user, eq(tunnelEvents.userId, user.id))
-      .orderBy(sql`${tunnelEvents.occurredAt} DESC`)
-      .limit(5),
+  const [overview, engagement, sessions] = await Promise.all([
+    getAdminOverviewAnalytics(db),
+    getAdminUserAnalytics(db),
+    getAdminSessionAnalytics(db),
   ]);
+  return {
+    ...overview,
+    ...engagement,
+    ...sessions,
+    totalLinkedIdentities: engagement.totalLinkedIdentities,
+  };
+}
 
-  const mappedRecentEvents = recentEventsList.map((e) => {
-    const props = (e.properties as Record<string, any>) || {};
+export function getAdminOverviewAnalytics(db: Database) {
+  return cachedAnalytics(db, "overview", 30_000, async () => {
+    const [[totals], planDistribution] = await Promise.all([
+      db.execute(sql`SELECT
+        (SELECT count(*)::int FROM "user") AS "totalUsers",
+        (SELECT count(*)::int FROM active_tunnel_sessions) AS "totalActiveSessions",
+        (SELECT count(*)::int FROM tunnels) AS "totalTunnels",
+        (SELECT count(*)::int FROM tunnel_events) AS "totalEvents"`),
+      db
+        .select({
+          planName: plans.name,
+          userCount: count(user.id),
+          maxSubdomains: plans.maxReservedSubdomains,
+          maxActiveTunnels: plans.maxActiveTunnels,
+        })
+        .from(plans)
+        .leftJoin(user, eq(user.planId, plans.id))
+        .groupBy(plans.id, plans.name, plans.maxReservedSubdomains, plans.maxActiveTunnels),
+    ]);
     return {
-      id: e.id,
-      eventType: e.eventType,
-      subdomain: props.subdomain ? String(props.subdomain) : null,
-      remoteIp: props.remote_ip
-        ? String(props.remote_ip)
-        : props.remoteIp
-          ? String(props.remoteIp)
-          : null,
-      occurredAt: e.occurredAt,
-      userEmail: e.userEmail,
+      totalUsers: Number(totals.totalUsers),
+      totalActiveSessions: Number(totals.totalActiveSessions),
+      totalTunnels: Number(totals.totalTunnels),
+      totalEvents: Number(totals.totalEvents),
+      planDistribution,
     };
   });
+}
 
-  return {
-    totalUsers,
-    totalActiveSessions,
-    totalTunnels,
-    totalEvents,
-    totalLinkedIdentities: Number(totalLinkedIdentities ?? 0),
-    totalAuthEvents: Number(totalAuthEvents ?? 0),
-    totalAnonEvents: Number(totalAnonEvents ?? 0),
-    planDistribution: planDistribution.map((p) => ({
-      ...p,
-      userCount: Number(p.userCount ?? 0),
-    })),
-    eventTypeCounts: eventTypeCounts.map((ec) => ({
-      ...ec,
-      eventCount: Number(ec.eventCount ?? 0),
-    })),
-    activeSessionsList,
-    recentEventsList: mappedRecentEvents,
-  };
+export function getAdminUserAnalytics(db: Database) {
+  return cachedAnalytics(db, "engagement", 60_000, async () => {
+    const [[signups], [activity], [conversion], recentConversions] = await Promise.all([
+      db.execute(sql`SELECT
+        count(*) FILTER (WHERE created_at >= now() - interval '24 hours')::int AS "newUsersLast24h",
+        count(*) FILTER (WHERE created_at >= now() - interval '7 days')::int AS "newUsersLast7d",
+        count(*)::int AS "newUsersLast30d"
+        FROM "user" WHERE created_at >= now() - interval '30 days' AND created_at <= now()`),
+      db.execute(sql`SELECT
+        count(DISTINCT user_id) FILTER (WHERE occurred_at >= now() - interval '24 hours')::int AS "dauCount",
+        count(DISTINCT user_id) FILTER (WHERE occurred_at >= now() - interval '7 days')::int AS "wauCount",
+        count(DISTINCT user_id)::int AS "mauCount"
+        FROM tunnel_events WHERE user_id IS NOT NULL
+          AND occurred_at >= now() - interval '30 days' AND occurred_at <= now()`),
+      db.execute(sql`WITH devices AS (
+        SELECT DISTINCT anonymous_id FROM tunnel_events
+        WHERE user_id IS NULL AND anonymous_id IS NOT NULL AND anonymous_id <> ''
+          AND event_type = 'tunnel.connected' AND occurred_at <= now()
+      ) SELECT
+        (SELECT count(DISTINCT user_id)::int FROM identity_links) AS "totalConversions",
+        (SELECT count(*)::int FROM identity_links) AS "totalLinkedIdentities",
+        count(*)::int AS "uniqueAnonymousDevices",
+        count(identity_links.anonymous_id)::int AS "convertedAnonymousDevices"
+        FROM devices LEFT JOIN identity_links USING (anonymous_id)`),
+      db
+        .select({
+          anonymousId: identityLinks.anonymousId,
+          userId: identityLinks.userId,
+          userEmail: user.email,
+          linkedAt: identityLinks.linkedAt,
+        })
+        .from(identityLinks)
+        .innerJoin(user, eq(identityLinks.userId, user.id))
+        .orderBy(desc(identityLinks.linkedAt))
+        .limit(5),
+    ]);
+    const uniqueAnonymousDevices = Number(conversion.uniqueAnonymousDevices);
+    return {
+      newUsersLast24h: Number(signups.newUsersLast24h),
+      newUsersLast7d: Number(signups.newUsersLast7d),
+      newUsersLast30d: Number(signups.newUsersLast30d),
+      dauCount: Number(activity.dauCount),
+      wauCount: Number(activity.wauCount),
+      mauCount: Number(activity.mauCount),
+      totalConversions: Number(conversion.totalConversions),
+      totalLinkedIdentities: Number(conversion.totalLinkedIdentities),
+      uniqueAnonymousDevices,
+      conversionRate:
+        uniqueAnonymousDevices > 0
+          ? Number(
+              (
+                (Number(conversion.convertedAnonymousDevices) / uniqueAnonymousDevices) *
+                100
+              ).toFixed(1),
+            )
+          : 0,
+      recentConversions,
+    };
+  });
+}
+
+export function getAdminGrowthAnalytics(db: Database) {
+  return cachedAnalytics(db, "growth", 300_000, async () => {
+    const days = await db.execute(sql`WITH days AS (
+      SELECT generate_series((now() AT TIME ZONE 'UTC')::date - 29,
+        (now() AT TIME ZONE 'UTC')::date, interval '1 day') AS day
+    ), signups AS (
+      SELECT (created_at AT TIME ZONE 'UTC')::date AS day, count(*)::int AS signups
+      FROM "user" WHERE created_at >= (((now() AT TIME ZONE 'UTC')::date - 29) AT TIME ZONE 'UTC')
+        AND created_at <= now() GROUP BY 1
+    ) SELECT to_char(days.day, 'YYYY-MM-DD') AS day, COALESCE(signups.signups, 0)::int AS signups
+      FROM days LEFT JOIN signups ON days.day = signups.day ORDER BY days.day`);
+    return { days: days.map((row) => ({ day: String(row.day), signups: Number(row.signups) })) };
+  });
+}
+
+export function getAdminGeoAnalytics(db: Database) {
+  return cachedAnalytics(db, "geo", 120_000, async () => {
+    const [[ips], countries] = await Promise.all([
+      db.execute(sql`SELECT count(DISTINCT NULLIF(COALESCE(properties->>'remoteIp', properties->>'remote_ip'), ''))::int AS count
+        FROM tunnel_events WHERE occurred_at >= now() - interval '24 hours' AND occurred_at <= now()`),
+      db.execute(sql`SELECT upper(properties->>'country') AS country, count(*)::int AS "sessionCount",
+        count(DISTINCT CASE WHEN user_id IS NOT NULL THEN 'user:' || user_id
+          ELSE 'anon:' || NULLIF(anonymous_id, '') END)::int AS "uniqueDevices"
+        FROM tunnel_events WHERE occurred_at >= now() - interval '24 hours' AND occurred_at <= now()
+          AND event_type = 'tunnel.connected' AND properties->>'country' IS NOT NULL
+          AND properties->>'country' <> ''
+        GROUP BY 1 ORDER BY count(*) DESC, 1 LIMIT 15`),
+    ]);
+    return {
+      uniqueIpsLast24h: Number(ips.count),
+      countries: countries.map((row) => ({
+        country: String(row.country),
+        sessionCount: Number(row.sessionCount),
+        uniqueDevices: Number(row.uniqueDevices),
+      })),
+    };
+  });
+}
+
+export function getAdminSessionAnalytics(db: Database) {
+  return cachedAnalytics(db, "sessions", 15_000, async () => {
+    // Seed the rolling concurrency window with completed sessions whose durations
+    // cross its boundary and tracked authenticated sessions still connected.
+    // Long-lived anonymous sessions with no disconnect/heartbeat are not observable
+    // in the operational table, so this metric is an observed peak, not a live census.
+    const [[metrics], activeSessionsList, recentEventsList, eventTypeCounts] = await Promise.all([
+      db.execute(sql`WITH recent AS (
+        SELECT *, CASE WHEN event_type = 'tunnel.disconnected'
+          AND properties->>'durationMs' ~ '^[0-9]{1,16}$'
+          THEN (properties->>'durationMs')::double precision END AS duration
+        FROM tunnel_events WHERE occurred_at >= now() - interval '24 hours' AND occurred_at <= now()
+      ), deltas AS (
+        SELECT occurred_at, sum(CASE WHEN event_type = 'tunnel.connected' THEN 1 ELSE -1 END) AS delta
+        FROM recent GROUP BY occurred_at
+      ), baseline AS (
+        SELECT (SELECT count(*) FROM recent WHERE duration IS NOT NULL
+          AND occurred_at - duration * interval '1 millisecond' < now() - interval '24 hours')
+          + (SELECT count(*) FROM active_tunnel_sessions WHERE connected_at < now() - interval '24 hours') AS count
+      ) SELECT
+        count(*) FILTER (WHERE event_type = 'tunnel.connected' AND user_id IS NOT NULL)::int AS "totalAuthEvents",
+        count(*) FILTER (WHERE event_type = 'tunnel.connected' AND user_id IS NULL)::int AS "totalAnonEvents",
+        avg(duration) AS "avgSessionDurationMs",
+        percentile_cont(0.5) WITHIN GROUP (ORDER BY duration) AS "medianSessionDurationMs",
+        count(duration)::int AS "completedSessions",
+        (SELECT count(*)::int FROM active_tunnel_sessions) AS "totalActiveSessions",
+        GREATEST((SELECT count FROM baseline), COALESCE((SELECT max(concurrent) FROM (
+          SELECT (SELECT count FROM baseline) + sum(delta) OVER (ORDER BY occurred_at) AS concurrent FROM deltas
+        ) peaks), 0))::int AS "peakConcurrentTunnelsLast24h"
+        FROM recent`),
+      db
+        .select({
+          id: activeTunnelSessions.id,
+          subdomain: activeTunnelSessions.subdomain,
+          remoteIp: activeTunnelSessions.remoteIp,
+          country: activeTunnelSessions.country,
+          city: activeTunnelSessions.city,
+          connectedAt: activeTunnelSessions.connectedAt,
+          userEmail: user.email,
+        })
+        .from(activeTunnelSessions)
+        .leftJoin(user, eq(activeTunnelSessions.userId, user.id))
+        .orderBy(desc(activeTunnelSessions.connectedAt))
+        .limit(20),
+      db
+        .select({
+          id: tunnelEvents.id,
+          eventType: tunnelEvents.eventType,
+          properties: tunnelEvents.properties,
+          occurredAt: tunnelEvents.occurredAt,
+          userEmail: user.email,
+        })
+        .from(tunnelEvents)
+        .leftJoin(user, eq(tunnelEvents.userId, user.id))
+        .orderBy(desc(tunnelEvents.occurredAt))
+        .limit(5),
+      db
+        .select({ eventType: tunnelEvents.eventType, eventCount: count() })
+        .from(tunnelEvents)
+        .where(
+          and(
+            gte(tunnelEvents.occurredAt, new Date(Date.now() - 86_400_000)),
+            sql`${tunnelEvents.occurredAt} <= now()`,
+          ),
+        )
+        .groupBy(tunnelEvents.eventType),
+    ]);
+    return {
+      totalAuthEvents: Number(metrics.totalAuthEvents),
+      totalAnonEvents: Number(metrics.totalAnonEvents),
+      totalActiveSessions: Number(metrics.totalActiveSessions),
+      completedSessions: Number(metrics.completedSessions),
+      avgSessionDurationMs:
+        metrics.avgSessionDurationMs == null ? null : Number(metrics.avgSessionDurationMs),
+      medianSessionDurationMs:
+        metrics.medianSessionDurationMs == null ? null : Number(metrics.medianSessionDurationMs),
+      peakConcurrentTunnelsLast24h: Number(metrics.peakConcurrentTunnelsLast24h),
+      activeSessionsList,
+      recentEventsList: recentEventsList.map((event) => {
+        const props = event.properties as Record<string, unknown>;
+        return {
+          ...event,
+          subdomain: props.subdomain ? String(props.subdomain) : null,
+          remoteIp:
+            props.remoteIp || props.remote_ip ? String(props.remoteIp || props.remote_ip) : null,
+        };
+      }),
+      eventTypeCounts,
+    };
+  });
 }
 
 export interface GetAdminAuditEventsParams {
@@ -389,10 +519,13 @@ export async function createAdminPlan(
   return newPlan;
 }
 
-export async function getAdminBandwidthAnalytics(
-  db: Database,
-  period: "24h" | "7d" | "30d" = "24h",
-) {
+export function getAdminBandwidthAnalytics(db: Database, period: "24h" | "7d" | "30d" = "24h") {
+  return cachedAnalytics(db, `bandwidth:${period}`, 15_000, () =>
+    queryAdminBandwidthAnalytics(db, period),
+  );
+}
+
+async function queryAdminBandwidthAnalytics(db: Database, period: "24h" | "7d" | "30d" = "24h") {
   const now = Date.now();
   const periodHours = period === "30d" ? 30 * 24 : period === "7d" ? 7 * 24 : 24;
   const since = new Date(now - periodHours * 60 * 60 * 1000);

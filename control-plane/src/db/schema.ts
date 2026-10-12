@@ -58,7 +58,10 @@ export const user = pgTable(
       .notNull()
       .default(sql`'{}'::text[]`),
   },
-  (table) => [uniqueIndex("users_email_lower_idx").on(sql`lower(${table.email})`)],
+  (table) => [
+    uniqueIndex("users_email_lower_idx").on(sql`lower(${table.email})`),
+    index("users_created_at_idx").on(table.createdAt.desc()),
+  ],
 );
 
 export const users = user;
@@ -197,6 +200,15 @@ export const tunnelEvents = pgTable(
     index("tunnel_events_anonymous_id_idx").on(table.anonymousId),
     index("tunnel_events_user_id_idx").on(table.userId),
     index("tunnel_events_event_type_idx").on(table.eventType),
+    index("tunnel_events_occurred_user_idx")
+      .on(table.occurredAt.desc(), table.userId)
+      .where(sql`${table.userId} IS NOT NULL`),
+    index("tunnel_events_country_idx")
+      .on(sql`(${table.properties}->>'country')`)
+      .where(sql`${table.properties}->>'country' IS NOT NULL`),
+    index("tunnel_events_remote_ip_idx").on(
+      sql`COALESCE(${table.properties}->>'remoteIp', ${table.properties}->>'remote_ip')`,
+    ),
   ],
 );
 
