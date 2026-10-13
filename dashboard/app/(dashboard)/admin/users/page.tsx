@@ -101,47 +101,53 @@ export default function AdminUsersPage() {
       </div>
       {/* KPI Metric Summary Strip */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <Card className="shadow-none"><CardContent className="flex items-center justify-between p-4">
-          <div>
-            <span className="text-muted-foreground block text-xs font-medium">
-              Total Directory Users
-            </span>
-            <span className="text-foreground mt-1 text-2xl font-bold tracking-tight">
-              {isUsersLoading ? "..." : totalUsersCount.toLocaleString()}
-            </span>
-          </div>
-          <div className="bg-secondary text-foreground border-border/60 flex h-9 w-9 items-center justify-center rounded-lg border">
-            <Users className="h-4.5 w-4.5" />
-          </div>
-        </CardContent></Card>
+        <Card className="shadow-none">
+          <CardContent className="flex items-center justify-between p-4">
+            <div>
+              <span className="text-muted-foreground block text-xs font-medium">
+                Total Directory Users
+              </span>
+              <span className="text-foreground mt-1 text-2xl font-bold tracking-tight">
+                {isUsersLoading ? "..." : totalUsersCount.toLocaleString()}
+              </span>
+            </div>
+            <div className="bg-secondary text-foreground border-border/60 flex h-9 w-9 items-center justify-center rounded-lg border">
+              <Users className="h-4.5 w-4.5" />
+            </div>
+          </CardContent>
+        </Card>
 
-        <Card className="shadow-none"><CardContent className="flex items-center justify-between p-4">
-          <div>
-            <span className="text-muted-foreground block text-xs font-medium">
-              Role Filter Status
-            </span>
-            <span className="text-foreground mt-1 text-sm font-semibold capitalize">
-              {roleFilter === "all" ? "All Accounts" : `${roleFilter} Accounts`}
-            </span>
-          </div>
-          <div className="border-border/60 flex h-9 w-9 items-center justify-center rounded-lg border bg-purple-500/10 text-purple-400">
-            <Shield className="h-4.5 w-4.5" />
-          </div>
-        </CardContent></Card>
+        <Card className="shadow-none">
+          <CardContent className="flex items-center justify-between p-4">
+            <div>
+              <span className="text-muted-foreground block text-xs font-medium">
+                Role Filter Status
+              </span>
+              <span className="text-foreground mt-1 text-sm font-semibold capitalize">
+                {roleFilter === "all" ? "All Accounts" : `${roleFilter} Accounts`}
+              </span>
+            </div>
+            <div className="border-border/60 flex h-9 w-9 items-center justify-center rounded-lg border bg-purple-500/10 text-purple-400">
+              <Shield className="h-4.5 w-4.5" />
+            </div>
+          </CardContent>
+        </Card>
 
-        <Card className="shadow-none"><CardContent className="flex items-center justify-between p-4">
-          <div>
-            <span className="text-muted-foreground block text-xs font-medium">
-              Active Plan Tiers
-            </span>
-            <span className="text-foreground mt-1 text-2xl font-bold tracking-tight">
-              {plansList?.length ?? 0}
-            </span>
-          </div>
-          <div className="bg-secondary text-foreground border-border/60 flex h-9 w-9 items-center justify-center rounded-lg border">
-            <UserCheck className="h-4.5 w-4.5" />
-          </div>
-        </CardContent></Card>
+        <Card className="shadow-none">
+          <CardContent className="flex items-center justify-between p-4">
+            <div>
+              <span className="text-muted-foreground block text-xs font-medium">
+                Active Plan Tiers
+              </span>
+              <span className="text-foreground mt-1 text-2xl font-bold tracking-tight">
+                {plansList?.length ?? 0}
+              </span>
+            </div>
+            <div className="bg-secondary text-foreground border-border/60 flex h-9 w-9 items-center justify-center rounded-lg border">
+              <UserCheck className="h-4.5 w-4.5" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Main Directory Table */}

@@ -18,7 +18,19 @@ export function countryName(code: string | null | undefined): string | null {
 }
 
 /** Get a flag image URL for an ISO country code via flagcdn.com. */
-export function countryFlagUrl(code: string | null | undefined, size: 16 | 20 | 24 | 32 | 48 = 20): string | null {
+export function countryFlagUrl(
+  code: string | null | undefined,
+  size: 16 | 20 | 24 | 32 | 48 = 20,
+): string | null {
   if (!code) return null;
   return `https://flagcdn.com/${size}x${Math.round(size * 0.75)}/${code.toLowerCase()}.png`;
+}
+
+/** Format raw byte count into human-readable unit (e.g. 1.2 MB). */
+export function formatBytes(bytes: number | null | undefined): string {
+  if (!bytes || bytes <= 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
 }

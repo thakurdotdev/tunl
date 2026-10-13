@@ -155,6 +155,7 @@ export const tunnels = pgTable(
   },
   (table) => [
     index("tunnels_user_id_idx").on(table.userId),
+    index("tunnels_last_connected_at_idx").on(table.lastConnectedAt),
     check("tunnels_subdomain_format_check", sql`${table.subdomain} ~ '^[a-z0-9-]{3,63}$'`),
   ],
 );

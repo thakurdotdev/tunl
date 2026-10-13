@@ -3,6 +3,7 @@ import type { AdminPlan, AdminUser } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { CheckCircle2, Loader2, X } from "lucide-react";
+import { useAdminPrivacy } from "@/lib/admin-privacy-context";
 
 interface AssignPlanModalProps {
   user: AdminUser | null;
@@ -19,6 +20,7 @@ export function AssignPlanModal({
   onSelectPlan,
   isPending,
 }: AssignPlanModalProps) {
+  const { maskEmail } = useAdminPrivacy();
   const [selectedPlanForConfirm, setSelectedPlanForConfirm] = useState<AdminPlan | null>(null);
 
   if (!user) return null;
@@ -45,7 +47,8 @@ export function AssignPlanModal({
             </button>
           </div>
           <p className="text-muted-foreground mt-1 text-xs">
-            Target User Account: <strong className="text-foreground">{user.email}</strong>
+            Target User Account:{" "}
+            <strong className="text-foreground">{maskEmail(user.email)}</strong>
           </p>
 
           <div className="mt-5 space-y-3">
@@ -102,7 +105,7 @@ export function AssignPlanModal({
         onClose={() => setSelectedPlanForConfirm(null)}
         onConfirm={handleConfirmPlanAssignment}
         title="Confirm Subscription Plan Change"
-        description={`Assign '${selectedPlanForConfirm?.name.toUpperCase()}' plan to user ${user.email}? This will update their active tunnel quota instantly.`}
+        description={`Assign '${selectedPlanForConfirm?.name.toUpperCase()}' plan to user ${maskEmail(user.email)}? This will update their active tunnel quota instantly.`}
         confirmText="Apply Plan Change"
         isPending={isPending}
       />

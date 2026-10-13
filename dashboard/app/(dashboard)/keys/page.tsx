@@ -16,7 +16,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   useCreateSshKeyMutation,
   useDeleteSshKeyMutation,
@@ -140,13 +147,13 @@ export default function SshKeysPage() {
 
   return (
     <div className="space-y-6 font-sans">
-      <div className="border-b border-border/60 pb-5">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">SSH public keys</h1>
+      <div className="border-border/60 border-b pb-5">
+        <h1 className="text-foreground text-2xl font-semibold tracking-tight">SSH public keys</h1>
       </div>
 
       <div className="grid items-stretch gap-5 lg:grid-cols-2">
         <Card className="flex h-full flex-col gap-0 p-0 shadow-none">
-          <CardHeader className="flex min-h-[74px] flex-row flex-wrap items-center justify-between gap-3 border-b border-border/60 px-5 py-4">
+          <CardHeader className="border-border/60 flex min-h-[74px] flex-row flex-wrap items-center justify-between gap-3 border-b px-5 py-4">
             <div className="min-w-0">
               <CardTitle className="text-sm">Generate or copy a key</CardTitle>
             </div>
@@ -157,33 +164,56 @@ export default function SshKeysPage() {
               }}
             >
               <TabsList aria-label="Select operating system" className="h-8 rounded-md p-0.5">
-                <TabsTrigger value="mac" className="rounded-sm px-2 text-[11px]">macOS</TabsTrigger>
-                <TabsTrigger value="linux" className="rounded-sm px-2 text-[11px]">Linux</TabsTrigger>
-                <TabsTrigger value="windows" className="rounded-sm px-2 text-[11px]">Windows</TabsTrigger>
+                <TabsTrigger value="mac" className="rounded-sm px-2 text-[11px]">
+                  macOS
+                </TabsTrigger>
+                <TabsTrigger value="linux" className="rounded-sm px-2 text-[11px]">
+                  Linux
+                </TabsTrigger>
+                <TabsTrigger value="windows" className="rounded-sm px-2 text-[11px]">
+                  Windows
+                </TabsTrigger>
               </TabsList>
             </Tabs>
           </CardHeader>
           <CardContent className="flex-1 space-y-4 p-5">
             <div className="flex gap-2.5 border-l-2 border-amber-500/60 py-1 pl-3">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
-              <p className="text-xs leading-relaxed text-muted-foreground">
-                If <code className="font-mono text-foreground">~/.ssh/id_ed25519.pub</code> exists, skip generation to avoid overwriting a key you already use.
+              <p className="text-muted-foreground text-xs leading-relaxed">
+                If <code className="text-foreground font-mono">~/.ssh/id_ed25519.pub</code> exists,
+                skip generation to avoid overwriting a key you already use.
               </p>
             </div>
             <div className="space-y-2">
-              <p className="text-xs font-medium text-muted-foreground">Generate an Ed25519 key</p>
-              <div className="flex min-w-0 items-center gap-2 rounded-lg border border-border/60 bg-background p-2.5">
-                <code className="min-w-0 flex-1 truncate font-mono text-xs text-primary">$ {osCommands[activeOs].generate}</code>
-                <Button variant="outline" size="icon-sm" aria-label="Copy key generation command" onClick={() => copyCommand(osCommands[activeOs].generate, "Generate")}>
+              <p className="text-muted-foreground text-xs font-medium">Generate an Ed25519 key</p>
+              <div className="border-border/60 bg-background flex min-w-0 items-center gap-2 rounded-lg border p-2.5">
+                <code className="text-primary min-w-0 flex-1 truncate font-mono text-xs">
+                  $ {osCommands[activeOs].generate}
+                </code>
+                <Button
+                  variant="outline"
+                  size="icon-sm"
+                  aria-label="Copy key generation command"
+                  onClick={() => copyCommand(osCommands[activeOs].generate, "Generate")}
+                >
                   <Copy />
                 </Button>
               </div>
             </div>
             <div className="space-y-2">
-              <p className="text-xs font-medium text-muted-foreground">Print and copy the public key</p>
-              <div className="flex min-w-0 items-center gap-2 rounded-lg border border-border/60 bg-background p-2.5">
-                <code className="min-w-0 flex-1 truncate font-mono text-xs text-primary">$ {osCommands[activeOs].copy}</code>
-                <Button variant="outline" size="icon-sm" aria-label="Copy public key command" onClick={() => copyCommand(osCommands[activeOs].copy, "Copy")}>
+              <p className="text-muted-foreground text-xs font-medium">
+                Print and copy the public key
+              </p>
+              <div className="border-border/60 bg-background flex min-w-0 items-center gap-2 rounded-lg border p-2.5">
+                <code className="text-primary min-w-0 flex-1 truncate font-mono text-xs">
+                  $ {osCommands[activeOs].copy}
+                </code>
+                <Button
+                  variant="outline"
+                  size="icon-sm"
+                  aria-label="Copy public key command"
+                  onClick={() => copyCommand(osCommands[activeOs].copy, "Copy")}
+                >
                   <Copy />
                 </Button>
               </div>
@@ -192,7 +222,7 @@ export default function SshKeysPage() {
         </Card>
 
         <Card className="flex h-full flex-col gap-0 p-0 shadow-none">
-          <CardHeader className="flex min-h-[74px] flex-row items-center border-b border-border/60 px-5 py-4">
+          <CardHeader className="border-border/60 flex min-h-[74px] flex-row items-center border-b px-5 py-4">
             <CardTitle className="text-sm">Add a public key</CardTitle>
           </CardHeader>
           <CardContent className="flex-1 p-5">
@@ -206,7 +236,7 @@ export default function SshKeysPage() {
                   {...register("label")}
                   aria-invalid={!!errors.label}
                 />
-                {errors.label && <p className="text-xs text-destructive">{errors.label.message}</p>}
+                {errors.label && <p className="text-destructive text-xs">{errors.label.message}</p>}
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="publicKey">Public key</Label>
@@ -219,7 +249,9 @@ export default function SshKeysPage() {
                   {...register("publicKey")}
                   aria-invalid={!!errors.publicKey}
                 />
-                {errors.publicKey && <p className="text-xs text-destructive">{errors.publicKey.message}</p>}
+                {errors.publicKey && (
+                  <p className="text-destructive text-xs">{errors.publicKey.message}</p>
+                )}
               </div>
               <Button type="submit" disabled={createMutation.isPending} className="self-start">
                 <Key className="h-4 w-4" />
@@ -231,26 +263,30 @@ export default function SshKeysPage() {
       </div>
 
       <Card className="gap-0 p-0 shadow-none">
-        <div className="flex flex-col justify-between gap-2 border-b border-border/60 px-5 py-4 sm:flex-row sm:items-center">
+        <div className="border-border/60 flex flex-col justify-between gap-2 border-b px-5 py-4 sm:flex-row sm:items-center">
           <div>
             <h2 className="text-sm font-semibold">Authorized devices</h2>
           </div>
-          <span className="rounded-md border border-border/60 bg-muted/50 px-2.5 py-1 text-xs font-medium text-muted-foreground">{keys.length} {keys.length === 1 ? "key" : "keys"}</span>
+          <span className="border-border/60 bg-muted/50 text-muted-foreground rounded-md border px-2.5 py-1 text-xs font-medium">
+            {keys.length} {keys.length === 1 ? "key" : "keys"}
+          </span>
         </div>
 
         {isLoading ? (
           <CardContent className="space-y-3 p-5">
-            <div className="h-8 animate-pulse rounded bg-muted" />
-            <div className="h-10 animate-pulse rounded bg-muted/70" />
+            <div className="bg-muted h-8 animate-pulse rounded" />
+            <div className="bg-muted/70 h-10 animate-pulse rounded" />
           </CardContent>
         ) : keys.length === 0 ? (
           <CardContent className="px-5 py-7">
             <h3 className="text-sm font-medium">No keys registered</h3>
-            <p className="mt-1 text-xs text-muted-foreground">Add a public key above to authorize a device.</p>
+            <p className="text-muted-foreground mt-1 text-xs">
+              Add a public key above to authorize a device.
+            </p>
           </CardContent>
         ) : (
           <Table className="min-w-[580px] text-left text-xs">
-            <TableHeader className="bg-muted/30 text-[11px] uppercase tracking-wider text-muted-foreground">
+            <TableHeader className="bg-muted/30 text-muted-foreground text-[11px] tracking-wider uppercase">
               <TableRow className="hover:bg-transparent">
                 <TableHead className="w-[190px] px-5">Device</TableHead>
                 <TableHead>SHA256 fingerprint</TableHead>
@@ -263,21 +299,44 @@ export default function SshKeysPage() {
                 <TableRow key={key.id}>
                   <TableCell className="px-5 font-medium">
                     <div className="flex items-center gap-2">
-                      <span className="rounded border border-border/60 bg-secondary px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">ED25519</span>
-                      <span className="max-w-[130px] truncate">{key.label || "Untitled device"}</span>
+                      <span className="border-border/60 bg-secondary text-muted-foreground rounded border px-1.5 py-0.5 font-mono text-[10px]">
+                        ED25519
+                      </span>
+                      <span className="max-w-[130px] truncate">
+                        {key.label || "Untitled device"}
+                      </span>
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex max-w-md items-center gap-2">
-                      <code className="min-w-0 flex-1 truncate rounded border border-border/60 bg-muted/50 px-2 py-1 font-mono text-[11px] text-muted-foreground">{key.fingerprint}</code>
-                      <Button variant="outline" size="icon-xs" aria-label="Copy fingerprint" onClick={() => copyCommand(key.fingerprint, "Fingerprint")}><Copy /></Button>
+                      <code className="border-border/60 bg-muted/50 text-muted-foreground min-w-0 flex-1 truncate rounded border px-2 py-1 font-mono text-[11px]">
+                        {key.fingerprint}
+                      </code>
+                      <Button
+                        variant="outline"
+                        size="icon-xs"
+                        aria-label="Copy fingerprint"
+                        onClick={() => copyCommand(key.fingerprint, "Fingerprint")}
+                      >
+                        <Copy />
+                      </Button>
                     </div>
                   </TableCell>
-                  <TableCell className="whitespace-nowrap text-muted-foreground">
-                    <span className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" />{format(new Date(key.createdAt), "MMM d, yyyy")}</span>
+                  <TableCell className="text-muted-foreground whitespace-nowrap">
+                    <span className="flex items-center gap-1.5">
+                      <Calendar className="h-3.5 w-3.5" />
+                      {format(new Date(key.createdAt), "MMM d, yyyy")}
+                    </span>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button variant="destructive" size="icon-xs" aria-label={`Revoke ${key.label || "SSH key"}`} onClick={() => setDeleteKeyId(key.id)}><Trash2 /></Button>
+                    <Button
+                      variant="destructive"
+                      size="icon-xs"
+                      aria-label={`Revoke ${key.label || "SSH key"}`}
+                      onClick={() => setDeleteKeyId(key.id)}
+                    >
+                      <Trash2 />
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}

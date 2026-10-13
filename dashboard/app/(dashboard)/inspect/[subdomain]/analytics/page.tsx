@@ -311,7 +311,9 @@ export default function SubdomainAnalyticsPage() {
               {successRate.toFixed(1)}%
             </span>
             <span className="text-muted-foreground text-xs font-medium">
-              {summary.totalRequests > 0 ? `${summary.errorRate}% (4xx/5xx responses)` : "No requests in window"}
+              {summary.totalRequests > 0
+                ? `${summary.errorRate}% (4xx/5xx responses)`
+                : "No requests in window"}
             </span>
           </div>
         </div>

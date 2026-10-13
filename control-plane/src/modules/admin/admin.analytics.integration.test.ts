@@ -31,7 +31,8 @@ describe.skipIf(!databaseUrl)("admin analytics PostgreSQL integration", () => {
         max_reserved_subdomains integer, max_active_tunnels integer);
       CREATE TABLE "user" (id text PRIMARY KEY, email text, plan_id uuid REFERENCES plans(id),
         created_at timestamptz NOT NULL DEFAULT now());
-      CREATE TABLE tunnels (id uuid PRIMARY KEY DEFAULT gen_random_uuid());
+      CREATE TABLE tunnels (id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        last_connected_at timestamptz DEFAULT now());
       CREATE TABLE active_tunnel_sessions (id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         user_id text, subdomain text, remote_ip text, country text, city text,
         connected_at timestamptz DEFAULT now());

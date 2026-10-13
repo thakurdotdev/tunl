@@ -51,10 +51,7 @@ export async function verifyUserCustomDomain(
       const canonical = `cname.${baseDomain}`.toLowerCase().replace(/\.*$/, "");
       cnameOk = cnames.some((c) => {
         const cLower = c.toLowerCase().replace(/\.*$/, "");
-        return (
-          cLower === canonical ||
-          cLower.endsWith(`.${baseDomain.toLowerCase()}`)
-        );
+        return cLower === canonical || cLower.endsWith(`.${baseDomain.toLowerCase()}`);
       });
       if (!cnameOk) {
         detail = detail

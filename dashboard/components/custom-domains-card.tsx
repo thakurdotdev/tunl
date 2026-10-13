@@ -74,7 +74,7 @@ function CopyButton({
 
   const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigator.clipboard.writeText(value).catch(() => { });
+    navigator.clipboard.writeText(value).catch(() => {});
     setCopied(true);
     toast.success(`Copied ${label} to clipboard`);
     setTimeout(() => setCopied(false), 1500);
@@ -85,16 +85,12 @@ function CopyButton({
       type="button"
       variant="ghost"
       size="icon-xs"
-      className={`h-6 w-6 shrink-0 text-muted-foreground transition-colors hover:text-foreground ${className}`}
+      className={`text-muted-foreground hover:text-foreground h-6 w-6 shrink-0 transition-colors ${className}`}
       onClick={handleCopy}
       aria-label={`Copy ${label}`}
       title={`Copy ${label}`}
     >
-      {copied ? (
-        <Check className="h-3 w-3 text-emerald-400" />
-      ) : (
-        <Copy className="h-3 w-3" />
-      )}
+      {copied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
     </Button>
   );
 }
@@ -117,8 +113,8 @@ function StatusBadge({ status }: { status: CustomDomain["status"] }) {
     );
   }
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-muted/60 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-      <Globe className="h-3 w-3 text-muted-foreground" />
+    <span className="border-border/80 bg-muted/60 text-muted-foreground inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-medium">
+      <Globe className="text-muted-foreground h-3 w-3" />
       Pending Setup
     </span>
   );
@@ -126,70 +122,59 @@ function StatusBadge({ status }: { status: CustomDomain["status"] }) {
 
 function DnsRecordsPanel({ domain }: { domain: CustomDomain }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-border/70 bg-card/60 backdrop-blur-xs">
+    <div className="border-border/70 bg-card/60 overflow-hidden rounded-lg border backdrop-blur-xs">
       {/* Zone Header */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 bg-muted/30 px-3.5 py-2.5 text-xs">
+      <div className="border-border/60 bg-muted/30 flex flex-wrap items-center justify-between gap-2 border-b px-3.5 py-2.5 text-xs">
         <div className="flex items-center gap-2">
-          <span className="font-medium text-foreground">Required DNS Records</span>
-          <span className="rounded bg-background/80 px-2 py-0.5 font-mono text-[11px] text-muted-foreground border border-border/50">
+          <span className="text-foreground font-medium">Required DNS Records</span>
+          <span className="bg-background/80 text-muted-foreground border-border/50 rounded border px-2 py-0.5 font-mono text-[11px]">
             Zone: <strong className="text-foreground">{domain.dns.zone}</strong>
           </span>
         </div>
-        <span className="text-[11px] text-muted-foreground">
+        <span className="text-muted-foreground text-[11px]">
           Add these 2 records in your DNS provider (Cloudflare, Route 53, etc.)
         </span>
       </div>
 
       {/* Records Table */}
-      <div className="divide-y divide-border/50">
+      <div className="divide-border/50 divide-y">
         {/* CNAME Row */}
         <div className="grid grid-cols-1 gap-2 p-3 sm:grid-cols-[70px_1fr_1.3fr_auto] sm:items-center sm:gap-3 sm:px-3.5">
           <div className="flex items-center gap-2 sm:block">
             <span className="rounded border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 font-mono text-[11px] font-semibold text-sky-400">
               CNAME
             </span>
-            <span className="text-[11px] text-muted-foreground sm:hidden">Routing record</span>
+            <span className="text-muted-foreground text-[11px] sm:hidden">Routing record</span>
           </div>
 
           <div className="min-w-0 space-y-0.5">
             <div className="flex items-center gap-1.5">
-              <span className="text-[10px] uppercase tracking-wider text-muted-foreground/80 sm:hidden">
+              <span className="text-muted-foreground/80 text-[10px] tracking-wider uppercase sm:hidden">
                 Name:
               </span>
-              <code className="rounded bg-muted/50 px-1.5 py-0.5 font-mono text-xs font-semibold text-foreground">
+              <code className="bg-muted/50 text-foreground rounded px-1.5 py-0.5 font-mono text-xs font-semibold">
                 {domain.dns.cname.name}
               </code>
-              <CopyButton
-                value={domain.dns.cname.name}
-                label="CNAME host name"
-              />
+              <CopyButton value={domain.dns.cname.name} label="CNAME host name" />
             </div>
             {domain.dns.cname.name !== domain.dns.cname.fullName && (
-              <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+              <div className="text-muted-foreground flex items-center gap-1 text-[11px]">
                 <span>or FQDN:</span>
-                <span className="truncate font-mono text-[10px]">
-                  {domain.dns.cname.fullName}
-                </span>
-                <CopyButton
-                  value={domain.dns.cname.fullName}
-                  label="CNAME full host name"
-                />
+                <span className="truncate font-mono text-[10px]">{domain.dns.cname.fullName}</span>
+                <CopyButton value={domain.dns.cname.fullName} label="CNAME full host name" />
               </div>
             )}
           </div>
 
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <span className="text-[10px] uppercase tracking-wider text-muted-foreground/80 sm:hidden">
+              <span className="text-muted-foreground/80 text-[10px] tracking-wider uppercase sm:hidden">
                 Target:
               </span>
-              <code className="truncate rounded bg-muted/50 px-1.5 py-0.5 font-mono text-xs font-semibold text-emerald-400">
+              <code className="bg-muted/50 truncate rounded px-1.5 py-0.5 font-mono text-xs font-semibold text-emerald-400">
                 {domain.dns.cname.value}
               </code>
-              <CopyButton
-                value={domain.dns.cname.value}
-                label="CNAME target"
-              />
+              <CopyButton value={domain.dns.cname.value} label="CNAME target" />
             </div>
           </div>
 
@@ -207,53 +192,42 @@ function DnsRecordsPanel({ domain }: { domain: CustomDomain }) {
             <span className="rounded border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 font-mono text-[11px] font-semibold text-violet-400">
               TXT
             </span>
-            <span className="text-[11px] text-muted-foreground sm:hidden">Verification token</span>
+            <span className="text-muted-foreground text-[11px] sm:hidden">Verification token</span>
           </div>
 
           <div className="min-w-0 space-y-0.5">
             <div className="flex items-center gap-1.5">
-              <span className="text-[10px] uppercase tracking-wider text-muted-foreground/80 sm:hidden">
+              <span className="text-muted-foreground/80 text-[10px] tracking-wider uppercase sm:hidden">
                 Name:
               </span>
-              <code className="rounded bg-muted/50 px-1.5 py-0.5 font-mono text-xs font-semibold text-foreground">
+              <code className="bg-muted/50 text-foreground rounded px-1.5 py-0.5 font-mono text-xs font-semibold">
                 {domain.dns.txt.name}
               </code>
-              <CopyButton
-                value={domain.dns.txt.name}
-                label="TXT host name"
-              />
+              <CopyButton value={domain.dns.txt.name} label="TXT host name" />
             </div>
             {domain.dns.txt.name !== domain.dns.txt.fullName && (
-              <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+              <div className="text-muted-foreground flex items-center gap-1 text-[11px]">
                 <span>or FQDN:</span>
-                <span className="truncate font-mono text-[10px]">
-                  {domain.dns.txt.fullName}
-                </span>
-                <CopyButton
-                  value={domain.dns.txt.fullName}
-                  label="TXT full host name"
-                />
+                <span className="truncate font-mono text-[10px]">{domain.dns.txt.fullName}</span>
+                <CopyButton value={domain.dns.txt.fullName} label="TXT full host name" />
               </div>
             )}
           </div>
 
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <span className="text-[10px] uppercase tracking-wider text-muted-foreground/80 sm:hidden">
+              <span className="text-muted-foreground/80 text-[10px] tracking-wider uppercase sm:hidden">
                 Value:
               </span>
-              <code className="truncate rounded bg-muted/50 px-1.5 py-0.5 font-mono text-xs font-semibold text-foreground/90">
+              <code className="bg-muted/50 text-foreground/90 truncate rounded px-1.5 py-0.5 font-mono text-xs font-semibold">
                 {domain.dns.txt.value}
               </code>
-              <CopyButton
-                value={domain.dns.txt.value}
-                label="TXT verification token"
-              />
+              <CopyButton value={domain.dns.txt.value} label="TXT verification token" />
             </div>
           </div>
 
           <div className="text-right sm:text-left">
-            <span className="inline-flex items-center gap-1 rounded border border-border/60 bg-muted/40 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+            <span className="border-border/60 bg-muted/40 text-muted-foreground inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[10px] font-medium">
               DNS Only
             </span>
           </div>
@@ -261,11 +235,11 @@ function DnsRecordsPanel({ domain }: { domain: CustomDomain }) {
       </div>
 
       {/* Helpful DNS note */}
-      <div className="border-t border-border/50 bg-muted/20 px-3.5 py-2 text-[11px] text-muted-foreground leading-relaxed">
+      <div className="border-border/50 bg-muted/20 text-muted-foreground border-t px-3.5 py-2 text-[11px] leading-relaxed">
         <strong className="text-foreground/90">Tip for Cloudflare users:</strong> Turn on the{" "}
-        <span className="text-amber-400 font-medium">Orange Cloud (Proxy)</span> on the CNAME
-        record to get free automatic SSL and DDoS protection. tunl will seamlessly route requests to
-        your local server based on the Host header.
+        <span className="font-medium text-amber-400">Orange Cloud (Proxy)</span> on the CNAME record
+        to get free automatic SSL and DDoS protection. tunl will seamlessly route requests to your
+        local server based on the Host header.
       </div>
     </div>
   );
@@ -353,43 +327,43 @@ export default function CustomDomainsCard() {
 
   return (
     <>
-      <Card className="gap-0 rounded-xl p-0 shadow-none border-border/60">
+      <Card className="border-border/60 gap-0 rounded-xl p-0 shadow-none">
         {/* Card Header */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 bg-muted/30 px-4 py-3.5 sm:px-5">
+        <div className="border-border/60 bg-muted/30 flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3.5 sm:px-5">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md border border-border/60 bg-background text-primary">
+            <div className="border-border/60 bg-background text-primary flex h-7 w-7 items-center justify-center rounded-md border">
               <Globe className="h-4 w-4" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-sm font-semibold text-foreground">Custom domains</h2>
-                <span className="rounded-md border border-border/60 bg-secondary px-2 py-0.5 text-[11px] font-semibold text-secondary-foreground">
+                <h2 className="text-foreground text-sm font-semibold">Custom domains</h2>
+                <span className="border-border/60 bg-secondary text-secondary-foreground rounded-md border px-2 py-0.5 text-[11px] font-semibold">
                   {customDomains.length}
                 </span>
                 <span className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-300">
                   Admin Preview
                 </span>
               </div>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-muted-foreground text-[11px]">
                 Route your custom domain to any active tunnel with CNAME and TXT verification.
               </p>
             </div>
           </div>
 
-          <div className="hidden items-center gap-1.5 rounded-full border border-border/60 bg-background/60 px-3 py-1 font-mono text-[11px] text-muted-foreground lg:flex">
-            <ShieldCheck className="h-3.5 w-3.5 text-primary" />
+          <div className="border-border/60 bg-background/60 text-muted-foreground hidden items-center gap-1.5 rounded-full border px-3 py-1 font-mono text-[11px] lg:flex">
+            <ShieldCheck className="text-primary h-3.5 w-3.5" />
             <span>TLS via Cloudflare Proxied CNAME</span>
           </div>
         </div>
 
         {/* Add Domain Form */}
-        <div className="border-b border-border/60 p-4 sm:p-5">
+        <div className="border-border/60 border-b p-4 sm:p-5">
           <form
             onSubmit={handleSubmit(onSubmit)}
             className="flex flex-col gap-3 lg:flex-row lg:items-end"
           >
             <div className="min-w-0 flex-1 space-y-1.5">
-              <Label htmlFor="custom-domain" className="text-xs font-medium text-foreground">
+              <Label htmlFor="custom-domain" className="text-foreground text-xs font-medium">
                 Domain name
               </Label>
               <Input
@@ -400,20 +374,18 @@ export default function CustomDomainsCard() {
                 {...register("domain")}
                 aria-invalid={!!errors.domain}
               />
-              {errors.domain && (
-                <p className="text-xs text-destructive">{errors.domain.message}</p>
-              )}
+              {errors.domain && <p className="text-destructive text-xs">{errors.domain.message}</p>}
             </div>
 
             <div className="space-y-1.5 lg:w-72">
-              <Label htmlFor="custom-domain-tunnel" className="text-xs font-medium text-foreground">
+              <Label htmlFor="custom-domain-tunnel" className="text-foreground text-xs font-medium">
                 Target tunnel
               </Label>
               <div className="relative">
                 <select
                   id="custom-domain-tunnel"
                   disabled={createMutation.isPending || tunnels.length === 0}
-                  className="h-10 w-full cursor-pointer appearance-none rounded-md border border-border/60 bg-background pl-3 pr-8 font-mono text-xs text-foreground transition-all duration-200 outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="border-border/60 bg-background text-foreground focus-visible:border-ring focus-visible:ring-ring/40 h-10 w-full cursor-pointer appearance-none rounded-md border pr-8 pl-3 font-mono text-xs transition-all duration-200 outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-50"
                   {...register("tunnelId")}
                   aria-invalid={!!errors.tunnelId}
                 >
@@ -424,10 +396,10 @@ export default function CustomDomainsCard() {
                     </option>
                   ))}
                 </select>
-                <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <ChevronDown className="text-muted-foreground pointer-events-none absolute top-1/2 right-2.5 h-4 w-4 -translate-y-1/2" />
               </div>
               {errors.tunnelId && (
-                <p className="text-xs text-destructive">{errors.tunnelId.message}</p>
+                <p className="text-destructive text-xs">{errors.tunnelId.message}</p>
               )}
             </div>
 
@@ -439,12 +411,12 @@ export default function CustomDomainsCard() {
             >
               {createMutation.isPending ? (
                 <>
-                  <RefreshCw className="h-3.5 w-3.5 animate-spin mr-1" />
+                  <RefreshCw className="mr-1 h-3.5 w-3.5 animate-spin" />
                   Adding…
                 </>
               ) : (
                 <>
-                  <Plus className="h-3.5 w-3.5 mr-1" />
+                  <Plus className="mr-1 h-3.5 w-3.5" />
                   Add domain
                 </>
               )}
@@ -453,7 +425,8 @@ export default function CustomDomainsCard() {
 
           {tunnels.length === 0 && (
             <div className="mt-3 rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
-              Reserve a tunnel subdomain first. Custom domains map directly to your existing tunnels.
+              Reserve a tunnel subdomain first. Custom domains map directly to your existing
+              tunnels.
             </div>
           )}
         </div>
@@ -461,32 +434,32 @@ export default function CustomDomainsCard() {
         {/* Domain List Body */}
         {isLoading ? (
           <div className="flex flex-col items-center justify-center gap-2 py-14">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
-            <p className="text-xs text-muted-foreground">Loading custom domains…</p>
+            <div className="border-primary/20 border-t-primary h-5 w-5 animate-spin rounded-full border-2" />
+            <p className="text-muted-foreground text-xs">Loading custom domains…</p>
           </div>
         ) : customDomains.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-3 px-4 py-14 text-center">
-            <Globe className="h-8 w-8 text-muted-foreground/30" />
+            <Globe className="text-muted-foreground/30 h-8 w-8" />
             <div className="flex flex-col gap-1">
-              <h3 className="text-sm font-semibold text-foreground">No custom domains configured</h3>
-              <p className="max-w-md text-xs text-muted-foreground">
+              <h3 className="text-foreground text-sm font-semibold">
+                No custom domains configured
+              </h3>
+              <p className="text-muted-foreground max-w-md text-xs">
                 Connect your personal or company domain (e.g. <code>api.example.com</code>) to route
                 traffic directly to your tunnel with automatic SSL.
               </p>
             </div>
           </div>
         ) : (
-          <div className="divide-y divide-border/60">
+          <div className="divide-border/60 divide-y">
             {customDomains.map((d) => {
               const live =
-                d.status === "verified" &&
-                activeSessions.some((s) => s.subdomain === d.subdomain);
+                d.status === "verified" && activeSessions.some((s) => s.subdomain === d.subdomain);
               const isVerifyingThis = verifyingId === d.id;
-              const isExpanded =
-                d.status !== "verified" || expandedDomainIds[d.id] === true;
+              const isExpanded = d.status !== "verified" || expandedDomainIds[d.id] === true;
 
               return (
-                <div key={d.id} className="p-4 sm:p-5 space-y-4">
+                <div key={d.id} className="space-y-4 p-4 sm:p-5">
                   {/* Top domain bar */}
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0 space-y-1">
@@ -496,13 +469,13 @@ export default function CustomDomainsCard() {
                             href={`https://${d.domain}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 font-mono text-sm sm:text-base font-semibold text-foreground hover:text-primary transition-colors"
+                            className="text-foreground hover:text-primary inline-flex items-center gap-1.5 font-mono text-sm font-semibold transition-colors sm:text-base"
                           >
                             {d.domain}
                             <ExternalLink className="h-3.5 w-3.5 opacity-60 hover:opacity-100" />
                           </a>
                         ) : (
-                          <span className="font-mono text-sm sm:text-base font-semibold text-foreground">
+                          <span className="text-foreground font-mono text-sm font-semibold sm:text-base">
                             {d.domain}
                           </span>
                         )}
@@ -517,9 +490,9 @@ export default function CustomDomainsCard() {
                         )}
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground font-mono">
-                        <span className="inline-flex items-center gap-1 text-foreground/80">
-                          <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                      <div className="text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-xs">
+                        <span className="text-foreground/80 inline-flex items-center gap-1">
+                          <ArrowRight className="text-muted-foreground h-3 w-3" />
                           <span>{d.subdomain}.tunl.online</span>
                         </span>
                         {d.lastCheckedAt && (
@@ -543,7 +516,7 @@ export default function CustomDomainsCard() {
                           variant="outline"
                           size="sm"
                           onClick={() => toggleExpanded(d.id)}
-                          className="text-xs gap-1 border-border/60"
+                          className="border-border/60 gap-1 text-xs"
                         >
                           {isExpanded ? (
                             <>
@@ -562,7 +535,7 @@ export default function CustomDomainsCard() {
                         variant={d.status === "verified" ? "outline" : "default"}
                         disabled={isVerifyingThis}
                         onClick={() => handleVerify(d)}
-                        className="whitespace-nowrap text-xs font-semibold gap-1.5"
+                        className="gap-1.5 text-xs font-semibold whitespace-nowrap"
                       >
                         {isVerifyingThis ? (
                           <>
@@ -580,7 +553,7 @@ export default function CustomDomainsCard() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-destructive hover:bg-destructive/10 hover:text-destructive whitespace-nowrap text-xs"
+                        className="text-destructive hover:bg-destructive/10 hover:text-destructive text-xs whitespace-nowrap"
                         onClick={() => setDeleteDomain(d)}
                         title="Remove domain"
                       >
@@ -606,11 +579,11 @@ export default function CustomDomainsCard() {
             <AlertDialogTitle>
               Remove custom domain {deleteDomain ? `"${deleteDomain.domain}"` : ""}?
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed">
+            <AlertDialogDescription className="text-muted-foreground text-xs leading-relaxed">
               Traffic to{" "}
-              <strong className="font-mono text-foreground">{deleteDomain?.domain}</strong> will
+              <strong className="text-foreground font-mono">{deleteDomain?.domain}</strong> will
               immediately stop forwarding to{" "}
-              <strong className="font-mono text-foreground">
+              <strong className="text-foreground font-mono">
                 {deleteDomain?.subdomain}.tunl.online
               </strong>
               . You can safely remove the CNAME and TXT records from your DNS provider.

@@ -32,15 +32,8 @@ import {
 import Link from "next/link";
 import Image from "next/image";
 import { Card } from "@/components/ui/card";
-import { countryName, countryFlagUrl } from "@/lib/utils";
-
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return "0 B";
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
-}
+import { countryName, countryFlagUrl, formatBytes } from "@/lib/utils";
+import { useAdminPrivacy } from "@/lib/admin-privacy-context";
 
 function formatShortRelativeTime(date: Date | string): string {
   const ms = Date.now() - new Date(date).getTime();
@@ -56,6 +49,7 @@ function formatShortRelativeTime(date: Date | string): string {
 }
 
 export default function AdminOverviewPage() {
+  const { maskEmail, maskIp, maskId } = useAdminPrivacy();
   const overview = useAdminOverviewAnalytics();
   const engagement = useAdminEngagementAnalytics();
   const sessions = useAdminSessionAnalytics();
@@ -149,8 +143,13 @@ export default function AdminOverviewPage() {
       <AdminAnalyticsCards
         analytics={analytics}
         engagement={engagement.data}
+        sessions={sessions.data}
+        bandwidthSummary={bwSummary}
+        bandwidthPeriod={bandwidthPeriod}
         isLoading={isLoading}
         isEngagementLoading={engagement.isPending}
+        isSessionsLoading={sessions.isPending}
+        isBandwidthLoading={isBandwidthLoading}
       />
       <AdminAnalyticsInsights growth={growth} geo={geo} sessions={sessions} />
 
@@ -431,9 +430,11 @@ export default function AdminOverviewPage() {
                         <div className="flex min-w-0 items-center justify-between gap-3 text-xs">
                           <p
                             className="text-muted-foreground min-w-0 truncate"
-                            title={session.userEmail ?? "Anonymous user"}
+                            title={
+                              session.userEmail ? maskEmail(session.userEmail) : "Anonymous user"
+                            }
                           >
-                            {session.userEmail ?? "Anonymous user"}
+                            {session.userEmail ? maskEmail(session.userEmail) : "Anonymous user"}
                           </p>
                           <span className="text-muted-foreground shrink-0 text-[11px] whitespace-nowrap">
                             {formatShortRelativeTime(session.connectedAt)}
@@ -441,7 +442,7 @@ export default function AdminOverviewPage() {
                         </div>
                         <div className="text-muted-foreground flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
                           <span className="min-w-0 font-mono break-all">
-                            {session.remoteIp || "Unknown IP"}
+                            {session.remoteIp ? maskIp(session.remoteIp) : "Unknown IP"}
                           </span>
                           {(session.city || session.country) && (
                             <span className="inline-flex min-w-0 items-center gap-1.5">
@@ -594,10 +595,15 @@ export default function AdminOverviewPage() {
                           className="flex min-w-0 items-center justify-between gap-3 py-2.5"
                         >
                           <div className="min-w-0 flex-1">
-                            <p className="truncate font-mono" title={conversion.anonymousId}>
-                              {conversion.anonymousId}
+                            <p
+                              className="truncate font-mono"
+                              title={maskId(conversion.anonymousId)}
+                            >
+                              {maskId(conversion.anonymousId)}
                             </p>
-                            <p className="text-muted-foreground truncate">{conversion.userEmail}</p>
+                            <p className="text-muted-foreground truncate">
+                              {maskEmail(conversion.userEmail)}
+                            </p>
                           </div>
                           <span className="text-muted-foreground shrink-0">
                             {formatShortRelativeTime(conversion.linkedAt)}

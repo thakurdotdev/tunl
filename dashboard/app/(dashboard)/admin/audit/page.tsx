@@ -4,11 +4,24 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useAdminAudit } from "@/hooks/use-admin";
 import type { TunnelEventItem } from "@/lib/types";
 import { countryName, countryFlagUrl } from "@/lib/utils";
+import { useAdminPrivacy } from "@/lib/admin-privacy-context";
 import { toast } from "sonner";
 import {
   Activity,
@@ -43,6 +56,7 @@ function formatShortRelativeTime(date: Date | string): string {
 }
 
 export default function AdminAuditPage() {
+  const { isMasked, maskEmail, maskIp, maskId } = useAdminPrivacy();
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [eventTypeFilter, setEventTypeFilter] = useState<
@@ -112,7 +126,7 @@ export default function AdminAuditPage() {
       {/* Page Header & Live Stream Bar */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight text-foreground">Audit stream</h2>
+          <h2 className="text-foreground text-xl font-semibold tracking-tight">Audit stream</h2>
         </div>
 
         <div className="flex items-center gap-2">
@@ -188,7 +202,7 @@ export default function AdminAuditPage() {
             >
               <TabsList
                 aria-label="Filter audit events"
-                className="h-9 rounded-md border border-border/60 bg-muted/40 p-1"
+                className="border-border/60 bg-muted/40 h-9 rounded-md border p-1"
               >
                 <TabsTrigger value="all" className="rounded-sm px-2.5 text-xs">
                   All events
@@ -213,7 +227,7 @@ export default function AdminAuditPage() {
             >
               <SelectTrigger
                 aria-label="Events per page"
-                className="h-9 min-w-28 rounded-md border-border/60 bg-background text-xs"
+                className="border-border/60 bg-background h-9 min-w-28 rounded-md text-xs"
               >
                 <SelectValue />
               </SelectTrigger>
@@ -357,7 +371,9 @@ export default function AdminAuditPage() {
                       <td className="text-muted-foreground p-3.5">
                         {evt.userEmail ? (
                           <div className="flex items-center gap-1.5">
-                            <span className="text-foreground font-medium">{evt.userEmail}</span>
+                            <span className="text-foreground font-medium">
+                              {maskEmail(evt.userEmail)}
+                            </span>
                             <button
                               type="button"
                               onClick={(e) => {
@@ -376,7 +392,7 @@ export default function AdminAuditPage() {
                           </div>
                         ) : evt.anonymousId ? (
                           <span className="text-muted-foreground/70 text-[11px] italic">
-                            Anon: {evt.anonymousId.slice(0, 10)}...
+                            Anon: {maskId(evt.anonymousId)}
                           </span>
                         ) : (
                           <span className="text-muted-foreground/50 italic">Anonymous device</span>
@@ -387,7 +403,7 @@ export default function AdminAuditPage() {
                         {evt.remoteIp ? (
                           <div className="flex flex-col gap-0.5">
                             <div className="flex items-center gap-1.5">
-                              <span>{evt.remoteIp}</span>
+                              <span>{maskIp(evt.remoteIp)}</span>
                               <button
                                 type="button"
                                 onClick={(e) => {
@@ -405,9 +421,13 @@ export default function AdminAuditPage() {
                               </button>
                             </div>
                             {(evt.city || evt.country) && (
-                              <span className="text-[10px] text-muted-foreground/80 flex items-center gap-1 font-sans">
+                              <span className="text-muted-foreground/80 flex items-center gap-1 font-sans text-[10px]">
                                 {evt.country && countryFlagUrl(evt.country) ? (
-                                  <img src={countryFlagUrl(evt.country, 16)!} alt={countryName(evt.country) ?? ""} className="h-2.5 w-3.5 shrink-0 rounded-[1px] object-cover" />
+                                  <img
+                                    src={countryFlagUrl(evt.country, 16)!}
+                                    alt={countryName(evt.country) ?? ""}
+                                    className="h-2.5 w-3.5 shrink-0 rounded-[1px] object-cover"
+                                  />
                                 ) : (
                                   <MapPin className="h-2.5 w-2.5 shrink-0 text-cyan-400" />
                                 )}
@@ -547,13 +567,18 @@ export default function AdminAuditPage() {
         }}
       >
         {selectedEvent && (
-          <DialogContent className="max-h-[85vh] w-full max-w-xl gap-0 overflow-hidden p-0" showCloseButton>
+          <DialogContent
+            className="max-h-[85vh] w-full max-w-xl gap-0 overflow-hidden p-0"
+            showCloseButton
+          >
             {/* Modal Header */}
             <div className="border-border/60 bg-muted/20 flex items-center justify-between border-b p-4">
               <div className="flex items-center gap-2">
                 <Terminal className="text-primary h-4 w-4" />
                 <DialogHeader>
-                  <DialogTitle className="text-sm font-semibold">Event telemetry inspector</DialogTitle>
+                  <DialogTitle className="text-sm font-semibold">
+                    Event telemetry inspector
+                  </DialogTitle>
                 </DialogHeader>
               </div>
             </div>
@@ -590,7 +615,9 @@ export default function AdminAuditPage() {
                     User Account
                   </span>
                   <span className="text-foreground mt-1 block truncate font-medium">
-                    {selectedEvent.userEmail || "Anonymous device"}
+                    {selectedEvent.userEmail
+                      ? maskEmail(selectedEvent.userEmail)
+                      : "Anonymous device"}
                   </span>
                 </div>
 
@@ -599,12 +626,16 @@ export default function AdminAuditPage() {
                     Remote Client IP
                   </span>
                   <span className="text-foreground mt-1 block font-medium">
-                    {selectedEvent.remoteIp || "N/A"}
+                    {selectedEvent.remoteIp ? maskIp(selectedEvent.remoteIp) : "N/A"}
                   </span>
                   {(selectedEvent.city || selectedEvent.country) && (
-                    <span className="text-cyan-400 text-[10px] mt-1 flex items-center gap-1 font-sans font-medium">
+                    <span className="mt-1 flex items-center gap-1 font-sans text-[10px] font-medium text-cyan-400">
                       {selectedEvent.country && countryFlagUrl(selectedEvent.country) ? (
-                        <img src={countryFlagUrl(selectedEvent.country, 16)!} alt={countryName(selectedEvent.country) ?? ""} className="h-3 w-4 shrink-0 rounded-[1px] object-cover" />
+                        <img
+                          src={countryFlagUrl(selectedEvent.country, 16)!}
+                          alt={countryName(selectedEvent.country) ?? ""}
+                          className="h-3 w-4 shrink-0 rounded-[1px] object-cover"
+                        />
                       ) : (
                         <MapPin className="h-3 w-3 shrink-0" />
                       )}
@@ -619,8 +650,8 @@ export default function AdminAuditPage() {
               <div className="border-border/60 bg-muted/20 space-y-1.5 rounded-lg border p-3">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground text-[10px] uppercase">Event ID</span>
-                  <span className="text-foreground select-all">
-                    {selectedEvent.eventId || selectedEvent.id}
+                  <span className="text-foreground font-mono select-all">
+                    {maskId(selectedEvent.eventId || selectedEvent.id)}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -632,30 +663,41 @@ export default function AdminAuditPage() {
               </div>
 
               {/* Raw Properties JSON */}
-              <div>
-                <div className="mb-1.5 flex items-center justify-between">
-                  <span className="text-muted-foreground text-[11px] font-semibold">
-                    Raw Payload Properties
-                  </span>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() =>
-                      handleCopy(
-                        JSON.stringify(selectedEvent.properties ?? {}, null, 2),
-                        "JSON payload",
-                        "raw-json",
-                      )
+              {(() => {
+                const raw = (selectedEvent.properties as Record<string, unknown>) ?? {};
+                const sanitized = isMasked
+                  ? {
+                      ...raw,
+                      ...(raw.remoteIp ? { remoteIp: maskIp(String(raw.remoteIp)) } : {}),
+                      ...(raw.remote_ip ? { remote_ip: maskIp(String(raw.remote_ip)) } : {}),
                     }
-                    className="h-6 px-2 text-[10px]"
-                  >
-                    <Copy className="mr-1 h-3 w-3" /> Copy JSON
-                  </Button>
-                </div>
-                <pre className="border-border/60 bg-background/80 text-foreground max-h-48 overflow-auto rounded-lg border p-3 font-mono text-[11px] select-all">
-                  {JSON.stringify(selectedEvent.properties ?? {}, null, 2)}
-                </pre>
-              </div>
+                  : raw;
+                return (
+                  <div>
+                    <div className="mb-1.5 flex items-center justify-between">
+                      <span className="text-muted-foreground text-[11px] font-semibold">
+                        Raw Payload Properties{" "}
+                        {isMasked && (
+                          <span className="font-normal text-emerald-400">(Sanitized)</span>
+                        )}
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() =>
+                          handleCopy(JSON.stringify(sanitized, null, 2), "JSON payload", "raw-json")
+                        }
+                        className="h-6 px-2 text-[10px]"
+                      >
+                        <Copy className="mr-1 h-3 w-3" /> Copy JSON
+                      </Button>
+                    </div>
+                    <pre className="border-border/60 bg-background/80 text-foreground max-h-48 overflow-auto rounded-lg border p-3 font-mono text-[11px] select-all">
+                      {JSON.stringify(sanitized, null, 2)}
+                    </pre>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Modal Footer */}

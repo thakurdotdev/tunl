@@ -7,6 +7,8 @@ import { Activity, BarChart3, Layers, ShieldAlert, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
+import { AdminPrivacyProvider, AdminPrivacyToggle } from "@/lib/admin-privacy-context";
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
@@ -51,31 +53,39 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       ?.href ?? "/admin";
 
   return (
-    <div className="min-w-0 font-sans">
-      <Tabs value={activeTab} className="mb-6 min-w-0">
-        <TabsList
-          aria-label="Admin navigation"
-          className="grid w-full grid-cols-2 gap-1 rounded-xl group-data-horizontal/tabs:h-auto sm:inline-flex sm:w-fit sm:group-data-horizontal/tabs:h-9"
-        >
-          {adminTabs.map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <TabsTrigger
-                key={tab.href}
-                value={tab.href}
-                render={<Link href={tab.href} />}
-                className="h-9 min-w-0 rounded-lg px-3 text-xs sm:h-8 sm:flex-none sm:text-sm"
-              >
-                <Icon />
-                <span className="sm:hidden">{tab.mobileLabel}</span>
-                <span className="hidden sm:inline">{tab.label}</span>
-              </TabsTrigger>
-            );
-          })}
-        </TabsList>
-      </Tabs>
+    <AdminPrivacyProvider>
+      <div className="min-w-0 font-sans">
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <Tabs value={activeTab} className="min-w-0">
+            <TabsList
+              aria-label="Admin navigation"
+              className="grid w-full grid-cols-2 gap-1 rounded-xl group-data-horizontal/tabs:h-auto sm:inline-flex sm:w-fit sm:group-data-horizontal/tabs:h-9"
+            >
+              {adminTabs.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <TabsTrigger
+                    key={tab.href}
+                    value={tab.href}
+                    render={<Link href={tab.href} />}
+                    className="h-9 min-w-0 rounded-lg px-3 text-xs sm:h-8 sm:flex-none sm:text-sm"
+                  >
+                    <Icon />
+                    <span className="sm:hidden">{tab.mobileLabel}</span>
+                    <span className="hidden sm:inline">{tab.label}</span>
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+          </Tabs>
 
-      <div className="min-w-0">{children}</div>
-    </div>
+          <div className="flex shrink-0 items-center justify-end">
+            <AdminPrivacyToggle />
+          </div>
+        </div>
+
+        <div className="min-w-0">{children}</div>
+      </div>
+    </AdminPrivacyProvider>
   );
 }

@@ -12,9 +12,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { toast } from "sonner";
+import { useAdminPrivacy } from "@/lib/admin-privacy-context";
 import {
   Search,
   Sliders,
@@ -58,9 +66,13 @@ interface UserManagementTableProps {
 function renderPlanBadge(planName?: string) {
   const normalized = (planName ?? "Free").toLowerCase();
 
-  if (normalized.includes("developer") || normalized.includes("preview") || normalized.includes("pro")) {
+  if (
+    normalized.includes("developer") ||
+    normalized.includes("preview") ||
+    normalized.includes("pro")
+  ) {
     return (
-      <span className="inline-flex items-center rounded-full border border-indigo-500/25 bg-indigo-500/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-indigo-400 whitespace-nowrap">
+      <span className="inline-flex items-center rounded-full border border-indigo-500/25 bg-indigo-500/10 px-2.5 py-0.5 text-[10px] font-semibold tracking-wider whitespace-nowrap text-indigo-400 uppercase">
         {planName}
       </span>
     );
@@ -68,14 +80,14 @@ function renderPlanBadge(planName?: string) {
 
   if (normalized.includes("enterprise") || normalized.includes("custom")) {
     return (
-      <span className="inline-flex items-center rounded-full border border-amber-500/25 bg-amber-500/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-400 whitespace-nowrap">
+      <span className="inline-flex items-center rounded-full border border-amber-500/25 bg-amber-500/10 px-2.5 py-0.5 text-[10px] font-semibold tracking-wider whitespace-nowrap text-amber-400 uppercase">
         {planName}
       </span>
     );
   }
 
   return (
-    <span className="inline-flex items-center rounded-full border border-border/60 bg-secondary/80 px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-secondary-foreground whitespace-nowrap">
+    <span className="border-border/60 bg-secondary/80 text-secondary-foreground inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-medium tracking-wider whitespace-nowrap uppercase">
       {planName ?? "Free"}
     </span>
   );
@@ -102,6 +114,7 @@ export function UserManagementTable({
   isRolePending = false,
   onClearFilters,
 }: UserManagementTableProps) {
+  const { maskEmail, maskName } = useAdminPrivacy();
   const [roleChangeTarget, setRoleChangeTarget] = useState<{
     user: AdminUser;
     targetRole: "user" | "admin";
@@ -134,7 +147,9 @@ export function UserManagementTable({
         {/* Header Section */}
         <div className="border-border/60 bg-muted/20 flex flex-col gap-3 border-b p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-foreground text-sm font-semibold tracking-tight">User Account Directory</h2>
+            <h2 className="text-foreground text-sm font-semibold tracking-tight">
+              User Account Directory
+            </h2>
             <p className="text-muted-foreground mt-0.5 text-xs">
               Manage subscription plans, administrative roles, and inspect registered subdomains.
             </p>
@@ -174,8 +189,18 @@ export function UserManagementTable({
           {/* Filters Group */}
           <div className="flex flex-wrap items-center gap-2">
             {/* Role Filter */}
-            <Select value={roleFilter} onValueChange={(value) => value && onRoleFilterChange(value as "all" | "admin" | "user")}>
-              <SelectTrigger aria-label="Filter by role" className="h-8 min-w-32 rounded-md border-border/70 bg-background text-xs"><SelectValue /></SelectTrigger>
+            <Select
+              value={roleFilter}
+              onValueChange={(value) =>
+                value && onRoleFilterChange(value as "all" | "admin" | "user")
+              }
+            >
+              <SelectTrigger
+                aria-label="Filter by role"
+                className="border-border/70 bg-background h-8 min-w-32 rounded-md text-xs"
+              >
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All roles</SelectItem>
                 <SelectItem value="admin">Admins</SelectItem>
@@ -184,19 +209,43 @@ export function UserManagementTable({
             </Select>
 
             {/* Plan Filter */}
-            <Select value={planFilter} onValueChange={(value) => value && onPlanFilterChange(value)}>
-              <SelectTrigger aria-label="Filter by plan" className="h-8 min-w-32 rounded-md border-border/70 bg-background text-xs"><SelectValue /></SelectTrigger>
+            <Select
+              value={planFilter}
+              onValueChange={(value) => value && onPlanFilterChange(value)}
+            >
+              <SelectTrigger
+                aria-label="Filter by plan"
+                className="border-border/70 bg-background h-8 min-w-32 rounded-md text-xs"
+              >
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All plans</SelectItem>
-                {availablePlans?.map((p) => <SelectItem key={p.id} value={p.id}>{p.name.charAt(0).toUpperCase() + p.name.slice(1)} plan</SelectItem>)}
+                {availablePlans?.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name.charAt(0).toUpperCase() + p.name.slice(1)} plan
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
 
             {/* Page Size */}
-            <Select value={String(pageSize)} onValueChange={(value) => value && onPageSizeChange(Number(value))}>
-              <SelectTrigger aria-label="Users per page" className="h-8 min-w-28 rounded-md border-border/70 bg-background text-xs"><SelectValue /></SelectTrigger>
+            <Select
+              value={String(pageSize)}
+              onValueChange={(value) => value && onPageSizeChange(Number(value))}
+            >
+              <SelectTrigger
+                aria-label="Users per page"
+                className="border-border/70 bg-background h-8 min-w-28 rounded-md text-xs"
+              >
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
-                {[10, 15, 25, 50].map((size) => <SelectItem key={size} value={String(size)}>{size} / page</SelectItem>)}
+                {[10, 15, 25, 50].map((size) => (
+                  <SelectItem key={size} value={String(size)}>
+                    {size} / page
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
 
@@ -230,7 +279,7 @@ export function UserManagementTable({
             <TableBody className="divide-border/30 divide-y">
               {isLoading ? (
                 Array.from({ length: 6 }).map((_, i) => (
-                <TableRow key={`user-skel-${i}`} className="animate-pulse hover:bg-transparent">
+                  <TableRow key={`user-skel-${i}`} className="animate-pulse hover:bg-transparent">
                     <TableCell className="px-4 py-3">
                       <div className="bg-muted h-4 w-36 rounded" />
                       <div className="bg-muted/60 mt-1 h-3 w-20 rounded" />
@@ -287,7 +336,7 @@ export function UserManagementTable({
                     {/* User Account */}
                     <TableCell className="px-4 py-3">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-foreground font-medium">{u.email}</span>
+                        <span className="text-foreground font-medium">{maskEmail(u.email)}</span>
                         <button
                           type="button"
                           onClick={() => handleCopy(u.email, "email", `user-${u.id}`)}
@@ -302,14 +351,16 @@ export function UserManagementTable({
                         </button>
                       </div>
                       {u.name && (
-                        <p className="text-muted-foreground mt-0.5 text-[11px] font-normal">{u.name}</p>
+                        <p className="text-muted-foreground mt-0.5 text-[11px] font-normal">
+                          {maskName(u.name)}
+                        </p>
                       )}
                     </TableCell>
 
                     {/* Role */}
                     <TableCell className="px-4 py-3">
                       {u.role === "admin" ? (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-purple-500/25 bg-purple-500/10 px-2.5 py-0.5 text-[10px] font-semibold text-purple-400 whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1 rounded-full border border-purple-500/25 bg-purple-500/10 px-2.5 py-0.5 text-[10px] font-semibold whitespace-nowrap text-purple-400">
                           <Shield className="h-3 w-3" /> Admin
                         </span>
                       ) : (
@@ -320,9 +371,7 @@ export function UserManagementTable({
                     </TableCell>
 
                     {/* Plan */}
-                    <TableCell className="px-4 py-3">
-                      {renderPlanBadge(u.planName)}
-                    </TableCell>
+                    <TableCell className="px-4 py-3">{renderPlanBadge(u.planName)}</TableCell>
 
                     {/* SSH Keys */}
                     <TableCell className="text-muted-foreground px-4 py-3">
@@ -339,7 +388,7 @@ export function UserManagementTable({
                           {u.reservedSubdomains.slice(0, 2).map((sub) => (
                             <span
                               key={sub}
-                              className="border-border/60 bg-secondary/60 hover:border-primary/40 inline-flex items-center gap-1 rounded-md border px-2 py-0.5 font-mono text-[11px] font-medium text-foreground transition-colors"
+                              className="border-border/60 bg-secondary/60 hover:border-primary/40 text-foreground inline-flex items-center gap-1 rounded-md border px-2 py-0.5 font-mono text-[11px] font-medium transition-colors"
                             >
                               <Globe className="text-primary/70 h-2.5 w-2.5" />
                               {sub}
@@ -505,7 +554,7 @@ export function UserManagementTable({
             ? "Promote Account to Admin"
             : "Demote Admin Account"
         }
-        description={`Are you sure you want to change the role of '${roleChangeTarget?.user.email}' to ${roleChangeTarget?.targetRole.toUpperCase()}?`}
+        description={`Are you sure you want to change the role of '${roleChangeTarget ? maskEmail(roleChangeTarget.user.email) : ""}' to ${roleChangeTarget?.targetRole.toUpperCase()}?`}
         confirmText={
           roleChangeTarget?.targetRole === "admin" ? "Promote to Admin" : "Demote to User"
         }

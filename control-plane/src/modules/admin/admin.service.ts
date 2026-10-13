@@ -33,8 +33,15 @@ export function getAdminOverviewAnalytics(db: Database) {
       db.execute(sql`SELECT
         (SELECT count(*)::int FROM "user") AS "totalUsers",
         (SELECT count(*)::int FROM active_tunnel_sessions) AS "totalActiveSessions",
-        (SELECT count(*)::int FROM tunnels) AS "totalTunnels",
-        (SELECT count(*)::int FROM tunnel_events) AS "totalEvents"`),
+        t.total_tunnels AS "totalTunnels",
+        t.active_tunnels_30d AS "activeTunnelsLast30d",
+        (SELECT count(*)::int FROM tunnel_events) AS "totalEvents"
+      FROM (
+        SELECT
+          count(*)::int AS total_tunnels,
+          count(*) FILTER (WHERE last_connected_at >= now() - interval '30 days')::int AS active_tunnels_30d
+        FROM tunnels
+      ) t`),
       db
         .select({
           planName: plans.name,
@@ -50,6 +57,7 @@ export function getAdminOverviewAnalytics(db: Database) {
       totalUsers: Number(totals.totalUsers),
       totalActiveSessions: Number(totals.totalActiveSessions),
       totalTunnels: Number(totals.totalTunnels),
+      activeTunnelsLast30d: Number(totals.activeTunnelsLast30d ?? 0),
       totalEvents: Number(totals.totalEvents),
       planDistribution,
     };

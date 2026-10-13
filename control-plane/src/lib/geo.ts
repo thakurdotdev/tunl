@@ -2,7 +2,7 @@ import geoip from "geoip-lite";
 
 export interface GeoLocation {
   country: string | null; // e.g. "US", "RO", "IN"
-  city: string | null;    // e.g. "Bucharest", "New Delhi"
+  city: string | null; // e.g. "Bucharest", "New Delhi"
   region?: string | null;
   timezone?: string | null;
 }

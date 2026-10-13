@@ -79,6 +79,7 @@ export type AdminAnalytics = {
   totalUsers: number;
   totalActiveSessions: number;
   totalTunnels: number;
+  activeTunnelsLast30d?: number;
   totalEvents: number;
   totalLinkedIdentities?: number;
   totalAuthEvents?: number;
@@ -100,7 +101,9 @@ export type AdminAnalytics = {
 export type AdminOverviewAnalytics = Pick<
   AdminAnalytics,
   "totalUsers" | "totalActiveSessions" | "totalTunnels" | "totalEvents" | "planDistribution"
->;
+> & {
+  activeTunnelsLast30d?: number;
+};
 
 export type AdminEngagementAnalytics = {
   newUsersLast24h: number;
