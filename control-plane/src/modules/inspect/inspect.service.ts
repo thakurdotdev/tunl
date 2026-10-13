@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import type { Database } from "../../db/client.js";
-import { activeTunnelSessions, tunnels } from "../../db/schema.js";
+import { activeTunnelSessions, customDomains, tunnels } from "../../db/schema.js";
 import type { Config } from "../../platform/config.js";
 import { forbidden, notFound } from "../../platform/errors.js";
 import type { RedisClient } from "../../redis/client.js";
@@ -15,7 +15,20 @@ export async function verifySubdomainOwnership(db: Database, userId: string, sub
     .where(and(eq(tunnels.userId, userId), eq(tunnels.subdomain, subdomain)))
     .limit(1);
 
-  if (owned) return;
+  if (owned) return { subdomain };
+
+  // Allow custom-domain aliases: /inspect/app.example.com resolves to the
+  // owned subdomain it points at.
+  const normalized = subdomain.trim().toLowerCase().replace(/\.*$/, "");
+  if (normalized && normalized.includes(".")) {
+    const [alias] = await db
+      .select({ subdomain: tunnels.subdomain })
+      .from(customDomains)
+      .innerJoin(tunnels, eq(tunnels.id, customDomains.tunnelId))
+      .where(and(eq(customDomains.userId, userId), eq(customDomains.domainLower, normalized)))
+      .limit(1);
+    if (alias) return { subdomain: alias.subdomain };
+  }
 
   const [activeSession] = await db
     .select({ id: activeTunnelSessions.id })
@@ -28,6 +41,7 @@ export async function verifySubdomainOwnership(db: Database, userId: string, sub
   if (!activeSession) {
     throw forbidden("You do not own this subdomain");
   }
+  return { subdomain };
 }
 
 const RETENTION_MS = 30 * 60 * 1000;

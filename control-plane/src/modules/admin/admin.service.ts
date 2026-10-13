@@ -496,6 +496,7 @@ export async function createAdminPlan(
     name: string;
     maxReservedSubdomains: number;
     maxActiveTunnels: number;
+    maxCustomDomains?: number;
     isDefault?: boolean;
   },
 ) {
@@ -512,6 +513,7 @@ export async function createAdminPlan(
       name: planName,
       maxReservedSubdomains: data.maxReservedSubdomains,
       maxActiveTunnels: data.maxActiveTunnels,
+      maxCustomDomains: data.maxCustomDomains ?? 1,
       isDefault: data.isDefault ?? false,
     })
     .returning();

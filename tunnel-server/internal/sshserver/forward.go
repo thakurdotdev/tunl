@@ -72,7 +72,6 @@ func (s *Server) handleForwardRequest(_ context.Context, req *ssh.Request, sess 
 
 	sess.setBindInfo(fwd.BindAddr, fwd.BindPort)
 
-
 	sub, err := s.resolveSubdomain(sess, fwd.BindAddr, fwd.BindPort)
 	if err != nil {
 		s.log.Error("subdomain registration failed", "error", err)

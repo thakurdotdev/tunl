@@ -20,6 +20,7 @@ import { redisKeys } from "../../redis/keys.js";
 import { recordRequestMetrics } from "../inspect/analytics.service.js";
 import { lookupGeo } from "../../lib/geo.js";
 import { linkConvertedIdentity } from "./identity.service.js";
+import { resolveCustomDomain } from "../custom-domains/verify.service.js";
 
 export const validateKeyBody = z.object({
   fingerprint: z.string().min(1),
@@ -375,6 +376,37 @@ export function internalRouter(db: Database, redis: RedisClient, config: Config)
         await recordRequestMetrics(db, parsed.data.metrics);
       }
       res.status(204).send();
+    }),
+  );
+
+  // Data-plane lookup: custom host -> live subdomain. Only verified rows route.
+  // Cached briefly in Redis so a control-plane blip doesn't break live traffic.
+  router.get(
+    "/custom-domain",
+    asyncRoute(async (req, res) => {
+      const { host } = z.object({ host: z.string().min(1).max(253) }).parse(req.query);
+      const domainLower = host.trim().toLowerCase().replace(/\.*$/, "");
+      if (!domainLower || domainLower.length > 253) throw notFound("custom domain not found");
+
+      const cacheKey = redisKeys.customDomain(domainLower);
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (parsed && typeof parsed.subdomain === "string" && parsed.subdomain) {
+            return res.json(parsed);
+          }
+        } catch {
+          // fall through to DB lookup
+        }
+      }
+
+      const resolved = await resolveCustomDomain(db, domainLower);
+      if (!resolved) throw notFound("custom domain not found");
+
+      const payload = { subdomain: resolved.subdomain, userId: resolved.userId };
+      await redis.set(cacheKey, JSON.stringify(payload), { EX: 60 }).catch(() => {});
+      res.json(payload);
     }),
   );
 

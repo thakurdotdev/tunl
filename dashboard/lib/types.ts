@@ -195,6 +195,7 @@ export type AdminPlan = {
   name: string;
   maxReservedSubdomains: number;
   maxActiveTunnels: number;
+  maxCustomDomains?: number;
   isDefault: boolean;
   createdAt: string;
 };
@@ -214,6 +215,44 @@ export type Tunnel = {
   hasPassword?: boolean;
   lastConnectedAt: string | null;
   createdAt: string;
+};
+
+export type CustomDomainDnsRecord = {
+  type: string;
+  /** Short name relative to the zone, e.g. "hello" or "_tunl-challenge.hello" */
+  name: string;
+  /** Full hostname for providers that want FQDNs, e.g. "hello.thakur.dev" */
+  fullName: string;
+  value: string;
+};
+
+export type CustomDomainDns = {
+  zone: string;
+  cname: CustomDomainDnsRecord;
+  txt: CustomDomainDnsRecord;
+};
+
+export type CustomDomain = {
+  id: string;
+  domain: string;
+  tunnelId: string;
+  subdomain: string;
+  status: "pending" | "verified" | "failed";
+  verifiedAt: string | null;
+  lastCheckedAt: string | null;
+  createdAt: string;
+  dns: CustomDomainDns;
+};
+
+export type VerifyCustomDomainResult = {
+  id: string;
+  domain: string;
+  status: "pending" | "verified" | "failed";
+  verified: boolean;
+  verifiedAt: string | null;
+  lastCheckedAt: string | null;
+  detail: string;
+  dns: CustomDomainDns;
 };
 
 export type TunnelSession = {

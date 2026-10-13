@@ -10,6 +10,7 @@ interface CreatePlanModalProps {
     name: string;
     maxReservedSubdomains: number;
     maxActiveTunnels: number;
+    maxCustomDomains?: number;
     isDefault?: boolean;
   }) => void;
   isPending: boolean;
@@ -26,6 +27,7 @@ export function CreatePlanModal({
   const [name, setName] = useState("");
   const [maxReservedSubdomains, setMaxReservedSubdomains] = useState(1);
   const [maxActiveTunnels, setMaxActiveTunnels] = useState(1);
+  const [maxCustomDomains, setMaxCustomDomains] = useState(1);
   const [isDefault, setIsDefault] = useState(false);
 
   if (!isOpen) return null;
@@ -36,6 +38,7 @@ export function CreatePlanModal({
       name: name.trim().toLowerCase(),
       maxReservedSubdomains,
       maxActiveTunnels,
+      maxCustomDomains,
       isDefault,
     });
   };
@@ -75,7 +78,7 @@ export function CreatePlanModal({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="text-muted-foreground block text-[11px] font-medium uppercase">
                 Max Subdomains
@@ -98,6 +101,19 @@ export function CreatePlanModal({
                 min={1}
                 value={maxActiveTunnels}
                 onChange={(e) => setMaxActiveTunnels(parseInt(e.target.value) || 1)}
+                required
+                className="mt-1 font-mono text-xs"
+              />
+            </div>
+            <div>
+              <label className="text-muted-foreground block text-[11px] font-medium uppercase">
+                Custom Domains
+              </label>
+              <Input
+                type="number"
+                min={0}
+                value={maxCustomDomains}
+                onChange={(e) => setMaxCustomDomains(Math.max(0, parseInt(e.target.value) || 0))}
                 required
                 className="mt-1 font-mono text-xs"
               />

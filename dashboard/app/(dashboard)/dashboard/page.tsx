@@ -23,6 +23,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/auth-context";
+import CustomDomainsCard from "@/components/custom-domains-card";
 import {
   useCreateTunnelMutation,
   useDeleteTunnelMutation,
@@ -195,7 +196,9 @@ export default function TunnelsPage() {
       {/* Page title and live status */}
       <div className="border-border/60 flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-foreground text-2xl font-semibold tracking-tight">Tunnels & subdomains</h1>
+          <h1 className="text-foreground text-2xl font-semibold tracking-tight">
+            Tunnels & subdomains
+          </h1>
         </div>
         <div className="flex flex-wrap items-center gap-2.5 text-xs">
           <div className="border-border/60 bg-card flex items-center gap-2 rounded-lg border px-3 py-1.5 shadow-2xs">
@@ -235,14 +238,18 @@ export default function TunnelsPage() {
             {limitReached ? (
               <div className="flex min-h-20 flex-col justify-center">
                 <div>
-                  <p className="text-sm font-medium text-foreground">Endpoint limit reached</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Your plan allows {maxTunnels} reserved subdomain{maxTunnels === 1 ? "" : "s"}. Revoke one below to add another.
+                  <p className="text-foreground text-sm font-medium">Endpoint limit reached</p>
+                  <p className="text-muted-foreground mt-1 text-xs">
+                    Your plan allows {maxTunnels} reserved subdomain{maxTunnels === 1 ? "" : "s"}.
+                    Revoke one below to add another.
                   </p>
                 </div>
               </div>
             ) : (
-              <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+              <form
+                onSubmit={handleSubmit(onSubmit)}
+                className="flex flex-col gap-3 sm:flex-row sm:items-end"
+              >
                 <div className="min-w-0 flex-1 space-y-1.5">
                   <Label htmlFor="subdomain" className="text-foreground text-xs font-medium">
                     Subdomain name
@@ -252,7 +259,7 @@ export default function TunnelsPage() {
                       id="subdomain"
                       placeholder="my-app"
                       disabled={createMutation.isPending}
-                      className="h-10 rounded-md bg-background pr-28 pl-3 font-mono text-sm"
+                      className="bg-background h-10 rounded-md pr-28 pl-3 font-mono text-sm"
                       {...register("subdomain")}
                       aria-invalid={!!errors.subdomain}
                     />
@@ -288,7 +295,9 @@ export default function TunnelsPage() {
           <div className="flex flex-1 flex-col justify-between gap-4 p-5">
             <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
               <div className="flex flex-col gap-0.5">
-                <span className="text-muted-foreground text-xs">Forward a local port through your tunnel.</span>
+                <span className="text-muted-foreground text-xs">
+                  Forward a local port through your tunnel.
+                </span>
               </div>
               <div className="flex w-24 shrink-0 flex-col gap-1">
                 <Label
@@ -346,13 +355,15 @@ export default function TunnelsPage() {
         <div className="border-border/60 bg-muted/30 flex items-center justify-between border-b px-4 py-3 text-xs">
           <div className="flex items-center gap-2">
             <div>
-              <h2 className="text-sm font-semibold text-foreground">Endpoints</h2>
+              <h2 className="text-foreground text-sm font-semibold">Endpoints</h2>
             </div>
             <span className="bg-secondary/80 text-secondary-foreground border-border/60 rounded-md border px-2 py-0.5 text-[11px] font-semibold">
               {tunnels.length}
             </span>
           </div>
-          <span className="text-muted-foreground font-mono text-[11px]">SSH Gateway: port 2222</span>
+          <span className="text-muted-foreground font-mono text-[11px]">
+            SSH Gateway: port 2222
+          </span>
         </div>
 
         {isLoading ? (
@@ -365,14 +376,18 @@ export default function TunnelsPage() {
             <Globe className="text-muted-foreground/30 h-8 w-8" />
             <div className="flex flex-col gap-1">
               <h3 className="text-sm font-semibold">No subdomains reserved</h3>
-              <p className="text-muted-foreground max-w-sm text-xs">Reserve a subdomain to get started.</p>
+              <p className="text-muted-foreground max-w-sm text-xs">
+                Reserve a subdomain to get started.
+              </p>
             </div>
           </div>
         ) : (
-          <div className="divide-y divide-border/60">
+          <div className="divide-border/60 divide-y">
             {tunnels.map((tunnel) => {
               const sshCommand = `ssh -R 80:localhost:3000 -p 2222 ${tunnel.subdomain}@tunl.online`;
-              const tunnelSessions = activeSessions.filter((session) => session.subdomain === tunnel.subdomain);
+              const tunnelSessions = activeSessions.filter(
+                (session) => session.subdomain === tunnel.subdomain,
+              );
               const isActive = tunnelSessions.length > 0;
               const oldestSession = tunnelSessions.length
                 ? tunnelSessions.reduce((oldest, session) =>
@@ -389,99 +404,124 @@ export default function TunnelsPage() {
                     ? `Last connected ${formatDistanceToNow(new Date(tunnel.lastConnectedAt), { addSuffix: true })}`
                     : "Never connected";
               return (
-                    <div key={tunnel.id} className="grid gap-4 px-4 py-4 xl:grid-cols-[minmax(220px,1fr)_minmax(260px,340px)_auto] xl:items-center xl:px-5">
-                      {/* Subdomain */}
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                          <a href={`https://${tunnel.subdomain}.tunl.online`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 font-mono text-sm font-semibold text-foreground hover:text-primary">
-                            {tunnel.subdomain}.tunl.online
-                            <ExternalLink className="h-3.5 w-3.5" />
-                          </a>
-                          <span
-                            className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium ${
-                              isActive
-                                ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
-                                : "border-border/50 bg-secondary/60 text-muted-foreground"
-                            }`}
-                          >
-                            <span className={`h-1.5 w-1.5 rounded-full ${isActive ? "animate-pulse bg-emerald-400" : "bg-muted-foreground/60"}`} />
-                            {isActive ? "Live" : "Reserved"}
-                          </span>
-                        </div>
-                        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                          {tunnel.hasPassword || tunnel.password ? (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setPasswordTunnel(tunnel);
-                                setPasswordValue("");
-                              }}
-                              className="inline-flex cursor-pointer items-center gap-1.5 text-amber-400 transition-colors hover:text-amber-300"
-                              title="Click to manage password"
-                            >
-                              <Lock className="h-3 w-3" />
-                              Protected
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setPasswordTunnel(tunnel);
-                                setPasswordValue("");
-                              }}
-                              className="text-muted-foreground inline-flex cursor-pointer items-center gap-1 transition-colors hover:text-foreground"
-                              title="Click to set password"
-                            >
-                              <Unlock className="h-3 w-3" />
-                              Public
-                            </button>
-                          )}
-                          <span className={isActive ? "text-emerald-400" : ""}>{connectionSummary}</span>
-                        </div>
-                      </div>
-
-                      {/* SSH Snippet */}
-                      <div className="flex min-w-0 items-center gap-2 rounded-md border border-border/60 bg-background px-3 py-2 font-mono">
-                        <code className="text-muted-foreground min-w-0 flex-1 truncate text-xs select-all">
-                          {sshCommand}
-                        </code>
-                        <Button
-                          variant="outline"
-                          size="icon-xs"
-                          onClick={() => copyToClipboard(sshCommand, tunnel.id)}
-                          className="h-7 w-7 shrink-0"
-                          aria-label="Copy SSH command"
-                        >
-                          {copiedSnippetId === tunnel.id ? (
-                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-                          ) : (
-                            <Copy className="h-3.5 w-3.5" />
-                          )}
-                        </Button>
-                      </div>
-
-                      <div className="flex flex-wrap items-center justify-end gap-1.5 xl:pl-1">
-                        <Button nativeButton={false} render={<Link href={`/inspect/${tunnel.subdomain}/analytics`} />} size="sm" variant="outline" className="whitespace-nowrap">
-                          <BarChart3 className="h-3.5 w-3.5" /> Analytics
-                        </Button>
-                        <Button nativeButton={false} render={<Link href={`/inspect/${tunnel.subdomain}`} />} size="sm" className="whitespace-nowrap">
-                          <Eye className="h-3.5 w-3.5" /> Inspect
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="whitespace-nowrap text-destructive hover:bg-destructive/10 hover:text-destructive"
-                          onClick={() => setDeleteTunnelId(tunnel.id)}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" /> Revoke
-                        </Button>
-                      </div>
+                <div
+                  key={tunnel.id}
+                  className="grid gap-4 px-4 py-4 xl:grid-cols-[minmax(220px,1fr)_minmax(260px,340px)_auto] xl:items-center xl:px-5"
+                >
+                  {/* Subdomain */}
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <a
+                        href={`https://${tunnel.subdomain}.tunl.online`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-foreground hover:text-primary inline-flex items-center gap-1.5 font-mono text-sm font-semibold"
+                      >
+                        {tunnel.subdomain}.tunl.online
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
+                      <span
+                        className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium ${
+                          isActive
+                            ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
+                            : "border-border/50 bg-secondary/60 text-muted-foreground"
+                        }`}
+                      >
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full ${isActive ? "animate-pulse bg-emerald-400" : "bg-muted-foreground/60"}`}
+                        />
+                        {isActive ? "Live" : "Reserved"}
+                      </span>
                     </div>
-                  );
+                    <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+                      {tunnel.hasPassword || tunnel.password ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPasswordTunnel(tunnel);
+                            setPasswordValue("");
+                          }}
+                          className="inline-flex cursor-pointer items-center gap-1.5 text-amber-400 transition-colors hover:text-amber-300"
+                          title="Click to manage password"
+                        >
+                          <Lock className="h-3 w-3" />
+                          Protected
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPasswordTunnel(tunnel);
+                            setPasswordValue("");
+                          }}
+                          className="text-muted-foreground hover:text-foreground inline-flex cursor-pointer items-center gap-1 transition-colors"
+                          title="Click to set password"
+                        >
+                          <Unlock className="h-3 w-3" />
+                          Public
+                        </button>
+                      )}
+                      <span className={isActive ? "text-emerald-400" : ""}>
+                        {connectionSummary}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* SSH Snippet */}
+                  <div className="border-border/60 bg-background flex min-w-0 items-center gap-2 rounded-md border px-3 py-2 font-mono">
+                    <code className="text-muted-foreground min-w-0 flex-1 truncate text-xs select-all">
+                      {sshCommand}
+                    </code>
+                    <Button
+                      variant="outline"
+                      size="icon-xs"
+                      onClick={() => copyToClipboard(sshCommand, tunnel.id)}
+                      className="h-7 w-7 shrink-0"
+                      aria-label="Copy SSH command"
+                    >
+                      {copiedSnippetId === tunnel.id ? (
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                      ) : (
+                        <Copy className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-end gap-1.5 xl:pl-1">
+                    <Button
+                      nativeButton={false}
+                      render={<Link href={`/inspect/${tunnel.subdomain}/analytics`} />}
+                      size="sm"
+                      variant="outline"
+                      className="whitespace-nowrap"
+                    >
+                      <BarChart3 className="h-3.5 w-3.5" /> Analytics
+                    </Button>
+                    <Button
+                      nativeButton={false}
+                      render={<Link href={`/inspect/${tunnel.subdomain}`} />}
+                      size="sm"
+                      className="whitespace-nowrap"
+                    >
+                      <Eye className="h-3.5 w-3.5" /> Inspect
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:bg-destructive/10 hover:text-destructive whitespace-nowrap"
+                      onClick={() => setDeleteTunnelId(tunnel.id)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" /> Revoke
+                    </Button>
+                  </div>
+                </div>
+              );
             })}
           </div>
         )}
       </Card>
+
+      {user?.role === "admin" && <CustomDomainsCard />}
 
       {/* Delete Modal */}
       <AlertDialog open={!!deleteTunnelId}>

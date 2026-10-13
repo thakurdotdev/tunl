@@ -247,7 +247,6 @@ func (s *sshSession) LocalTarget() string {
 	return s.localTarget
 }
 
-
 // markForwarded returns true on the first call (one tcpip-forward per session).
 func (s *sshSession) markForwarded() bool {
 	s.mu.Lock()

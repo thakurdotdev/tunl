@@ -56,6 +56,7 @@ const createPlanSchema = z.object({
     .regex(/^[a-z0-9-]+$/, "Plan name must be lowercase alphanumeric and hyphens"),
   maxReservedSubdomains: z.number().int().min(1),
   maxActiveTunnels: z.number().int().min(1),
+  maxCustomDomains: z.number().int().min(0).default(1),
   isDefault: z.boolean().optional(),
 });
 

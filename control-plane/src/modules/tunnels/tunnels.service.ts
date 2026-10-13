@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { and, count, desc, eq, sql } from "drizzle-orm";
 import type { Database } from "../../db/client.js";
-import { plans, sshKeys, tunnels, user } from "../../db/schema.js";
+import { customDomains, plans, sshKeys, tunnels, user } from "../../db/schema.js";
 import { badRequest, conflict, forbidden, notFound } from "../../platform/errors.js";
 import type { RedisClient } from "../../redis/client.js";
 import { redisKeys } from "../../redis/keys.js";
@@ -86,6 +86,11 @@ export async function deleteUserTunnel(
   userId: string,
   tunnelId: string,
 ) {
+  const orphaned = await db
+    .select({ domainLower: customDomains.domainLower })
+    .from(customDomains)
+    .where(and(eq(customDomains.tunnelId, tunnelId), eq(customDomains.userId, userId)));
+
   const deleted = await db
     .delete(tunnels)
     .where(and(eq(tunnels.id, tunnelId), eq(tunnels.userId, userId)))
@@ -96,6 +101,14 @@ export async function deleteUserTunnel(
   }
 
   await redis.del(`tunl:requests:${deleted[0].subdomain}`);
+
+  // Attached custom domains cascade-delete in Postgres; bust their edge cache.
+  for (const row of orphaned) {
+    await redis.del(redisKeys.customDomain(row.domainLower)).catch(() => {});
+    await redis
+      .publish("tunl:custom-domains-updated", JSON.stringify({ host: row.domainLower }))
+      .catch(() => {});
+  }
 }
 
 export async function updateTunnelPassword(

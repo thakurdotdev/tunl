@@ -28,6 +28,7 @@ ssh -p 2222 -R 80:localhost:3000 tunl.online
 - **Zero Client Dependencies**: Uses standard OpenSSH (`ssh -R`). Works out of the box on macOS, Linux, and Windows.
 - **Real-Time Request Inspector**: Live HTTP telemetry streamed over Server-Sent Events (SSE) at `/inspect/[subdomain]` with one-click cURL export.
 - **Persistent & Custom Subdomains**: Reserve fixed subdomains linked to your SSH public key (`app@tunl.online`).
+- **Custom Domains**: Bring your own domain (`app.example.com`) — CNAME it at tunl, prove ownership with a TXT record, and route it at a live tunnel.
 - **Interactive Subdomain Selection**: TTY menu (`ssh -p 2222 -t ...`) to pick from assigned subdomains or generate a random one.
 - **Tunnel Password Protection**: Lock public endpoints with password protection via dashboard settings.
 - **CIDR IP Allowlisting**: Restrict tunnel ingress by IPv4/IPv6 CIDR ranges (`192.168.1.0/24`).
@@ -90,6 +91,24 @@ ssh -R 80:localhost:3000 tunl
 # Reserved subdomain
 ssh -R 80:localhost:3000 myapp@tunl
 ```
+
+### Custom Domains
+
+Serve a reserved tunnel on your own domain (`app.example.com`):
+
+1. **Reserve a subdomain** (e.g. `myapp`) so the tunnel has a stable identity.
+2. In the dashboard, open **Custom domains**, enter your domain, and pick the target tunnel.
+3. Create two DNS records at your registrar (in your domain's zone, e.g. `example.com`):
+
+   | Type    | Name                      | Value               |
+   | ------- | ------------------------- | ------------------- |
+   | `CNAME` | `app`                     | `cname.tunl.online` |
+   | `TXT`   | `_tunl-challenge.app`     | your one-time token |
+
+4. Click **Verify DNS**. A matching `CNAME` *or* `TXT` record proves ownership; only then does the edge route the domain.
+5. For TLS, proxy the `CNAME` through **Cloudflare** (orange cloud) or Cloudflare for SaaS — Cloudflare terminates HTTPS and forwards to the tunl origin, which resolves the `Host` header to your tunnel.
+
+Custom domains reuse the tunnel's password protection, CIDR allowlist, request inspector, and analytics. Plan limits are controlled by `plans.max_custom_domains` (set `0` to disable).
 
 ---
 

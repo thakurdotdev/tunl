@@ -9,4 +9,7 @@ export const redisKeys = {
   authRateLimit: (action: string, ip: string) =>
     `${PREFIX}:auth-rate-limit:${action}:${segment(ip)}`,
   validateKey: (fingerprint: string) => `${PREFIX}:validate-key:${segment(fingerprint)}`,
+  customDomain: (host: string) => `${PREFIX}:custom-domain:${segment(host.toLowerCase())}`,
+  customDomainVerify: (domainId: string, ip: string) =>
+    `${PREFIX}:custom-domain-verify:${segment(domainId)}:${segment(ip)}`,
 };

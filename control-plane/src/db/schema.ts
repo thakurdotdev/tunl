@@ -14,6 +14,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 export const tunnelStatus = pgEnum("tunnel_status", ["reserved", "active", "inactive"]);
+export const customDomainStatus = pgEnum("custom_domain_status", ["pending", "verified", "failed"]);
 export const userRole = pgEnum("user_role", ["user", "admin"]);
 export const accountTokenType = pgEnum("account_token_type", [
   "email_verification",
@@ -27,6 +28,7 @@ export const plans = pgTable(
     name: text("name").notNull().unique(),
     maxReservedSubdomains: integer("max_reserved_subdomains").notNull().default(1),
     maxActiveTunnels: integer("max_active_tunnels").notNull().default(1),
+    maxCustomDomains: integer("max_custom_domains").notNull().default(1),
     isDefault: boolean("is_default").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -154,6 +156,32 @@ export const tunnels = pgTable(
   (table) => [
     index("tunnels_user_id_idx").on(table.userId),
     check("tunnels_subdomain_format_check", sql`${table.subdomain} ~ '^[a-z0-9-]{3,63}$'`),
+  ],
+);
+
+export const customDomains = pgTable(
+  "custom_domains",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    tunnelId: uuid("tunnel_id")
+      .notNull()
+      .references(() => tunnels.id, { onDelete: "cascade" }),
+    domain: text("domain").notNull(),
+    domainLower: text("domain_lower").notNull().unique(),
+    verificationToken: text("verification_token").notNull(),
+    status: customDomainStatus("status").notNull().default("pending"),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("custom_domains_user_id_idx").on(table.userId),
+    index("custom_domains_tunnel_id_idx").on(table.tunnelId),
+    index("custom_domains_status_idx").on(table.status),
   ],
 );
 

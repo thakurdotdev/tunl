@@ -13,7 +13,7 @@ import {
   verifySubdomainOwnership,
 } from "./inspect.service.js";
 
-const subdomainParam = z.string().regex(/^[a-z0-9-]{3,63}$/);
+const subdomainParam = z.string().regex(/^[a-z0-9-.]{3,253}$/);
 const paginationQuery = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(50),
   offset: z.coerce.number().int().min(0).default(0),
@@ -28,8 +28,8 @@ export function inspectRouter(db: Database, redis: RedisClient, config: Config) 
   router.get(
     "/:subdomain/requests",
     asyncRoute(async (req, res) => {
-      const subdomain = subdomainParam.parse(req.params.subdomain);
-      await verifySubdomainOwnership(db, req.userId!, subdomain);
+      const raw = subdomainParam.parse(req.params.subdomain);
+      const { subdomain } = await verifySubdomainOwnership(db, req.userId!, raw);
 
       const { limit, offset } = paginationQuery.parse(req.query);
       const requests = await getRecentRequests(redis, subdomain, limit, offset);
@@ -40,8 +40,8 @@ export function inspectRouter(db: Database, redis: RedisClient, config: Config) 
   router.post(
     "/:subdomain/replay",
     asyncRoute(async (req, res) => {
-      const subdomain = subdomainParam.parse(req.params.subdomain);
-      await verifySubdomainOwnership(db, req.userId!, subdomain);
+      const raw = subdomainParam.parse(req.params.subdomain);
+      const { subdomain } = await verifySubdomainOwnership(db, req.userId!, raw);
 
       const { requestId } = z.object({ requestId: z.string().min(1) }).parse(req.body);
       const captured = await getRequestById(redis, subdomain, requestId);
@@ -53,8 +53,8 @@ export function inspectRouter(db: Database, redis: RedisClient, config: Config) 
   router.get(
     "/:subdomain/analytics",
     asyncRoute(async (req, res) => {
-      const subdomain = subdomainParam.parse(req.params.subdomain);
-      await verifySubdomainOwnership(db, req.userId!, subdomain);
+      const raw = subdomainParam.parse(req.params.subdomain);
+      const { subdomain } = await verifySubdomainOwnership(db, req.userId!, raw);
 
       const { period } = analyticsQuery.parse(req.query);
       const analytics = await getSubdomainAnalytics(db, subdomain, period);
@@ -65,8 +65,8 @@ export function inspectRouter(db: Database, redis: RedisClient, config: Config) 
   router.get(
     "/:subdomain/stream",
     asyncRoute(async (req, res) => {
-      const subdomain = subdomainParam.parse(req.params.subdomain);
-      await verifySubdomainOwnership(db, req.userId!, subdomain);
+      const raw = subdomainParam.parse(req.params.subdomain);
+      const { subdomain } = await verifySubdomainOwnership(db, req.userId!, raw);
 
       res.writeHead(200, {
         "Content-Type": "text/event-stream",

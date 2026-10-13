@@ -13,6 +13,7 @@ import { tunnelsRouter } from "./modules/tunnels/tunnels.router.js";
 import { tunnelSessionsRouter } from "./modules/tunnel-sessions/tunnel-sessions.router.js";
 import { createAdminRouter } from "./modules/admin/admin.router.js";
 import { createProfileRouter } from "./modules/profile/profile.router.js";
+import { customDomainsRouter } from "./modules/custom-domains/custom-domains.router.js";
 import cors from "cors";
 import { toNodeHandler } from "better-auth/node";
 import { auth } from "./lib/auth.js";
@@ -63,6 +64,7 @@ export function createApp(db: Database, redis: RedisClient, config: Config) {
   app.use("/v1/admin", createAdminRouter(db));
   app.use("/v1/ssh-keys", sshKeysRouter(db, redis));
   app.use("/v1/tunnels", tunnelsRouter(db, redis));
+  app.use("/v1/custom-domains", customDomainsRouter(db, redis, config));
   app.use("/v1/tunnel-sessions", tunnelSessionsRouter(db));
   app.use("/v1/inspect", inspectRouter(db, redis, config));
   app.use("/internal", internalRouter(db, redis, config));

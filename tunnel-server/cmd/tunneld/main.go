@@ -18,6 +18,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/thakurdotdev/tunl/tunnel-server/internal/config"
 	"github.com/thakurdotdev/tunl/tunnel-server/internal/controlclient"
+	"github.com/thakurdotdev/tunl/tunnel-server/internal/customdomains"
 	"github.com/thakurdotdev/tunl/tunnel-server/internal/health"
 	"github.com/thakurdotdev/tunl/tunnel-server/internal/httpproxy"
 	"github.com/thakurdotdev/tunl/tunnel-server/internal/logging"
@@ -58,6 +59,11 @@ func main() {
 	})
 	ccClient.StartUsageFlusher(ctx, 10*time.Second)
 
+	customResolver := customdomains.New(func(host string) (string, string, bool) {
+		sub, userID, ok := ccClient.ResolveCustomDomain(context.Background(), host)
+		return sub, userID, ok
+	})
+
 	hostKey, err := loadOrGenerateHostKey()
 	if err != nil {
 		logger.Error("failed to generate ssh host key", "error", err)
@@ -83,11 +89,12 @@ func main() {
 		BaseDomain:           cfg.BaseDomain,
 		DialTimeout:          10 * time.Second,
 		InternalSharedSecret: cfg.InternalSharedSecret,
+		CustomDomains:        customResolver,
 		Logger:               logger,
 	})
 
 	// Wrap the proxy with request capture when Redis is available
-	subdomainExtractor := httpproxy.SubdomainExtractor(cfg.BaseDomain)
+	subdomainExtractor := httpproxy.SubdomainExtractorWithCustomDomains(cfg.BaseDomain, customResolver)
 	var finalHandler http.Handler = httpproxy.CaptureMiddleware(proxyHandler, nil, ccClient, subdomainExtractor)
 	if cfg.RedisURL != "" && cfg.RequestLogEnabled {
 		opts, err := redis.ParseURL(cfg.RedisURL)
@@ -104,7 +111,7 @@ func main() {
 			finalHandler = httpproxy.CaptureMiddleware(proxyHandler, publisher, ccClient, subdomainExtractor)
 			logger.Info("request inspector enabled", "maxBodySize", cfg.RequestLogMaxBodySize)
 
-			sub := rdb.Subscribe(context.Background(), "tunl:user-ip-updated", "tunl:ssh-key-revoked", "tunl:subdomains-updated", "tunl:tunnel-password-updated")
+			sub := rdb.Subscribe(context.Background(), "tunl:user-ip-updated", "tunl:ssh-key-revoked", "tunl:subdomains-updated", "tunl:tunnel-password-updated", "tunl:custom-domains-updated")
 			go func() {
 				ch := sub.Channel()
 				for msg := range ch {
@@ -148,6 +155,14 @@ func main() {
 							}
 							reg.UpdateSubdomainPassword(payload.Subdomain, pwd)
 							logger.Info("realtime updated tunnel password", "subdomain", payload.Subdomain, "hasPassword", pwd != "")
+						}
+					case "tunl:custom-domains-updated":
+						var payload struct {
+							Host string `json:"host"`
+						}
+						if err := json.Unmarshal([]byte(msg.Payload), &payload); err == nil && payload.Host != "" {
+							customResolver.Invalidate(payload.Host)
+							logger.Info("realtime invalidated custom domain", "host", payload.Host)
 						}
 					}
 				}

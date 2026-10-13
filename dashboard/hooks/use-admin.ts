@@ -179,6 +179,7 @@ export function useCreatePlan() {
       name: string;
       maxReservedSubdomains: number;
       maxActiveTunnels: number;
+      maxCustomDomains?: number;
       isDefault?: boolean;
     }) => {
       const { data: res } = await client.post<AdminPlan>("/v1/admin/plans", data);

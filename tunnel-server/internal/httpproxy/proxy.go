@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/thakurdotdev/tunl/tunnel-server/internal/customdomains"
 	"github.com/thakurdotdev/tunl/tunnel-server/internal/registry"
 )
 
@@ -27,6 +28,7 @@ type Handler struct {
 	baseDomain           string
 	dialTimeout          time.Duration
 	internalSharedSecret string
+	customDomains        *customdomains.Resolver
 	log                  *slog.Logger
 	proxy                *httputil.ReverseProxy
 }
@@ -36,6 +38,7 @@ type Options struct {
 	BaseDomain           string
 	DialTimeout          time.Duration
 	InternalSharedSecret string
+	CustomDomains        *customdomains.Resolver
 	Logger               *slog.Logger
 }
 
@@ -45,6 +48,7 @@ func NewHandler(opts Options) http.Handler {
 		baseDomain:           opts.BaseDomain,
 		dialTimeout:          opts.DialTimeout,
 		internalSharedSecret: opts.InternalSharedSecret,
+		customDomains:        opts.CustomDomains,
 		log:                  opts.Logger,
 	}
 	h.proxy = &httputil.ReverseProxy{
@@ -59,7 +63,7 @@ func NewHandler(opts Options) http.Handler {
 		},
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
 			h.log.Warn("proxy error", "error", err)
-			subdomain := h.subdomainFromHost(r.Host)
+			subdomain, _ := h.resolveHost(r.Host)
 			renderProxyError(w, r, http.StatusServiceUnavailable,
 				"Service Unavailable",
 				"service unavailable",
@@ -146,7 +150,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	internalSecret := r.Header.Get("X-Tunl-Internal-Secret")
 	r.Header.Del("X-Tunl-Internal-Secret")
 
-	subdomain := h.subdomainFromHost(r.Host)
+	subdomain, _ := h.resolveHost(r.Host)
 	if subdomain == "" {
 		renderProxyError(w, r, http.StatusNotFound,
 			"Host Not Found",
@@ -254,16 +258,30 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) subdomainFromHost(host string) string {
-	host = strings.Split(host, ":")[0]
+	subdomain, _ := h.resolveHost(host)
+	return subdomain
+}
+
+// resolveHost maps a Host header to a live subdomain.
+// Returns the subdomain plus the original custom host ("" for base-domain hosts).
+// Resolution order: *.baseDomain first, then verified custom domains.
+func (h *Handler) resolveHost(host string) (subdomain, customHost string) {
+	bare := strings.Split(host, ":")[0]
 	suffix := "." + h.baseDomain
-	if !strings.HasSuffix(host, suffix) {
-		return ""
+	if strings.HasSuffix(bare, suffix) {
+		sub := strings.TrimSuffix(bare, suffix)
+		if !strings.Contains(sub, ".") {
+			return sub, ""
+		}
+		return "", ""
 	}
-	sub := strings.TrimSuffix(host, suffix)
-	if strings.Contains(sub, ".") {
-		return ""
+	if h.customDomains == nil {
+		return "", ""
 	}
-	return sub
+	if sub := h.customDomains.Resolve(bare); sub != "" {
+		return sub, customdomains.NormalizeHost(bare)
+	}
+	return "", ""
 }
 
 // getClientIP extracts the real client IP from trusted proxy headers.
@@ -325,17 +343,28 @@ func isIPAllowed(clientIPStr string, allowedIPs []string) bool {
 
 // SubdomainExtractor returns a function that extracts the subdomain from an
 // HTTP Host header, given the base domain. Used by the capture middleware.
+// When a custom-domain resolver is provided, verified custom hosts also
+// resolve to their mapped subdomain; otherwise only *.baseDomain matches.
 func SubdomainExtractor(baseDomain string) func(string) string {
+	return SubdomainExtractorWithCustomDomains(baseDomain, nil)
+}
+
+// SubdomainExtractorWithCustomDomains is SubdomainExtractor plus an optional
+// custom-domain resolver fallback.
+func SubdomainExtractorWithCustomDomains(baseDomain string, resolver *customdomains.Resolver) func(string) string {
 	suffix := "." + baseDomain
 	return func(host string) string {
-		host = strings.Split(host, ":")[0]
-		if !strings.HasSuffix(host, suffix) {
+		bare := strings.Split(host, ":")[0]
+		if strings.HasSuffix(bare, suffix) {
+			sub := strings.TrimSuffix(bare, suffix)
+			if strings.Contains(sub, ".") {
+				return ""
+			}
+			return sub
+		}
+		if resolver == nil {
 			return ""
 		}
-		sub := strings.TrimSuffix(host, suffix)
-		if strings.Contains(sub, ".") {
-			return ""
-		}
-		return sub
+		return resolver.Resolve(bare)
 	}
 }

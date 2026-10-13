@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"math/rand/v2"
 	"net/http"
+	"net/url"
 	"sync"
 	"time"
 )
@@ -105,6 +106,46 @@ func optionalSubdomain(value *string) string {
 		return ""
 	}
 	return *value
+}
+
+type customDomainResponse struct {
+	Subdomain string `json:"subdomain"`
+	UserID    string `json:"userId"`
+}
+
+// ResolveCustomDomain maps a verified custom host to its live subdomain via
+// the control plane. Returns ok=false for unknown/unverified hosts (404).
+func (c *Client) ResolveCustomDomain(ctx context.Context, host string) (subdomain, userID string, ok bool) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
+		c.baseURL+"/internal/custom-domain?host="+url.QueryEscape(host), nil)
+	if err != nil {
+		return "", "", false
+	}
+	req.Header.Set("X-Internal-Token", c.sharedSecret)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		c.log.Warn("custom-domain lookup failed", "host", host, "error", err)
+		return "", "", false
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return "", "", false
+	}
+	if resp.StatusCode != http.StatusOK {
+		c.log.Warn("custom-domain unexpected status", "status", resp.StatusCode, "host", host)
+		return "", "", false
+	}
+
+	var r customDomainResponse
+	if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
+		return "", "", false
+	}
+	if r.Subdomain == "" {
+		return "", "", false
+	}
+	return r.Subdomain, r.UserID, true
 }
 
 // ReportConnected reports a new tunnel session to the control plane.

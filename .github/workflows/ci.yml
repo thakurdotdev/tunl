@@ -64,43 +64,43 @@ jobs:
           wait
 
   # ─── CD: deploy to server on push to main ────────────────────────────────────
-  deploy:
-    name: Deploy
-    runs-on: ubuntu-latest
-    needs: check
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+  # deploy:
+  #   name: Deploy
+  #   runs-on: ubuntu-latest
+  #   needs: check
+  #   if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
-    steps:
-      - name: Deploy to server
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ubuntu
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          port: 22
-          script: |
-            set -euo pipefail
-            export PNPM_HOME="$HOME/.local/share/pnpm"
-            export PATH="$PNPM_HOME:$HOME/.nvm/versions/node/$(ls $HOME/.nvm/versions/node 2>/dev/null | tail -n 1 2>/dev/null)/bin:/usr/local/go/bin:$PATH"
+  #   steps:
+  #     - name: Deploy to server
+  #       uses: appleboy/ssh-action@v1
+  #       with:
+  #         host: ${{ secrets.SERVER_HOST }}
+  #         username: ubuntu
+  #         key: ${{ secrets.SERVER_SSH_KEY }}
+  #         port: 22
+  #         script: |
+  #           set -euo pipefail
+  #           export PNPM_HOME="$HOME/.local/share/pnpm"
+  #           export PATH="$PNPM_HOME:$HOME/.nvm/versions/node/$(ls $HOME/.nvm/versions/node 2>/dev/null | tail -n 1 2>/dev/null)/bin:/usr/local/go/bin:$PATH"
 
-            cd /opt/tunl
+  #           cd /opt/tunl
 
-            echo "── pulling latest code ──"
-            git pull origin main
+  #           echo "── pulling latest code ──"
+  #           git pull origin main
 
-            echo "── installing node dependencies ──"
-            pnpm install --frozen-lockfile
+  #           echo "── installing node dependencies ──"
+  #           pnpm install --frozen-lockfile
 
-            echo "── building services in parallel ──"
-            pnpm run build
+  #           echo "── building services in parallel ──"
+  #           pnpm run build
 
-            echo "── running database migrations ──"
-            pnpm run db:migrate
+  #           echo "── running database migrations ──"
+  #           pnpm run db:migrate
 
-            echo "── running seeder ──"
-            pnpm run db:seed
+  #           echo "── running seeder ──"
+  #           pnpm run db:seed
 
-            echo "── reloading pm2 ──"
-            pm2 reload ecosystem.config.js --update-env
+  #           echo "── reloading pm2 ──"
+  #           pm2 reload ecosystem.config.js --update-env
 
-            echo "── deploy complete ──"
+  #           echo "── deploy complete ──"
