@@ -12,6 +12,8 @@ import (
 	"net/url"
 	"sync"
 	"time"
+
+	"github.com/redis/go-redis/v9"
 )
 
 type SubdomainUsage struct {
@@ -28,6 +30,7 @@ type Client struct {
 	sharedSecret string
 	httpClient   *http.Client
 	log          *slog.Logger
+	rdb          *redis.Client
 	usageMu      sync.Mutex
 	usageBuckets map[string]*SubdomainUsage
 }
@@ -176,6 +179,10 @@ func (c *Client) ReportConnected(ctx context.Context, userID, deviceID, subdomai
 	return c.postWithRetry(ctx, "/internal/tunnel-connected", payload, "tunnel-connected", 3)
 }
 
+func (c *Client) SetRedis(rdb *redis.Client) {
+	c.rdb = rdb
+}
+
 func (c *Client) ReportDisconnected(ctx context.Context, userID, deviceID, subdomain, remoteIP string, connectedAt time.Time) error {
 	now := time.Now().UTC()
 	durationMs := now.Sub(connectedAt).Milliseconds()
@@ -193,7 +200,24 @@ func (c *Client) ReportDisconnected(ctx context.Context, userID, deviceID, subdo
 		payload["userId"] = userID
 	}
 
-	return c.postWithRetry(ctx, "/internal/tunnel-disconnected", payload, "tunnel-disconnected", 3)
+	err := c.postWithRetry(ctx, "/internal/tunnel-disconnected", payload, "tunnel-disconnected", 3)
+	if err != nil && c.rdb != nil {
+		c.log.Warn("saving disconnect event to redis fallback queue", "subdomain", subdomain, "error", err)
+		data, mErr := json.Marshal(payload)
+		if mErr == nil {
+			_ = c.rdb.RPush(context.Background(), "tunl:offline-disconnects", data).Err()
+		}
+	}
+	return err
+}
+
+// ResetActiveSessions notifies the control plane to clear any stale or orphaned sessions
+// left over from prior runs.
+func (c *Client) ResetActiveSessions(ctx context.Context) error {
+	payload := map[string]string{
+		"reason": "server_restarted",
+	}
+	return c.postWithRetry(ctx, "/internal/reset-active-sessions", payload, "reset-active-sessions", 3)
 }
 
 func (c *Client) ReportHeartbeat(ctx context.Context, userID, subdomain string) {

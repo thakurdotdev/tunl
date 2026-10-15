@@ -1,5 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
-import { and, eq, lt } from "drizzle-orm";
+import { and, eq, inArray, lt } from "drizzle-orm";
 import { Router } from "express";
 import { z } from "zod";
 import type { Database } from "../../db/client.js";
@@ -425,13 +425,141 @@ export function internalRouter(db: Database, redis: RedisClient, config: Config)
     }),
   );
 
+  // Cleans up all orphaned active sessions when tunneld restarts
+  router.post(
+    "/reset-active-sessions",
+    asyncRoute(async (req, res) => {
+      const reason = (req.body?.reason as string) || "server_restarted";
+      const now = new Date();
+
+      const activeSessions = await db.select().from(activeTunnelSessions);
+
+      if (activeSessions.length > 0) {
+        for (const s of activeSessions) {
+          const eventId = `${s.subdomain}:${now.toISOString()}:disconnected`;
+          db.insert(tunnelEvents)
+            .values({
+              eventId,
+              eventType: "tunnel.disconnected",
+              anonymousId: "",
+              userId: s.userId ?? null,
+              properties: {
+                subdomain: s.subdomain,
+                remoteIp: s.remoteIp,
+                country: s.country,
+                city: s.city,
+                durationMs: Math.max(0, now.getTime() - s.connectedAt.getTime()),
+                disconnectReason: reason,
+              },
+              occurredAt: now,
+            })
+            .onConflictDoNothing()
+            .catch(() => {});
+        }
+
+        await db.delete(activeTunnelSessions);
+
+        const tunnelIds = activeSessions
+          .map((s) => s.tunnelId)
+          .filter((id): id is string => !!id);
+
+        if (tunnelIds.length > 0) {
+          await db
+            .update(tunnels)
+            .set({ status: "reserved", updatedAt: now })
+            .where(inArray(tunnels.id, tunnelIds));
+        }
+
+        console.info(
+          { count: activeSessions.length, reason },
+          "reset all active tunnel sessions upon tunnel-server restart",
+        );
+      }
+
+      await drainOfflineDisconnects(db, redis).catch(console.error);
+
+      res.json({ success: true, count: activeSessions.length });
+    }),
+  );
+
   return router;
 }
 
-export function startStaleSessionSweeper(db: Database) {
-  const STALE_THRESHOLD_MS = 5 * 60 * 1000;
+export async function drainOfflineDisconnects(db: Database, redis: RedisClient) {
+  try {
+    const KEY = "tunl:offline-disconnects";
+    let item: string | null = null;
+    while ((item = await redis.lPop(KEY)) !== null) {
+      try {
+        const payload = JSON.parse(item);
+        const {
+          userId,
+          anonymousId,
+          subdomain,
+          durationMs,
+          disconnectReason,
+          occurredAt,
+          eventId,
+          remoteIp,
+        } = payload;
+        const now = occurredAt ? new Date(occurredAt) : new Date();
+
+        db.insert(tunnelEvents)
+          .values({
+            eventId: eventId || `${subdomain}:${now.toISOString()}:disconnected`,
+            eventType: "tunnel.disconnected",
+            anonymousId: anonymousId || "",
+            userId: userId ?? null,
+            properties: {
+              subdomain,
+              remoteIp: remoteIp ?? null,
+              durationMs: durationMs ?? null,
+              disconnectReason: disconnectReason || "server_restarted",
+            },
+            occurredAt: now,
+          })
+          .onConflictDoNothing()
+          .catch(() => {});
+
+        if (userId && subdomain) {
+          await db
+            .delete(activeTunnelSessions)
+            .where(
+              and(
+                eq(activeTunnelSessions.userId, userId),
+                eq(activeTunnelSessions.subdomain, subdomain),
+              ),
+            );
+
+          const [reservation] = await db
+            .select({ id: tunnels.id })
+            .from(tunnels)
+            .where(and(eq(tunnels.userId, userId), eq(tunnels.subdomain, subdomain)))
+            .limit(1);
+
+          if (reservation) {
+            await db
+              .update(tunnels)
+              .set({ status: "reserved", updatedAt: new Date() })
+              .where(eq(tunnels.id, reservation.id));
+          }
+        }
+      } catch (err) {
+        console.error("failed to process offline disconnect item", err);
+      }
+    }
+  } catch {
+    // Redis unavailable
+  }
+}
+
+export function startStaleSessionSweeper(db: Database, redis?: RedisClient) {
+  const STALE_THRESHOLD_MS = 3 * 60 * 1000;
 
   async function sweep() {
+    if (redis) {
+      await drainOfflineDisconnects(db, redis).catch(console.error);
+    }
     const cutoff = new Date(Date.now() - STALE_THRESHOLD_MS);
     const stale = await db
       .delete(activeTunnelSessions)
@@ -453,5 +581,5 @@ export function startStaleSessionSweeper(db: Database) {
   }
 
   sweep().catch(console.error);
-  setInterval(() => sweep().catch(console.error), 60_000);
+  setInterval(() => sweep().catch(console.error), 30_000);
 }

@@ -59,6 +59,18 @@ func main() {
 	})
 	ccClient.StartUsageFlusher(ctx, 10*time.Second)
 
+	// When tunneld boots up, clear any stale/orphaned sessions from previous server runs
+	go func() {
+		for attempt := 0; attempt < 5; attempt++ {
+			if err := ccClient.ResetActiveSessions(context.Background()); err == nil {
+				logger.Info("reset orphaned tunnel sessions on startup")
+				return
+			}
+			time.Sleep(time.Duration(1<<attempt) * 500 * time.Millisecond)
+		}
+		logger.Warn("could not reset active sessions on control plane after startup retries")
+	}()
+
 	customResolver := customdomains.New(func(host string) (string, string, bool) {
 		sub, userID, ok := ccClient.ResolveCustomDomain(context.Background(), host)
 		return sub, userID, ok
@@ -106,6 +118,7 @@ func main() {
 		if err := rdb.Ping(context.Background()).Err(); err != nil {
 			logger.Warn("redis not reachable, request logging disabled", "error", err)
 		} else {
+			ccClient.SetRedis(rdb)
 			publisher := requestlog.NewPublisher(rdb, cfg.RequestLogMaxBodySize, logger)
 			sshSrv.SetLogFlusher(publisher)
 			finalHandler = httpproxy.CaptureMiddleware(proxyHandler, publisher, ccClient, subdomainExtractor)
@@ -198,22 +211,6 @@ func main() {
 		MaxHeaderBytes: 1 << 16,
 	}
 
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGTERM, syscall.SIGINT)
-	go func() {
-		<-sigCh
-		logger.Info("shutting down")
-		cancel()
-
-		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer shutdownCancel()
-		httpSrv.Shutdown(shutdownCtx)
-		if httpsSrv != nil {
-			httpsSrv.Shutdown(shutdownCtx)
-		}
-		healthSrv.Shutdown(shutdownCtx)
-	}()
-
 	go func() {
 		if err := sshSrv.ListenAndServe(ctx); err != nil {
 			logger.Error("ssh server stopped", "error", err)
@@ -251,7 +248,39 @@ func main() {
 		}
 	}()
 
-	<-ctx.Done()
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGTERM, syscall.SIGINT)
+
+	select {
+	case sig := <-sigCh:
+		logger.Info("shutdown signal received, initiating graceful teardown...", "signal", sig)
+	case <-ctx.Done():
+		logger.Info("context canceled, initiating graceful teardown...")
+	}
+
+	cancel() // Stop accepting new connections
+
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer shutdownCancel()
+
+	// 1. Gracefully shutdown SSH server: force-closes all active sessions and waits for them to report disconnect
+	if err := sshSrv.Shutdown(shutdownCtx); err != nil {
+		logger.Warn("ssh server shutdown error", "error", err)
+	}
+
+	// 2. Flush remaining usage metrics
+	if err := ccClient.FlushUsage(shutdownCtx); err != nil {
+		logger.Warn("failed to flush usage during shutdown", "error", err)
+	}
+
+	// 3. Gracefully shutdown HTTP, HTTPS, and health servers
+	httpSrv.Shutdown(shutdownCtx)
+	if httpsSrv != nil {
+		httpsSrv.Shutdown(shutdownCtx)
+	}
+	healthSrv.Shutdown(shutdownCtx)
+
+	logger.Info("tunneld graceful shutdown complete")
 }
 
 func getEnv(key, fallback string) string {

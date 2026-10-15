@@ -116,6 +116,7 @@ type Server struct {
 
 	sessMu   sync.Mutex
 	sessions map[string]*sshSession
+	connWg   sync.WaitGroup
 }
 
 type Options struct {
@@ -249,6 +250,28 @@ func (s *Server) closeAllSessions() {
 	}
 }
 
+// Shutdown gracefully stops the SSH server by force-closing all active sessions
+// and waiting for them to cleanly disconnect and report to the control plane.
+func (s *Server) Shutdown(ctx context.Context) error {
+	s.log.Info("shutting down ssh server, closing all active sessions...")
+	s.closeAllSessions()
+
+	done := make(chan struct{})
+	go func() {
+		s.connWg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		s.log.Info("all active ssh sessions cleanly drained")
+		return nil
+	case <-ctx.Done():
+		s.log.Warn("shutdown timed out waiting for ssh sessions to finish", "error", ctx.Err())
+		return ctx.Err()
+	}
+}
+
 func (s *Server) CloseSessionsByUserOrFingerprint(userID string, fingerprint string) {
 	s.sessMu.Lock()
 	defer s.sessMu.Unlock()
@@ -273,6 +296,9 @@ func (s *Server) UpdateUserSubdomains(userID string, subdomains []string) {
 }
 
 func (s *Server) handleConn(ctx context.Context, conn net.Conn) {
+	s.connWg.Add(1)
+	defer s.connWg.Done()
+
 	remoteIP := extractIP(conn.RemoteAddr())
 	if !s.limiter.acquire(remoteIP) {
 		s.log.Warn("per-ip connection limit reached", logging.FieldRemoteIP, remoteIP)

@@ -70,8 +70,8 @@ export function createApp(db: Database, redis: RedisClient, config: Config) {
   app.use("/internal", internalRouter(db, redis, config));
   app.use(errorHandler);
 
-  // run every 60s to clear stale sessions
-  startStaleSessionSweeper(db);
+  // run periodically to clear stale sessions and drain offline disconnects
+  startStaleSessionSweeper(db, redis);
 
   return app;
 }
