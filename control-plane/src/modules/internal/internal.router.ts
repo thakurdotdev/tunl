@@ -5,6 +5,7 @@ import { z } from "zod";
 import type { Database } from "../../db/client.js";
 import {
   activeTunnelSessions,
+  customDomains,
   identityLinks,
   plans,
   sshKeys,
@@ -130,6 +131,19 @@ export function internalRouter(db: Database, redis: RedisClient, config: Config)
         }
       }
 
+      // 1 tunnel = 1 custom domain. Only verified domains route, so only
+      // verified domains are shown in the SSH Online banner.
+      const verifiedDomains = await db
+        .select({ subdomain: tunnels.subdomain, domain: customDomains.domain })
+        .from(customDomains)
+        .innerJoin(tunnels, eq(tunnels.id, customDomains.tunnelId))
+        .where(and(eq(customDomains.userId, userRow.userId), eq(customDomains.status, "verified")));
+      const customDomainsBySubdomain: Record<string, string> = {};
+      for (const row of verifiedDomains) {
+        // Last write wins; tunnel_id is unique so this is 1:1.
+        customDomainsBySubdomain[row.subdomain] = row.domain;
+      }
+
       const result = {
         userId: userRow.userId,
         email: userRow.email,
@@ -139,6 +153,7 @@ export function internalRouter(db: Database, redis: RedisClient, config: Config)
         maxActiveTunnels: userRow.maxActiveTunnels ?? 1,
         allowedIps: userRow.ipWhitelistEnabled ? (userRow.allowedIps ?? []) : [],
         tunnelPasswords,
+        customDomains: customDomainsBySubdomain,
       };
 
       console.log(

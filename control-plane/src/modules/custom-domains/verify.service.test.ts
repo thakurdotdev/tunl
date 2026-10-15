@@ -1,10 +1,26 @@
 import { describe, expect, it, vi } from "vitest";
 import { verifyUserCustomDomain } from "./verify.service.js";
 
-function dbWithRow(row: Record<string, unknown>) {
-  const updated = { ...row, status: "verified", verifiedAt: new Date(), lastCheckedAt: new Date() };
+function dbWithRow(row: Record<string, unknown>, finalStatus = "verified") {
   const chain: Record<string, (...args: unknown[]) => unknown> = {};
-  chain.select = vi.fn(() => chain);
+  let selectCalls = 0;
+  const makeSelectChain = (rows: unknown[]) => {
+    // Emulate drizzle: chain is awaitable via .then, plus .limit() for first fetch.
+    const sel: Record<string, (...args: unknown[]) => unknown> = {};
+    sel.from = vi.fn(() => sel);
+    sel.where = vi.fn(() => sel);
+    sel.limit = vi.fn(async () => rows);
+    // oxlint-disable-next-line unicorn/no-thenable
+    sel.then = ((resolve: (v: unknown) => void) => Promise.resolve(rows).then(resolve)) as never;
+    return sel;
+  };
+  chain.select = vi.fn(() => {
+    selectCalls += 1;
+    // 1st select: fetch domain row. 2nd select (only on status flip):
+    // fetch ssh keys for validate-key bust.
+    if (selectCalls <= 1) return makeSelectChain([row]);
+    return makeSelectChain([]);
+  });
   chain.from = vi.fn(() => chain);
   chain.where = vi.fn(() => chain);
   chain.limit = vi.fn(async () => [row]);
@@ -14,12 +30,11 @@ function dbWithRow(row: Record<string, unknown>) {
     {
       id: row.id,
       domain: row.domain,
-      status: "verified",
+      status: finalStatus,
       verifiedAt: new Date(),
       lastCheckedAt: new Date(),
     },
   ]);
-  void updated;
   return chain;
 }
 
@@ -80,7 +95,8 @@ describe("verifyUserCustomDomain", () => {
   });
 
   it("fails when neither TXT nor CNAME matches", async () => {
-    const db = dbWithRow(baseRow);
+    const failedRow = { ...baseRow, status: "failed" };
+    const db = dbWithRow(failedRow, "failed");
     const redis = redisStub();
     const lookup = {
       resolveTxt: async () => [["wrong-token"]],
@@ -96,6 +112,7 @@ describe("verifyUserCustomDomain", () => {
     );
     expect(result.verified).toBe(false);
     expect(result.detail).toContain("CNAME");
+    // Status didn't flip (failed -> failed), so SSH banner cache is untouched.
     expect(redis.del).not.toHaveBeenCalled();
   });
 });

@@ -1,9 +1,10 @@
 import dns from "node:dns/promises";
 import { and, eq } from "drizzle-orm";
 import type { Database } from "../../db/client.js";
-import { customDomains, tunnels } from "../../db/schema.js";
+import { customDomains, sshKeys, tunnels } from "../../db/schema.js";
 import { notFound } from "../../platform/errors.js";
 import type { RedisClient } from "../../redis/client.js";
+import { redisKeys } from "../../redis/keys.js";
 import { bustCustomDomainCache, dnsInstructions, isBaseDomainOrSubdomain } from "./domain-utils.js";
 
 export type DnsLookup = {
@@ -85,6 +86,10 @@ export async function verifyUserCustomDomain(
     });
 
   if (verified) await bustCustomDomainCache(redis, row.domainLower);
+  // Status flipped (pending/failed <-> verified) changes the SSH Online banner.
+  if (updated.status !== row.status) {
+    await bustValidateKeyCache(db, redis, row.userId);
+  }
 
   return {
     ...updated,
@@ -121,4 +126,15 @@ function dnsErrorDetail(err: unknown, fallback: string): string {
     return `${fallback} (${code})`;
   }
   return fallback;
+}
+
+async function bustValidateKeyCache(db: Database, redis: RedisClient, userId: string) {
+  // validate-key responses embed verified domains for the SSH Online banner.
+  const keys = await db
+    .select({ fingerprint: sshKeys.fingerprint })
+    .from(sshKeys)
+    .where(eq(sshKeys.userId, userId));
+  for (const k of keys) {
+    await redis.del(redisKeys.validateKey(k.fingerprint)).catch(() => 0);
+  }
 }

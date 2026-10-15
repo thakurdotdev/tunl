@@ -521,7 +521,7 @@ export default function TunnelsPage() {
         )}
       </Card>
 
-      {user?.role === "admin" && <CustomDomainsCard />}
+      <CustomDomainsCard />
 
       {/* Delete Modal */}
       <AlertDialog open={!!deleteTunnelId}>

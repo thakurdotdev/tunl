@@ -1,9 +1,10 @@
 import { randomBytes } from "node:crypto";
 import { and, count, desc, eq } from "drizzle-orm";
 import type { Database } from "../../db/client.js";
-import { customDomains, plans, tunnels, user } from "../../db/schema.js";
+import { customDomains, plans, sshKeys, tunnels, user } from "../../db/schema.js";
 import { badRequest, conflict, forbidden, notFound } from "../../platform/errors.js";
 import type { RedisClient } from "../../redis/client.js";
+import { redisKeys } from "../../redis/keys.js";
 import {
   bustCustomDomainCache,
   dnsInstructions,
@@ -78,6 +79,14 @@ export async function createUserCustomDomain(
         throw forbidden(`your plan allows at most ${maxDomains} custom domain(s)`);
       }
 
+      // 1 tunnel = 1 custom domain.
+      const [tunnelTaken] = await tx
+        .select({ id: customDomains.id })
+        .from(customDomains)
+        .where(eq(customDomains.tunnelId, tunnel.id))
+        .limit(1);
+      if (tunnelTaken) throw conflict("tunnel already has a custom domain");
+
       const [existing] = await tx
         .select({ id: customDomains.id })
         .from(customDomains)
@@ -134,6 +143,18 @@ export async function deleteUserCustomDomain(
     .returning({ id: customDomains.id, domainLower: customDomains.domainLower });
   if (!deleted) throw notFound("custom domain not found");
   await bustCustomDomainCache(redis, deleted.domainLower);
+  await bustValidateKeyCache(db, redis, userId);
+}
+
+async function bustValidateKeyCache(db: Database, redis: RedisClient, userId: string) {
+  // validate-key responses embed verified domains for the SSH Online banner.
+  const keys = await db
+    .select({ fingerprint: sshKeys.fingerprint })
+    .from(sshKeys)
+    .where(eq(sshKeys.userId, userId));
+  for (const k of keys) {
+    await redis.del(redisKeys.validateKey(k.fingerprint)).catch(() => 0);
+  }
 }
 
 function isUniqueViolation(error: unknown): boolean {

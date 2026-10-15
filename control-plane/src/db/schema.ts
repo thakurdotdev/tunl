@@ -181,7 +181,7 @@ export const customDomains = pgTable(
   },
   (table) => [
     index("custom_domains_user_id_idx").on(table.userId),
-    index("custom_domains_tunnel_id_idx").on(table.tunnelId),
+    uniqueIndex("custom_domains_tunnel_id_uidx").on(table.tunnelId),
     index("custom_domains_status_idx").on(table.status),
   ],
 );

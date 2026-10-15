@@ -22,6 +22,7 @@ type sshSession struct {
 	maxActiveTunnels   int
 	allowedIPs         []string
 	tunnelPasswords    map[string]string
+	customDomains      map[string]string
 	remoteIP           string
 	deviceID           string
 	sshConn            *ssh.ServerConn
@@ -52,7 +53,7 @@ type sshSession struct {
 	inputChan       chan []byte
 }
 
-func newSSHSession(id, userID, email, allowedSubdomain string, reservedSubdomains []string, plan, remoteIP, deviceID string, maxActiveTunnels int, allowedIPs []string, tunnelPasswords map[string]string, conn *ssh.ServerConn) *sshSession {
+func newSSHSession(id, userID, email, allowedSubdomain string, reservedSubdomains []string, plan, remoteIP, deviceID string, maxActiveTunnels int, allowedIPs []string, tunnelPasswords map[string]string, customDomains map[string]string, conn *ssh.ServerConn) *sshSession {
 	var perms *ssh.Permissions
 	if conn != nil {
 		perms = conn.Permissions
@@ -67,6 +68,7 @@ func newSSHSession(id, userID, email, allowedSubdomain string, reservedSubdomain
 		maxActiveTunnels:   maxActiveTunnels,
 		allowedIPs:         allowedIPs,
 		tunnelPasswords:    tunnelPasswords,
+		customDomains:      customDomains,
 		remoteIP:           remoteIP,
 		deviceID:           deviceID,
 		sshConn:            conn,
@@ -111,11 +113,19 @@ func (s *sshSession) RequestedSubdomain() string {
 }
 func (s *sshSession) AllowedIPs() []string               { return s.allowedIPs }
 func (s *sshSession) TunnelPasswords() map[string]string { return s.tunnelPasswords }
-func (s *sshSession) RemoteIP() string                   { return s.remoteIP }
-func (s *sshSession) DeviceID() string                   { return s.deviceID }
-func (s *sshSession) Done() <-chan struct{}              { return s.done }
-func (s *sshSession) tunnelReady() <-chan struct{}       { return s.ready }
-func (s *sshSession) errorReady() <-chan struct{}        { return s.errReady }
+func (s *sshSession) CustomDomainFor(subdomain string) string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if len(s.customDomains) == 0 || subdomain == "" {
+		return ""
+	}
+	return s.customDomains[subdomain]
+}
+func (s *sshSession) RemoteIP() string             { return s.remoteIP }
+func (s *sshSession) DeviceID() string             { return s.deviceID }
+func (s *sshSession) Done() <-chan struct{}        { return s.done }
+func (s *sshSession) tunnelReady() <-chan struct{} { return s.ready }
+func (s *sshSession) errorReady() <-chan struct{}  { return s.errReady }
 
 func (s *sshSession) RegisterError() string {
 	s.mu.Lock()

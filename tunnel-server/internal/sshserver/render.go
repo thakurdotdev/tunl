@@ -28,6 +28,9 @@ func renderTerminalBanner(ch io.Writer, s *Server, sess *sshSession) {
 	fmt.Fprintf(ch, "  \033[90mAccount    \033[0m \033[1;37m%s\033[0m\r\n", accountStr)
 	fmt.Fprintf(ch, "  \033[90mForwarding \033[0m %s\r\n", localTarget)
 	fmt.Fprintf(ch, "  \033[90mPublic URL \033[0m \033[4;34m%s\033[0m\r\n", sess.TunnelURL())
+	if domain := sess.CustomDomainFor(sess.Subdomain()); domain != "" {
+		fmt.Fprintf(ch, "  \033[90mCustom URL \033[0m \033[4;34m%s://%s\033[0m\r\n", s.tunnelScheme, domain)
+	}
 	fmt.Fprintf(ch, "  \033[90mInspector  \033[0m \033[4;34m%s\033[0m\r\n", inspectorURL)
 	fmt.Fprintf(ch, "  \033[90m──────────────────────────────────────────────────────────\033[0m\r\n")
 	fmt.Fprintf(ch, "  \033[90mPress \033[1;37mCtrl+C\033[0m \033[90mor\033[0m \033[1;37mCtrl+D\033[0m \033[90mto stop the tunnel\033[0m\r\n\r\n")
@@ -71,7 +74,11 @@ func promptSubdomainSelection(sess *sshSession, available []string, baseDomain s
 	fmt.Fprintf(w, "  Multiple available reserved subdomains found for your account:\r\n\r\n")
 
 	for i, sub := range available {
-		fmt.Fprintf(w, "    \033[1;32m[%d]\033[0m \033[1;37m%s.%s\033[0m\r\n", i+1, sub, baseDomain)
+		if domain := sess.CustomDomainFor(sub); domain != "" {
+			fmt.Fprintf(w, "    \033[1;32m[%d]\033[0m \033[1;37m%s.%s\033[0m \033[90m→ %s\033[0m\r\n", i+1, sub, baseDomain, domain)
+		} else {
+			fmt.Fprintf(w, "    \033[1;32m[%d]\033[0m \033[1;37m%s.%s\033[0m\r\n", i+1, sub, baseDomain)
+		}
 	}
 	randomIdx := len(available) + 1
 	fmt.Fprintf(w, "    \033[1;30m[%d]\033[0m \033[90m(Use random ephemeral subdomain)\033[0m\r\n\r\n", randomIdx)

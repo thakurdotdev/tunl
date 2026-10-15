@@ -11,13 +11,13 @@ import (
 )
 
 type KeyValidator interface {
-	ValidateKey(fingerprint string) (userID, email, allowedSubdomain string, reservedSubdomains []string, plan string, maxActiveTunnels int, allowedIPs []string, tunnelPasswords map[string]string, ok bool)
+	ValidateKey(fingerprint string) (userID, email, allowedSubdomain string, reservedSubdomains []string, plan string, maxActiveTunnels int, allowedIPs []string, tunnelPasswords map[string]string, customDomains map[string]string, ok bool)
 }
 
 type anonymousKeyValidator struct{}
 
-func (anonymousKeyValidator) ValidateKey(fingerprint string) (string, string, string, []string, string, int, []string, map[string]string, bool) {
-	return "", "", "", nil, "", 0, nil, nil, false
+func (anonymousKeyValidator) ValidateKey(fingerprint string) (string, string, string, []string, string, int, []string, map[string]string, map[string]string, bool) {
+	return "", "", "", nil, "", 0, nil, nil, nil, false
 }
 
 // deviceFingerprintStore captures the first SSH key fingerprint seen per
@@ -48,7 +48,7 @@ func (s *deviceFingerprintStore) take(remoteAddr string) string {
 func buildPublicKeyCallback(kv KeyValidator, fps *deviceFingerprintStore, log *slog.Logger) func(ssh.ConnMetadata, ssh.PublicKey) (*ssh.Permissions, error) {
 	return func(meta ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
 		fingerprint := ssh.FingerprintSHA256(key)
-		userID, email, allowedSubdomain, reservedSubdomains, plan, maxActiveTunnels, allowedIPs, tunnelPasswords, ok := kv.ValidateKey(fingerprint)
+		userID, email, allowedSubdomain, reservedSubdomains, plan, maxActiveTunnels, allowedIPs, tunnelPasswords, customDomains, ok := kv.ValidateKey(fingerprint)
 		if log != nil {
 			log.Info("ssh key validation", "fingerprint", fingerprint, "valid", ok)
 		}
@@ -67,6 +67,16 @@ func buildPublicKeyCallback(kv KeyValidator, fps *deviceFingerprintStore, log *s
 			tunnelPasswordsStr = strings.Join(pairs, ",")
 		}
 
+		// 1 tunnel = 1 custom domain. Encode as sub=domain pairs.
+		customDomainsStr := ""
+		if len(customDomains) > 0 {
+			pairs := make([]string, 0, len(customDomains))
+			for sub, domain := range customDomains {
+				pairs = append(pairs, sub+"="+domain)
+			}
+			customDomainsStr = strings.Join(pairs, ",")
+		}
+
 		return &ssh.Permissions{
 			Extensions: map[string]string{
 				"user_id":             userID,
@@ -78,6 +88,7 @@ func buildPublicKeyCallback(kv KeyValidator, fps *deviceFingerprintStore, log *s
 				"max_active_tunnels":  strconv.Itoa(maxActiveTunnels),
 				"allowed_ips":         strings.Join(allowedIPs, ","),
 				"tunnel_passwords":    tunnelPasswordsStr,
+				"custom_domains":      customDomainsStr,
 			},
 		}, nil
 	}

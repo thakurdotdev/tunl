@@ -45,6 +45,13 @@ const COMPARISON_FEATURES: ComparisonFeature[] = [
     cloudflare: "Requires Domain",
   },
   {
+    name: "Custom Domains",
+    description: "Route traffic from your own domain (e.g. api.yourbrand.com) directly to local tunnels",
+    tunl: "Free in Preview",
+    ngrok: "Paid Tier Only",
+    cloudflare: "Complex DNS Setup",
+  },
+  {
     name: "WebSocket & SSE Protocol Upgrades",
     description: "Full HTTP/1.1 connection upgrades for Vite, Next.js HMR, and sockets",
     tunl: true,

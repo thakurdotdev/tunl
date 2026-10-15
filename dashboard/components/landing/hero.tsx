@@ -16,9 +16,8 @@ export function Hero() {
           </p>
 
           {/* Headline */}
-          <h1 className="text-foreground mb-10 text-4xl leading-[1.06] font-bold tracking-tight sm:text-6xl md:text-7xl">
-            One command. <br className="hidden sm:block" />
-            Public URL.
+          <h1 className="text-foreground mb-10 max-w-3xl text-3xl leading-[1.12] font-bold tracking-tight sm:text-5xl md:text-6xl">
+            Expose localhost to the internet with one SSH command.
           </h1>
 
           {/* Reusable Animated Hero Flow & Command Box */}

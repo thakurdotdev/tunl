@@ -96,6 +96,10 @@ export function Pricing() {
                   <Check className="h-3.5 w-3.5 shrink-0 text-emerald-400" />
                   Traffic inspector & web dashboard
                 </li>
+                <li className="text-foreground flex items-center gap-2 font-medium">
+                  <Check className="h-3.5 w-3.5 shrink-0 text-emerald-400" />
+                  Custom domain support (<code className="font-mono text-xs">.yourdomain.com</code>)
+                </li>
               </ul>
             </div>
             <div className="flex flex-col gap-2 pt-2">

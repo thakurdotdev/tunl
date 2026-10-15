@@ -35,6 +35,11 @@ const FAQ_ITEMS: FaqItem[] = [
       "Yes! Simply sign in and add your OpenSSH public key. Once registered, you can reserve a dedicated subdomain (e.g. `yourname.tunl.online`) that is permanently linked to your key fingerprint.",
   },
   {
+    question: "Can I bring my own custom domain (e.g. api.mydomain.com)?",
+    answer:
+      "Yes! tunl supports connecting your own custom domains directly to active tunnels. Add a CNAME pointing to cname.tunl.online along with a TXT verification record, and your domain routes instantly with free automated SSL/TLS.",
+  },
+  {
     question: "Does tunl support WebSockets, Next.js HMR, and webhook callbacks?",
     answer:
       "Yes. tunl provides full HTTP/1.1 protocol upgrade support for WebSockets, Server-Sent Events (SSE), and Hot Module Replacement in frameworks like Next.js and Vite. It also receives webhook callbacks from Stripe, GitHub, Shopify, and Slack with zero latency.",

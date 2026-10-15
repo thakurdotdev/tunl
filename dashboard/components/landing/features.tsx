@@ -48,6 +48,19 @@ export function Features() {
                   directly to your SSH public key.
                 </dd>
               </div>
+              <div>
+                <dt className="text-foreground text-sm font-semibold flex items-center gap-1.5">
+                  Custom Domains
+                  <span className="rounded-full border border-primary/30 bg-primary/10 px-1.5 py-0.2 text-[10px] font-medium text-primary">
+                    New
+                  </span>
+                </dt>
+                <dd className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
+                  Attach your own domains (e.g.{" "}
+                  <code className="text-foreground font-mono">api.yourbrand.com</code>) directly to
+                  active tunnels with automated TLS via CNAME and TXT verification.
+                </dd>
+              </div>
             </dl>
           </div>
 
@@ -102,9 +115,7 @@ export function Features() {
             In development
           </span>
           <span className="text-muted-foreground text-xs">
-            Custom domain support (
-            <code className="text-foreground font-mono">.yourdomain.com</code>) · TCP port
-            forwarding · Team workspaces
+            TCP port forwarding · Team workspaces · Custom rate limits
           </span>
         </div>
       </div>

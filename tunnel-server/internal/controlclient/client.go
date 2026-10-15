@@ -66,14 +66,15 @@ type validateKeyResponse struct {
 	MaxActiveTunnels   int               `json:"maxActiveTunnels"`
 	AllowedIPs         []string          `json:"allowedIps"`
 	TunnelPasswords    map[string]string `json:"tunnelPasswords"`
+	CustomDomains      map[string]string `json:"customDomains"`
 }
 
-func (c *Client) ValidateKey(ctx context.Context, fingerprint string) (userID, email, allowedSubdomain string, reservedSubdomains []string, plan string, maxActiveTunnels int, allowedIPs []string, tunnelPasswords map[string]string, ok bool) {
+func (c *Client) ValidateKey(ctx context.Context, fingerprint string) (userID, email, allowedSubdomain string, reservedSubdomains []string, plan string, maxActiveTunnels int, allowedIPs []string, tunnelPasswords map[string]string, customDomains map[string]string, ok bool) {
 	body, _ := json.Marshal(map[string]string{"fingerprint": fingerprint})
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
 		c.baseURL+"/internal/validate-key", bytes.NewReader(body))
 	if err != nil {
-		return "", "", "", nil, "", 0, nil, nil, false
+		return "", "", "", nil, "", 0, nil, nil, nil, false
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Internal-Token", c.sharedSecret)
@@ -81,24 +82,24 @@ func (c *Client) ValidateKey(ctx context.Context, fingerprint string) (userID, e
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		c.log.Warn("validate-key request failed", "error", err)
-		return "", "", "", nil, "", 0, nil, nil, false
+		return "", "", "", nil, "", 0, nil, nil, nil, false
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusNotFound {
-		return "", "", "", nil, "", 0, nil, nil, false
+		return "", "", "", nil, "", 0, nil, nil, nil, false
 	}
 	if resp.StatusCode != http.StatusOK {
 		c.log.Warn("validate-key unexpected status", "status", resp.StatusCode, "fingerprint", fingerprint)
-		return "", "", "", nil, "", 0, nil, nil, false
+		return "", "", "", nil, "", 0, nil, nil, nil, false
 	}
 
 	var r validateKeyResponse
 	if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
-		return "", "", "", nil, "", 0, nil, nil, false
+		return "", "", "", nil, "", 0, nil, nil, nil, false
 	}
 
-	return r.UserID, r.Email, optionalSubdomain(r.AllowedSubdomain), r.ReservedSubdomains, r.Plan, r.MaxActiveTunnels, r.AllowedIPs, r.TunnelPasswords, true
+	return r.UserID, r.Email, optionalSubdomain(r.AllowedSubdomain), r.ReservedSubdomains, r.Plan, r.MaxActiveTunnels, r.AllowedIPs, r.TunnelPasswords, r.CustomDomains, true
 }
 
 func optionalSubdomain(value *string) string {
