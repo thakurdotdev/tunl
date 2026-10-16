@@ -44,7 +44,6 @@ import {
   ShieldCheck,
   Sparkles,
   Trash2,
-  X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -332,18 +331,13 @@ export default function CustomDomainsCard() {
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
   const [expandedDomainIds, setExpandedDomainIds] = useState<Record<string, boolean>>({});
   const [showIntroDialog, setShowIntroDialog] = useState(false);
-  const [showBanner, setShowBanner] = useState(true);
 
-  // Check if user has already seen the custom domain intro dialog or dismissed banner
+  // Show the intro dialog once for users who have not seen it yet.
   useEffect(() => {
     try {
       const introSeen = localStorage.getItem("tunl_custom_domain_intro_seen");
       if (!introSeen) {
         setShowIntroDialog(true);
-      }
-      const bannerDismissed = localStorage.getItem("tunl_custom_domain_banner_dismissed");
-      if (bannerDismissed === "true") {
-        setShowBanner(false);
       }
     } catch {}
   }, []);
@@ -456,15 +450,6 @@ export default function CustomDomainsCard() {
                 <span className="bg-secondary text-secondary-foreground min-w-5 rounded-full px-1.5 py-0.5 text-center text-[11px] font-semibold tabular-nums">
                   {customDomains.length}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => setShowIntroDialog(true)}
-                  className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary hover:bg-primary/20 transition-colors cursor-pointer"
-                  title="Click to learn how Custom Domains work"
-                >
-                  <Sparkles className="h-3 w-3" />
-                  <span>New Feature</span>
-                </button>
               </div>
               <p className="text-muted-foreground mt-0.5 text-xs">
                 One domain per tunnel. Verify ownership with CNAME + TXT, then traffic routes
@@ -490,43 +475,6 @@ export default function CustomDomainsCard() {
             </Button>
           </div>
         </div>
-
-        {/* --------------------------- Feature Banner --------------------------- */}
-        {showBanner && (
-          <div className="border-border/60 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent flex items-center justify-between gap-3 border-b px-4 py-3 sm:px-5">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="border-border/60 bg-primary/15 text-primary flex h-6 w-6 shrink-0 items-center justify-center rounded-full border">
-                <Sparkles className="h-3.5 w-3.5" />
-              </div>
-              <p className="text-foreground text-xs">
-                <strong className="font-semibold">New:</strong> Connect your personal or company domain (e.g. <code className="font-mono text-primary font-medium">api.yourbrand.com</code>) directly to your tunnels with automated SSL.
-              </p>
-            </div>
-            <div className="flex items-center gap-3 shrink-0">
-              <button
-                type="button"
-                onClick={() => setShowIntroDialog(true)}
-                className="text-primary hover:underline text-xs font-semibold whitespace-nowrap cursor-pointer"
-              >
-                Learn how it works →
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowBanner(false);
-                  try {
-                    localStorage.setItem("tunl_custom_domain_banner_dismissed", "true");
-                  } catch {}
-                }}
-                className="text-muted-foreground hover:text-foreground p-0.5 rounded cursor-pointer transition-colors"
-                title="Dismiss banner"
-                aria-label="Dismiss banner"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* ---------------------------- Add domain form ---------------------------- */}
         <form
