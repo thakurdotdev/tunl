@@ -33,6 +33,7 @@ describe.skipIf(!databaseUrl)("admin analytics PostgreSQL integration", () => {
         created_at timestamptz NOT NULL DEFAULT now());
       CREATE TABLE tunnels (id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         last_connected_at timestamptz DEFAULT now());
+      CREATE TABLE custom_domains (id uuid PRIMARY KEY DEFAULT gen_random_uuid());
       CREATE TABLE active_tunnel_sessions (id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         user_id text, subdomain text, remote_ip text, country text, city text,
         connected_at timestamptz DEFAULT now());

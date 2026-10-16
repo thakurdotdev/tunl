@@ -23,6 +23,7 @@ import {
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { toast } from "sonner";
 import { useAdminPrivacy } from "@/lib/admin-privacy-context";
+import { useAuth } from "@/lib/auth-context";
 import {
   Search,
   Sliders,
@@ -39,7 +40,14 @@ import {
   Copy,
   Check,
   Users,
+  MoreHorizontal,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface UserManagementTableProps {
   users: AdminUser[] | undefined;
@@ -115,6 +123,7 @@ export function UserManagementTable({
   onClearFilters,
 }: UserManagementTableProps) {
   const { maskEmail, maskName } = useAdminPrivacy();
+  const { user: currentUser } = useAuth();
   const [roleChangeTarget, setRoleChangeTarget] = useState<{
     user: AdminUser;
     targetRole: "user" | "admin";
@@ -263,15 +272,24 @@ export function UserManagementTable({
         </div>
 
         {/* Users Table */}
-        <div className="overflow-x-auto">
-          <Table className="min-w-[920px] text-left text-xs">
+        <div className="w-full min-w-0">
+          <Table className="w-full min-w-[990px] table-fixed text-left text-xs">
+            <colgroup>
+              <col className="w-[190px]" />
+              <col className="w-[100px]" />
+              <col className="w-[120px]" />
+              <col className="w-[85px]" />
+              <col className="w-[300px]" />
+              <col className="w-[130px]" />
+              <col className="w-[64px]" />
+            </colgroup>
             <TableHeader className="bg-muted/30 text-muted-foreground text-[11px] font-semibold tracking-wider uppercase">
               <TableRow className="hover:bg-transparent">
                 <TableHead className="px-4 py-3">User Account</TableHead>
                 <TableHead className="px-4 py-3">Role</TableHead>
                 <TableHead className="px-4 py-3">Assigned Plan</TableHead>
                 <TableHead className="px-4 py-3">SSH Keys</TableHead>
-                <TableHead className="px-4 py-3">Registered Subdomains</TableHead>
+                <TableHead className="px-4 py-3">Domains</TableHead>
                 <TableHead className="px-4 py-3">Joined Date</TableHead>
                 <TableHead className="px-4 py-3 text-right">Actions</TableHead>
               </TableRow>
@@ -294,7 +312,7 @@ export function UserManagementTable({
                       <div className="bg-muted h-4 w-12 rounded" />
                     </TableCell>
                     <TableCell className="px-4 py-3">
-                      <div className="bg-muted h-5 w-24 rounded" />
+                      <div className="bg-muted h-5 w-32 rounded" />
                     </TableCell>
                     <TableCell className="px-4 py-3">
                       <div className="bg-muted h-4 w-20 rounded" />
@@ -335,8 +353,13 @@ export function UserManagementTable({
                   <TableRow key={u.id} className="group transition-colors">
                     {/* User Account */}
                     <TableCell className="px-4 py-3">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-foreground font-medium">{maskEmail(u.email)}</span>
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        <span
+                          className="text-foreground min-w-0 truncate font-medium"
+                          title={maskEmail(u.email)}
+                        >
+                          {maskEmail(u.email)}
+                        </span>
                         <button
                           type="button"
                           onClick={() => handleCopy(u.email, "email", `user-${u.id}`)}
@@ -351,7 +374,10 @@ export function UserManagementTable({
                         </button>
                       </div>
                       {u.name && (
-                        <p className="text-muted-foreground mt-0.5 text-[11px] font-normal">
+                        <p
+                          className="text-muted-foreground mt-0.5 truncate text-[11px] font-normal"
+                          title={maskName(u.name)}
+                        >
                           {maskName(u.name)}
                         </p>
                       )}
@@ -381,31 +407,61 @@ export function UserManagementTable({
                       </span>
                     </TableCell>
 
-                    {/* Registered Subdomains */}
+                    {/* Domains */}
                     <TableCell className="px-4 py-3">
-                      {u.reservedSubdomains && u.reservedSubdomains.length > 0 ? (
-                        <div className="flex max-w-xs flex-wrap items-center gap-1.5">
-                          {u.reservedSubdomains.slice(0, 2).map((sub) => (
-                            <span
-                              key={sub}
-                              className="border-border/60 bg-secondary/60 hover:border-primary/40 text-foreground inline-flex items-center gap-1 rounded-md border px-2 py-0.5 font-mono text-[11px] font-medium transition-colors"
-                            >
-                              <Globe className="text-primary/70 h-2.5 w-2.5" />
-                              {sub}
-                            </span>
-                          ))}
-                          {u.reservedSubdomains.length > 2 && (
-                            <span
-                              className="border-border/60 bg-muted text-muted-foreground rounded border px-1.5 py-0.5 text-[10px]"
-                              title={u.reservedSubdomains.slice(2).join(", ")}
-                            >
-                              +{u.reservedSubdomains.length - 2} more
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground/40 text-xs">—</span>
-                      )}
+                      {(() => {
+                        const domains = [
+                          ...(u.reservedSubdomains ?? []).map((domain) => ({
+                            domain,
+                            kind: "subdomain" as const,
+                          })),
+                          ...(u.customDomains ?? []).map((customDomain) => ({
+                            domain: customDomain.domain,
+                            kind: "custom" as const,
+                            status: customDomain.status,
+                          })),
+                        ];
+
+                        return domains.length > 0 ? (
+                          <div className="flex min-w-0 max-w-full flex-nowrap items-center gap-1.5 overflow-hidden">
+                            {domains.slice(0, 2).map((entry) => (
+                              <span
+                                key={`${entry.kind}-${entry.domain}`}
+                                title={
+                                  entry.kind === "custom"
+                                    ? `${entry.domain} (${entry.status})`
+                                    : entry.domain
+                                }
+                                className={`inline-flex min-w-0 max-w-[45%] shrink items-center gap-1 overflow-hidden rounded-md border px-2 py-0.5 font-mono text-[11px] font-medium ${
+                                  entry.kind === "subdomain"
+                                    ? "border-border/60 bg-secondary/60 text-foreground"
+                                    : entry.status === "verified"
+                                      ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-400"
+                                      : entry.status === "failed"
+                                        ? "border-destructive/25 bg-destructive/10 text-destructive"
+                                        : "border-amber-500/25 bg-amber-500/10 text-amber-400"
+                                }`}
+                              >
+                                <Globe className="h-2.5 w-2.5 shrink-0" />
+                                <span className="truncate">{entry.domain}</span>
+                              </span>
+                            ))}
+                            {domains.length > 2 && (
+                              <span
+                                className="border-border/60 bg-muted text-muted-foreground shrink-0 rounded border px-1.5 py-0.5 text-[10px]"
+                                title={domains
+                                  .slice(2)
+                                  .map((entry) => entry.domain)
+                                  .join(", ")}
+                              >
+                                +{domains.length - 2} more
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground/40 text-xs">—</span>
+                        );
+                      })()}
                     </TableCell>
 
                     {/* Joined Date */}
@@ -419,42 +475,41 @@ export function UserManagementTable({
 
                     {/* Actions */}
                     <TableCell className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => onSelectUserForPlan(u)}
-                          className="border-border/70 hover:border-border h-7.5 px-2.5 text-xs font-medium"
-                        >
-                          <Sliders className="text-muted-foreground mr-1.5 h-3 w-3" /> Assign Plan
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() =>
-                            setRoleChangeTarget({
-                              user: u,
-                              targetRole: u.role === "admin" ? "user" : "admin",
-                            })
+                      <DropdownMenu>
+                        <DropdownMenuTrigger
+                          render={
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8"
+                              aria-label={`Actions for ${maskEmail(u.email)}`}
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
                           }
-                          disabled={isRolePending}
-                          className={`h-7.5 px-2.5 text-xs font-medium transition-colors ${
-                            u.role === "admin"
-                              ? "text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                              : "text-muted-foreground hover:bg-purple-500/10 hover:text-purple-400"
-                          }`}
-                        >
-                          {u.role === "admin" ? (
-                            <>
-                              <ShieldOff className="mr-1.5 h-3 w-3 text-rose-400/80" /> Demote
-                            </>
-                          ) : (
-                            <>
-                              <Shield className="mr-1.5 h-3 w-3 text-purple-400/80" /> Make Admin
-                            </>
+                        />
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => onSelectUserForPlan(u)}>
+                            <Sliders /> Assign plan
+                          </DropdownMenuItem>
+                          {u.id !== currentUser?.id && (
+                            <DropdownMenuItem
+                              disabled={isRolePending}
+                              variant={u.role === "admin" ? "destructive" : "default"}
+                              onClick={() =>
+                                setRoleChangeTarget({
+                                  user: u,
+                                  targetRole: u.role === "admin" ? "user" : "admin",
+                                })
+                              }
+                            >
+                              {u.role === "admin" ? <ShieldOff /> : <Shield />}
+                              {u.role === "admin" ? "Demote" : "Make admin"}
+                            </DropdownMenuItem>
                           )}
-                        </Button>
-                      </div>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))

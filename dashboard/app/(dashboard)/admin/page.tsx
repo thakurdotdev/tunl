@@ -338,7 +338,7 @@ export default function AdminOverviewPage() {
         </div>
       </Card>
 
-      {/* Main Grid: Live Sessions & Traffic Insights */}
+      {/* Main Grid: Live Sessions & Recent Conversions */}
       <div className="grid min-w-0 items-stretch gap-6 lg:auto-rows-[32rem] lg:grid-cols-2">
         {/* Live Active Sessions Section */}
         <div className="flex min-h-0 min-w-0">
@@ -487,132 +487,62 @@ export default function AdminOverviewPage() {
           </div>
         </div>
 
-        {/* Traffic & Conversion Analytics */}
+        {/* Recent Conversions */}
         <div className="flex min-h-0 min-w-0">
           <div className="bg-card border-border/60 flex min-h-0 min-w-0 flex-1 flex-col rounded-xl border p-4 shadow-none sm:p-5">
             <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-              <div className="border-border/60 flex shrink-0 flex-wrap items-center justify-between gap-3 border-b pb-4">
+              <div className="border-border/60 flex shrink-0 flex-wrap items-center gap-3 border-b pb-4">
                 <div className="flex min-w-0 items-center gap-2.5">
                   <div className="bg-secondary text-foreground border-border/60 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border">
                     <BarChart3 className="h-4 w-4" />
                   </div>
                   <div className="min-w-0">
-                    <h3 className="text-foreground text-sm font-semibold">Traffic & conversion</h3>
+                    <h3 className="text-foreground text-sm font-semibold">Recent conversions</h3>
                     <p className="text-muted-foreground mt-0.5 text-xs">
-                      Activity & account attribution
+                      Anonymous devices linked to accounts
                     </p>
                   </div>
                 </div>
-                <span className="border-border/60 bg-secondary text-muted-foreground shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-medium whitespace-nowrap">
-                  Last 24h
-                </span>
               </div>
 
-              <div className="mt-4 flex min-h-0 min-w-0 flex-1 flex-col gap-3 text-xs">
-                <div className="shrink-0">
-                  <div className="mb-3 grid min-w-0 grid-cols-2 gap-3">
-                    <div className="min-w-0">
-                      <p className="text-muted-foreground flex items-center gap-1.5 text-[11px]">
-                        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
-                        Authenticated
-                      </p>
-                      <p className="mt-1 text-2xl font-semibold tracking-tight break-all">
-                        {sessions.data?.totalAuthEvents.toLocaleString() ?? "—"}
-                      </p>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-muted-foreground flex items-center gap-1.5 text-[11px]">
-                        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-zinc-500" />
-                        Anonymous
-                      </p>
-                      <p className="mt-1 text-2xl font-semibold tracking-tight break-all">
-                        {sessions.data?.totalAnonEvents.toLocaleString() ?? "—"}
-                      </p>
-                    </div>
-                  </div>
-                  {(() => {
-                    const auth = sessions.data?.totalAuthEvents ?? 0;
-                    const anon = sessions.data?.totalAnonEvents ?? 0;
-                    const total = auth + anon;
-                    const authPct = total > 0 ? Math.round((auth / total) * 100) : 0;
-                    return (
-                      <div className="bg-muted flex h-2 w-full overflow-hidden rounded-full">
-                        <div
-                          style={{ width: `${authPct}%` }}
-                          className="bg-emerald-400 transition-all duration-500"
-                        />
-                        <div
-                          style={{ width: `${total > 0 ? 100 - authPct : 0}%` }}
-                          className="bg-zinc-600 transition-all duration-500"
-                        />
-                      </div>
-                    );
-                  })()}
-                </div>
-
-                <div className="grid min-w-0 shrink-0 gap-3 sm:grid-cols-2">
-                  <div className="border-border/60 bg-muted/20 min-w-0 rounded-lg border p-3.5">
-                    <p className="text-muted-foreground text-xs">Converted devices</p>
-                    <p className="mt-2 text-2xl font-semibold tracking-tight break-all">
-                      {engagement.data?.totalLinkedIdentities.toLocaleString() ?? "—"}
-                    </p>
-                    <p className="text-muted-foreground mt-1 text-[11px]">
-                      Linked accounts · all time
+              <div className="mt-4 flex min-h-0 min-w-0 flex-1 flex-col text-xs">
+                {engagement.isPending ? (
+                  <p className="text-muted-foreground flex flex-1 items-center justify-center">
+                    Loading conversions...
+                  </p>
+                ) : engagement.isError ? (
+                  <p role="alert" className="text-destructive flex flex-1 items-center justify-center">
+                    Unable to load conversions.
+                  </p>
+                ) : engagement.data.recentConversions.length === 0 ? (
+                  <div className="bg-muted/10 flex min-h-20 flex-1 flex-col items-center justify-center rounded-lg px-4 py-3 text-center">
+                    <p className="text-foreground font-medium">No conversions yet</p>
+                    <p className="text-muted-foreground mx-auto mt-1 max-w-64 text-[11px] leading-relaxed">
+                      Linked accounts will appear here when anonymous devices convert.
                     </p>
                   </div>
-                  <div className="border-border/60 bg-muted/20 min-w-0 rounded-lg border p-3.5">
-                    <p className="text-muted-foreground text-xs">Conversion rate</p>
-                    <p className="mt-2 text-2xl font-semibold tracking-tight break-all">
-                      {engagement.data ? `${engagement.data.conversionRate}%` : "—"}
-                    </p>
-                    <p className="text-muted-foreground mt-1 text-[11px]">
-                      Device cohort · all time
-                    </p>
-                  </div>
-                </div>
-                <p className="text-muted-foreground shrink-0 text-[11px]">
-                  Based on {engagement.data?.uniqueAnonymousDevices.toLocaleString() ?? "—"}{" "}
-                  observed anonymous devices.
-                </p>
-                <div className="border-border/60 flex min-h-0 min-w-0 flex-1 flex-col border-t pt-3">
-                  <h4 className="mb-2 shrink-0 font-semibold">Recent conversions</h4>
-                  {engagement.isPending ? (
-                    <p className="text-muted-foreground">Loading conversions...</p>
-                  ) : engagement.isError ? (
-                    <p className="text-destructive">Unable to load conversions.</p>
-                  ) : engagement.data.recentConversions.length === 0 ? (
-                    <div className="bg-muted/10 flex min-h-20 flex-1 flex-col justify-center rounded-lg px-4 py-3 text-center">
-                      <p className="text-foreground font-medium">No conversions yet</p>
-                      <p className="text-muted-foreground mx-auto mt-1 max-w-64 text-[11px] leading-relaxed">
-                        Anonymous devices linked to accounts appear here.
-                      </p>
-                    </div>
-                  ) : (
-                    <ul className="divide-border/60 max-h-60 min-h-0 min-w-0 flex-1 [scrollbar-width:thin] divide-y overflow-y-auto overscroll-contain pr-1 lg:max-h-none">
-                      {engagement.data.recentConversions.map((conversion) => (
-                        <li
-                          key={conversion.anonymousId}
-                          className="flex min-w-0 items-center justify-between gap-3 py-2.5"
-                        >
-                          <div className="min-w-0 flex-1">
-                            <p
-                              className="truncate font-mono"
-                              title={maskId(conversion.anonymousId)}
-                            >
-                              {maskId(conversion.anonymousId)}
-                            </p>
-                            <p className="text-muted-foreground truncate">
-                              {maskEmail(conversion.userEmail)}
-                            </p>
-                          </div>
-                          <span className="text-muted-foreground shrink-0">
-                            {formatShortRelativeTime(conversion.linkedAt)}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
+                ) : (
+                  <ul className="divide-border/60 max-h-60 min-h-0 min-w-0 flex-1 [scrollbar-width:thin] divide-y overflow-y-auto overscroll-contain pr-1 lg:max-h-none">
+                    {engagement.data.recentConversions.map((conversion) => (
+                      <li
+                        key={conversion.anonymousId}
+                        className="flex min-w-0 items-center justify-between gap-3 py-3"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-mono" title={maskId(conversion.anonymousId)}>
+                            {maskId(conversion.anonymousId)}
+                          </p>
+                          <p className="text-muted-foreground truncate">
+                            {maskEmail(conversion.userEmail)}
+                          </p>
+                        </div>
+                        <span className="text-muted-foreground shrink-0">
+                          {formatShortRelativeTime(conversion.linkedAt)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             </div>
 

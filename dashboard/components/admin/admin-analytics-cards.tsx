@@ -143,11 +143,6 @@ export function AdminAnalyticsCards({
       ? ((engagement.dauCount / engagement.mauCount) * 100).toFixed(1)
       : undefined;
 
-  const subdomainActivePercent =
-    analytics && analytics.totalTunnels > 0 && analytics.activeTunnelsLast30d != null
-      ? Math.round((analytics.activeTunnelsLast30d / analytics.totalTunnels) * 100)
-      : null;
-
   const engagementMetrics = [
     {
       label: "Active users",
@@ -178,10 +173,9 @@ export function AdminAnalyticsCards({
     {
       label: "Reserved subdomains",
       value: analytics?.totalTunnels ?? 0,
-      description:
-        subdomainActivePercent != null
-          ? `${analytics?.activeTunnelsLast30d} active in 30d (${subdomainActivePercent}% active)`
-          : "Custom domain aliases",
+      description: analytics
+        ? `${analytics.activeTunnelsLast30d ?? 0} active in 30d · ${analytics.totalCustomDomains} custom ${analytics.totalCustomDomains === 1 ? "domain" : "domains"}`
+        : "Subdomain and custom domain counts",
       icon: Globe,
       isLoading: isLoading || !analytics,
     },

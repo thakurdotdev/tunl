@@ -2,6 +2,7 @@ import { and, asc, count, desc, eq, gte, ilike, inArray, isNotNull, or, sql } fr
 import type { Database } from "../../db/client.js";
 import {
   activeTunnelSessions,
+  customDomains,
   identityLinks,
   plans,
   sshKeys,
@@ -35,6 +36,7 @@ export function getAdminOverviewAnalytics(db: Database) {
         (SELECT count(*)::int FROM active_tunnel_sessions) AS "totalActiveSessions",
         t.total_tunnels AS "totalTunnels",
         t.active_tunnels_30d AS "activeTunnelsLast30d",
+        (SELECT count(*)::int FROM custom_domains) AS "totalCustomDomains",
         (SELECT count(*)::int FROM tunnel_events) AS "totalEvents"
       FROM (
         SELECT
@@ -58,6 +60,7 @@ export function getAdminOverviewAnalytics(db: Database) {
       totalActiveSessions: Number(totals.totalActiveSessions),
       totalTunnels: Number(totals.totalTunnels),
       activeTunnelsLast30d: Number(totals.activeTunnelsLast30d ?? 0),
+      totalCustomDomains: Number(totals.totalCustomDomains),
       totalEvents: Number(totals.totalEvents),
       planDistribution,
     };
@@ -418,8 +421,8 @@ export async function getAdminUsers(db: Database, params: GetAdminUsersParams = 
     };
   }
 
-  // Scoped queries: ONLY fetch SSH keys and tunnels for the current page users
-  const [sshCounts, userTunnels] = await Promise.all([
+  // Scoped queries: ONLY fetch SSH keys, tunnels and custom domains for the current page users
+  const [sshCounts, userTunnels, userCustomDomains] = await Promise.all([
     db
       .select({ userId: sshKeys.userId, keyCount: count() })
       .from(sshKeys)
@@ -429,6 +432,14 @@ export async function getAdminUsers(db: Database, params: GetAdminUsersParams = 
       .select({ userId: tunnels.userId, subdomain: tunnels.subdomain })
       .from(tunnels)
       .where(inArray(tunnels.userId, userIds)),
+    db
+      .select({
+        userId: customDomains.userId,
+        domain: customDomains.domain,
+        status: customDomains.status,
+      })
+      .from(customDomains)
+      .where(inArray(customDomains.userId, userIds)),
   ]);
 
   const sshMap = new Map(sshCounts.map((s) => [s.userId, s.keyCount]));
@@ -439,10 +450,18 @@ export async function getAdminUsers(db: Database, params: GetAdminUsersParams = 
     tunnelMap.set(t.userId, list);
   }
 
+  const customDomainMap = new Map<string, { domain: string; status: string }[]>();
+  for (const d of userCustomDomains) {
+    const list = customDomainMap.get(d.userId) ?? [];
+    list.push({ domain: d.domain, status: d.status });
+    customDomainMap.set(d.userId, list);
+  }
+
   const users = rows.map((u) => ({
     ...u,
     sshKeyCount: sshMap.get(u.id) ?? 0,
     reservedSubdomains: tunnelMap.get(u.id) ?? [],
+    customDomains: customDomainMap.get(u.id) ?? [],
   }));
 
   return {
