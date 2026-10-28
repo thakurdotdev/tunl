@@ -1,102 +1,67 @@
-import { Logo } from "@/components/logo";
-import { ModeToggle } from "@/components/mode-toggle";
 import Link from "next/link";
 
 export function LandingFooter() {
   return (
-    <footer className="border-border/60 border-t py-10 text-xs">
-      <div className="mx-auto flex max-w-5xl flex-col gap-8 px-5 sm:px-6">
-        <div className="flex flex-col justify-between gap-8 sm:flex-row sm:items-start">
-          {/* Left branding */}
-          <div className="flex flex-col gap-2.5">
-            <Logo />
-            <p className="text-muted-foreground max-w-xs text-xs leading-relaxed">
+    <footer>
+      <div className="wrap">
+        <div className="foot">
+          <div>
+            <a className="logo" href="#top">
+              <span className="p">&gt;_</span>tunl
+            </a>
+            <p>
               Expose localhost web servers to the internet via standard OpenSSH. No CLI download
               required.
             </p>
           </div>
-
-          {/* Right link columns */}
-          <div className="flex flex-wrap gap-x-12 gap-y-6 text-xs">
-            <div className="flex flex-col gap-2.5">
-              <span className="text-foreground text-[11px] font-semibold tracking-wider uppercase">
-                Product
-              </span>
-              <nav className="text-muted-foreground flex flex-col gap-2 font-medium">
-                <Link href="/dashboard" className="hover:text-foreground transition-colors">
-                  Dashboard
-                </Link>
-                <Link href="/keys" className="hover:text-foreground transition-colors">
-                  SSH Keys
-                </Link>
-                <Link href="/inspect" className="hover:text-foreground transition-colors">
-                  Inspect Tunnels
-                </Link>
-                <Link href="#comparison" className="hover:text-foreground transition-colors">
-                  Comparison
-                </Link>
-                <Link href="#faq" className="hover:text-foreground transition-colors">
-                  FAQ
-                </Link>
-              </nav>
-            </div>
-
-            <div className="flex flex-col gap-2.5">
-              <span className="text-foreground text-[11px] font-semibold tracking-wider uppercase">
-                Developer
-              </span>
-              <nav className="text-muted-foreground flex flex-col gap-2 font-medium">
-                <a
-                  href="https://thakur.dev"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-foreground transition-colors"
-                >
+          <div>
+            <h4>Product</h4>
+            <ul>
+              <li>
+                <Link href="/dashboard">Dashboard</Link>
+              </li>
+              <li>
+                <Link href="/keys">SSH keys</Link>
+              </li>
+              <li>
+                <Link href="/inspect">Inspect tunnels</Link>
+              </li>
+              <li>
+                <a href="#compare">Comparison</a>
+              </li>
+              <li>
+                <a href="#faq">FAQ</a>
+              </li>
+            </ul>
+          </div>
+          <div>
+            <h4>Developer</h4>
+            <ul>
+              <li>
+                <a href="https://thakur.dev" target="_blank" rel="noopener noreferrer">
                   Pankaj Thakur
                 </a>
-                <a
-                  href="https://github.com/thakurdotdev"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-foreground transition-colors"
-                >
-                  GitHub (@thakurdotdev)
+              </li>
+              <li>
+                <a href="https://github.com/thakurdotdev" target="_blank" rel="noopener noreferrer">
+                  GitHub
                 </a>
-                <a
-                  href="https://x.com/thakurdotdev"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-foreground transition-colors"
-                >
-                  X (@thakurdotdev)
+              </li>
+              <li>
+                <a href="https://x.com/thakurdotdev" target="_blank" rel="noopener noreferrer">
+                  X
                 </a>
-              </nav>
-            </div>
+              </li>
+            </ul>
           </div>
         </div>
-
-        {/* Bottom bar */}
-        <div className="border-border/40 text-muted-foreground flex flex-col items-center justify-between gap-3 border-t pt-6 text-[12px] sm:flex-row">
-          <span>© {new Date().getFullYear()} tunl. All rights reserved.</span>
-          <div className="flex items-center gap-4">
-            <span>
-              Designed & built by{" "}
-              <a
-                href="https://thakur.dev"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-foreground hover:text-primary font-medium transition-colors"
-              >
-                Pankaj Thakur
-              </a>
-            </span>
-            <div className="border-border/60 h-3.5 w-px border-l" />
-            <ModeToggle
-              variant="ghost"
-              className="text-muted-foreground hover:text-foreground h-7 w-7"
-            />
-          </div>
-        </div>
+        <p className="legal">
+          © {new Date().getFullYear()} tunl. Designed and built by{" "}
+          <a href="https://thakur.dev" target="_blank" rel="noopener noreferrer">
+            Pankaj Thakur
+          </a>
+          .
+        </p>
       </div>
     </footer>
   );

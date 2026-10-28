@@ -1,117 +1,90 @@
 "use client";
 
-import { Logo } from "@/components/logo";
-import { Button } from "@/components/ui/button";
-import { ArrowRight, Menu, X } from "lucide-react";
 import Link from "next/link";
+import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 
+const NAV_LINKS = [
+  { href: "#how", label: "How it works" },
+  { href: "#uses", label: "Use cases" },
+  { href: "#capabilities", label: "Capabilities" },
+  { href: "#compare", label: "Compare" },
+  { href: "#pricing", label: "Pricing" },
+  { href: "#faq", label: "FAQ" },
+];
+
 export function LandingNav() {
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
+  const { resolvedTheme, setTheme } = useTheme();
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 10);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
   }, []);
 
-  useEffect(() => {
-    if (mobileOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [mobileOpen]);
-
-  const navLinks = [
-    { href: "#how-it-works", label: "How it Works" },
-    { href: "#use-cases", label: "Use Cases" },
-    { href: "#pricing", label: "Pricing" },
-    { href: "#faq", label: "FAQ" },
-  ];
+  const toggleTheme = () => {
+    setTheme(resolvedTheme === "dark" ? "light" : "dark");
+  };
 
   return (
-    <header
-      className={`sticky top-0 z-50 transition-all duration-200 ${
-        scrolled ? "bg-background/90 border-border/60 border-b backdrop-blur-md" : "bg-transparent"
-      }`}
-    >
-      <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-5 sm:px-6">
-        <Link href="/" className="flex items-center gap-2">
-          <Logo />
-        </Link>
-
-        <nav className="text-muted-foreground hidden items-center gap-7 text-[13px] font-medium md:flex">
-          {navLinks.map((link) => (
-            <a key={link.href} href={link.href} className="hover:text-foreground transition-colors">
+    <header className={`top${open ? " open" : ""}`}>
+      <div className="wrap bar">
+        <a className="logo" href="#top" aria-label="tunl home">
+          <span className="p">&gt;_</span>tunl
+          <span className="blk" />
+        </a>
+        <nav className="links" id="menu" aria-label="Main">
+          {NAV_LINKS.map((link) => (
+            <a key={link.href} href={link.href} onClick={() => setOpen(false)}>
               {link.label}
             </a>
           ))}
+          <Link className="only-m" href="/login" onClick={() => setOpen(false)}>
+            Log in
+          </Link>
+          <Link className="only-m" href="/dashboard" onClick={() => setOpen(false)}>
+            Open dashboard
+          </Link>
         </nav>
-
-        <div className="hidden items-center gap-2.5 md:flex">
-          <Link href="/login">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-muted-foreground hover:text-foreground text-[13px]"
-            >
-              Log in
-            </Button>
-          </Link>
-          <Link href="/dashboard">
-            <Button size="sm" className="gap-1.5 text-[13px]">
-              Start Tunnel <ArrowRight className="h-3.5 w-3.5" />
-            </Button>
-          </Link>
-        </div>
-
-        {/* Mobile controls */}
-        <div className="flex items-center gap-1.5 md:hidden">
+        <div className="nav-right">
           <button
+            className="icon-btn"
             type="button"
-            onClick={() => setMobileOpen(!mobileOpen)}
-            className="text-muted-foreground hover:text-foreground p-1"
-            aria-label="Toggle menu"
+            aria-label="Toggle theme"
+            onClick={toggleTheme}
           >
-            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            <svg className="i-moon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+            </svg>
+            <svg className="i-sun" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="4" />
+              <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+            </svg>
+          </button>
+          <Link className="login" href="/login">
+            Log in
+          </Link>
+          <Link className="btn primary sm" href="/dashboard">
+            Open dashboard
+          </Link>
+          <button
+            className="icon-btn menu-btn"
+            id="menu-btn"
+            type="button"
+            aria-label="Menu"
+            aria-expanded={open}
+            aria-controls="menu"
+            onClick={() => setOpen((v) => !v)}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 7h16M4 12h16M4 17h16" />
+            </svg>
           </button>
         </div>
       </div>
-
-      {/* Mobile overlay */}
-      {mobileOpen && (
-        <div className="bg-background border-border/60 fixed inset-0 top-14 z-40 flex flex-col border-t md:hidden">
-          <nav className="flex flex-col gap-1 px-5 pt-6">
-            {navLinks.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                onClick={() => setMobileOpen(false)}
-                className="text-foreground hover:text-primary py-3 text-base font-medium transition-colors"
-              >
-                {link.label}
-              </a>
-            ))}
-            <div className="border-border/60 mt-4 flex flex-col gap-3 border-t pt-6">
-              <Link href="/login" onClick={() => setMobileOpen(false)}>
-                <Button variant="outline" className="w-full text-[13px]">
-                  Log in
-                </Button>
-              </Link>
-              <Link href="/dashboard" onClick={() => setMobileOpen(false)}>
-                <Button className="w-full gap-1.5 text-[13px]">
-                  Start Tunnel <ArrowRight className="h-3.5 w-3.5" />
-                </Button>
-              </Link>
-            </div>
-          </nav>
-        </div>
-      )}
     </header>
   );
 }

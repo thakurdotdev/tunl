@@ -1,114 +1,70 @@
 "use client";
 
+import { useEffect, useRef } from "react";
+
 export function HowItWorks() {
+  const flowRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = flowRef.current;
+    if (!el || !("IntersectionObserver" in window)) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        el.classList.toggle("in", entries[0]?.isIntersecting ?? false);
+      },
+      { threshold: 0.4 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
   return (
-    <section id="how-it-works" className="py-14 md:py-20">
-      <div className="mx-auto max-w-5xl px-5 sm:px-6">
-        <h2 className="text-foreground mb-3 text-xl font-bold tracking-tight sm:text-2xl">
-          How it works
-        </h2>
-        <p className="text-muted-foreground mb-10 max-w-lg text-sm leading-relaxed">
-          tunl uses standard SSH remote port forwarding. Your local server connects to tunl over an
-          SSH session, and tunl routes public HTTPS traffic back through that connection.
-        </p>
-
-        {/* Desktop Architecture Grid */}
-        <div className="hidden md:block">
-          <div className="grid grid-cols-3 gap-0">
-            <div className="pr-8">
-              <span className="text-muted-foreground mb-2.5 block font-mono text-[11px] font-medium tracking-wider uppercase">
-                1. Local Machine
-              </span>
-              <code className="text-foreground mb-2 block font-mono text-sm font-semibold">
-                localhost:3000
-              </code>
-              <p className="text-muted-foreground text-xs leading-relaxed">
-                Any HTTP server — Next.js, FastAPI, Express, or Django. Running on any local TCP
-                port.
-              </p>
-            </div>
-
-            <div className="border-border/40 border-x border-dashed px-8">
-              <span className="text-muted-foreground mb-2.5 block font-mono text-[11px] font-medium tracking-wider uppercase">
-                2. SSH Transport
-              </span>
-              <code className="text-foreground mb-2 block font-mono text-sm font-semibold">
-                tunl.online:2222
-              </code>
-              <p className="text-muted-foreground text-xs leading-relaxed">
-                Standard OpenSSH reverse port forward (
-                <code className="text-foreground font-mono">ssh -R</code>). Encrypted end-to-end
-                with Ed25519 key pairs.
-              </p>
-            </div>
-
-            <div className="pl-8">
-              <span className="text-muted-foreground mb-2.5 block font-mono text-[11px] font-medium tracking-wider uppercase">
-                3. Public Endpoint
-              </span>
-              <code className="text-primary mb-2 block font-mono text-sm font-semibold">
-                https://my-app.tunl.online
-              </code>
-              <p className="text-muted-foreground text-xs leading-relaxed">
-                Public HTTPS endpoint with TLS certificates. Accessible globally for webhooks,
-                teammates, and mobile testing.
-              </p>
-            </div>
-          </div>
+    <section className="sec band" id="how" aria-labelledby="how-heading">
+      <div className="wrap">
+        <div className="head">
+          <h2 id="how-heading">Standard SSH port forwarding, with HTTPS at the other end.</h2>
+          <p>
+            Your local server connects to tunl over SSH. Public HTTPS traffic travels back down the
+            same connection.
+          </p>
         </div>
-
-        {/* Mobile Vertical Flow */}
-        <div className="flex flex-col gap-0 text-xs md:hidden">
-          <div className="py-3">
-            <span className="text-muted-foreground mb-1.5 block font-mono text-[10px] font-medium tracking-wider uppercase">
-              1. Local Machine
+        <div className="flow" id="flow" ref={flowRef}>
+          <div className="node">
+            <h3>
+              <span className="num">1</span>Local machine
+            </h3>
+            <code>localhost:3000</code>
+            <p>Any HTTP server on any local TCP port: Next.js, FastAPI, Express or Django.</p>
+          </div>
+          <div className="link a" aria-hidden="true">
+            <span className="lab">ssh -R</span>
+            <span className="ln">
+              <i className="dot" />
             </span>
-            <code className="text-foreground mb-1 block font-mono text-sm font-semibold">
-              localhost:3000
-            </code>
-            <p className="text-muted-foreground leading-relaxed">
-              Any HTTP server running on any local port.
+          </div>
+          <div className="node">
+            <h3>
+              <span className="num">2</span>SSH transport
+            </h3>
+            <code>tunl.online:2222</code>
+            <p>
+              A standard OpenSSH reverse forward, encrypted end to end with Ed25519 key pairs.
             </p>
           </div>
-
-          <div className="border-border/40 flex items-center gap-2 py-1.5">
-            <div className="border-border/40 flex-1 border-t border-dashed" />
-            <span className="text-muted-foreground font-mono text-[10px] font-medium tracking-wider uppercase">
-              SSH -R 80
+          <div className="link b" aria-hidden="true">
+            <span className="lab">HTTPS</span>
+            <span className="ln">
+              <i className="dot" />
             </span>
-            <div className="border-border/40 flex-1 border-t border-dashed" />
           </div>
-
-          <div className="py-3">
-            <span className="text-muted-foreground mb-1.5 block font-mono text-[10px] font-medium tracking-wider uppercase">
-              2. SSH Transport
-            </span>
-            <code className="text-foreground mb-1 block font-mono text-sm font-semibold">
-              tunl.online:2222
-            </code>
-            <p className="text-muted-foreground leading-relaxed">
-              Standard OpenSSH. Encrypted transport layer.
-            </p>
-          </div>
-
-          <div className="border-border/40 flex items-center gap-2 py-1.5">
-            <div className="border-border/40 flex-1 border-t border-dashed" />
-            <span className="text-muted-foreground font-mono text-[10px] font-medium tracking-wider uppercase">
-              HTTPS TLS
-            </span>
-            <div className="border-border/40 flex-1 border-t border-dashed" />
-          </div>
-
-          <div className="py-3">
-            <span className="text-muted-foreground mb-1.5 block font-mono text-[10px] font-medium tracking-wider uppercase">
-              3. Public Endpoint
-            </span>
-            <code className="text-primary mb-1 block font-mono text-sm font-semibold">
-              https://my-app.tunl.online
-            </code>
-            <p className="text-muted-foreground leading-relaxed">
-              Public HTTPS endpoint with TLS. Accessible anywhere.
-            </p>
+          <div className="node">
+            <h3>
+              <span className="num">3</span>Public endpoint
+            </h3>
+            <code>https://my-app.tunl.online</code>
+            <p>A public HTTPS URL with a valid certificate, for webhooks, teammates and phones.</p>
           </div>
         </div>
       </div>

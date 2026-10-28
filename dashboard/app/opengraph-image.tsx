@@ -1,7 +1,8 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
-export const alt = "tunl — Free SSH Reverse Tunnel Platform (tunl.online)";
+export const alt =
+  "tunl — Make localhost public with one SSH command. Free zero-install OpenSSH reverse tunnel (tunl.online)";
 export const size = {
   width: 1200,
   height: 630,

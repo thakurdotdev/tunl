@@ -1,123 +1,154 @@
 export function Features() {
   return (
-    <section className="py-14 md:py-20">
-      <div className="mx-auto max-w-5xl px-5 sm:px-6">
-        <h2 className="text-foreground mb-10 text-xl font-bold tracking-tight sm:text-2xl">
-          Capabilities
-        </h2>
+    <section className="sec" id="capabilities" aria-labelledby="capabilities-heading">
+      <div className="wrap">
+        <div className="head">
+          <h2 id="capabilities-heading">What every tunnel includes.</h2>
+          <p>
+            See each request as it arrives, in your terminal and in the web inspector, with the
+            headers, payloads and status codes.
+          </p>
+        </div>
 
-        <div className="grid gap-12 md:grid-cols-2 md:gap-10">
-          {/* Tunnel Infrastructure */}
-          <div>
-            <h3 className="text-muted-foreground mb-5 font-mono text-[11px] font-medium tracking-wider uppercase">
-              Tunnel Infrastructure
-            </h3>
-            <dl className="flex flex-col gap-4.5">
-              <div>
-                <dt className="text-foreground text-sm font-semibold">Automatic HTTPS & TLS</dt>
-                <dd className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
-                  Automatic TLS termination on public endpoints. Every tunnel receives an{" "}
-                  <code className="text-foreground font-mono">HTTPS</code> domain with valid SSL
-                  certificates.
-                </dd>
-              </div>
-              <div>
-                <dt className="text-foreground text-sm font-semibold">
-                  WebSocket & SSE Protocol Upgrade
-                </dt>
-                <dd className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
-                  Full <code className="text-foreground font-mono">HTTP/1.1</code> connection
-                  upgrade support for WebSockets, Server-Sent Events, and Vite/Next.js Hot Module
-                  Replacement.
-                </dd>
-              </div>
-              <div>
-                <dt className="text-foreground text-sm font-semibold">
-                  Request Telemetry & Inspection
-                </dt>
-                <dd className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
-                  Inspect incoming HTTP headers, payloads, methods, and status codes in real time
-                  from the tunl dashboard.
-                </dd>
-              </div>
-              <div>
-                <dt className="text-foreground text-sm font-semibold">Persistent Subdomains</dt>
-                <dd className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
-                  Reserve fixed subdomain aliases (e.g.{" "}
-                  <code className="text-foreground font-mono">my-app.tunl.online</code>) linked
-                  directly to your SSH public key.
-                </dd>
-              </div>
-              <div>
-                <dt className="text-foreground text-sm font-semibold flex items-center gap-1.5">
-                  Custom Domains
-                  <span className="rounded-full border border-primary/30 bg-primary/10 px-1.5 py-0.2 text-[10px] font-medium text-primary">
-                    New
-                  </span>
-                </dt>
-                <dd className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
-                  Attach your own domains (e.g.{" "}
-                  <code className="text-foreground font-mono">api.yourbrand.com</code>) directly to
-                  active tunnels with automated TLS via CNAME and TXT verification.
-                </dd>
-              </div>
-            </dl>
+        <figure
+          className="insp"
+          role="img"
+          aria-label="The request inspector: a list of requests on the left and the headers and JSON payload of a Stripe webhook on the right"
+        >
+          <div className="insp-bar">
+            <span className="dots">
+              <i />
+              <i />
+              <i />
+            </span>
+            <span>tunl.online/inspect/my-app</span>
           </div>
+          <div className="insp-body">
+            <ul className="reqs">
+              <li>
+                <b>GET</b>
+                <span>/</span>
+                <em>200</em>
+                <small>47ms</small>
+              </li>
+              <li>
+                <b>GET</b>
+                <span>/favicon.ico</span>
+                <em className="w">404</em>
+                <small>31ms</small>
+              </li>
+              <li className="sel">
+                <b>POST</b>
+                <span>/api/webhooks/stripe</span>
+                <em>200</em>
+                <small>34ms</small>
+              </li>
+              <li>
+                <b>GET</b>
+                <span>/api/v1/users</span>
+                <em>200</em>
+                <small>12ms</small>
+              </li>
+              <li>
+                <b>POST</b>
+                <span>/api/webhooks/github</span>
+                <em>200</em>
+                <small>41ms</small>
+              </li>
+            </ul>
+            <div className="detail">
+              <div className="dh">
+                <b>POST</b>
+                <span>/api/webhooks/stripe</span>
+                <em>200 OK</em>
+                <small>34ms</small>
+              </div>
+              <div className="tabs">
+                <span className="on">Request</span>
+                <span>Response</span>
+              </div>
+              <dl className="hdrs">
+                <dt>content-type</dt>
+                <dd>application/json</dd>
+                <dt>user-agent</dt>
+                <dd>Stripe/1.0 (+https://stripe.com/docs/webhooks)</dd>
+                <dt>stripe-signature</dt>
+                <dd>t=1760361600,v1=5257a8…</dd>
+              </dl>
+              <pre>{`{
+  "id": "evt_1Q9xK2",
+  "type": "payment_intent.succeeded",
+  "livemode": false
+}`}</pre>
+            </div>
+          </div>
+          <figcaption className="insp-cap">
+            The inspector shows headers, payloads, status codes and latency for every request.
+          </figcaption>
+        </figure>
 
-          {/* Security & Access Control */}
-          <div>
-            <h3 className="text-muted-foreground mb-5 font-mono text-[11px] font-medium tracking-wider uppercase">
-              Security & Access Control
-            </h3>
-            <dl className="flex flex-col gap-4.5">
-              <div>
-                <dt className="text-foreground text-sm font-semibold">
-                  OpenSSH Key Authentication
-                </dt>
-                <dd className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
-                  Authenticate using standard{" "}
-                  <code className="text-foreground font-mono">Ed25519</code> or{" "}
-                  <code className="text-foreground font-mono">RSA</code> public key cryptography.
-                  Zero API tokens or static passwords required.
-                </dd>
-              </div>
-              <div>
-                <dt className="text-foreground text-sm font-semibold">IP Address Allowlisting</dt>
-                <dd className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
-                  Restrict access to active tunnel endpoints by specifying authorized CIDR blocks or
-                  client IP ranges in your dashboard settings.
-                </dd>
-              </div>
-              <div>
-                <dt className="text-foreground text-sm font-semibold">Scoped Port Forwarding</dt>
-                <dd className="text-muted-foreground mt-0.5 text-sm leading-relaxed">
-                  Forwarding is strictly scoped to the designated local TCP port (e.g.{" "}
-                  <code className="text-foreground font-mono">3000</code>). No local file system or
-                  network access is exposed.
-                </dd>
-              </div>
-              <div>
-                <dt className="text-foreground text-sm font-semibold">
-                  Key Revocation & Management
-                </dt>
-                <dd className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
-                  Register, verify fingerprints, and revoke authorized SSH keys instantly from the
-                  web console.
-                </dd>
-              </div>
-            </dl>
+        <div className="group">
+          <p className="glabel">Tunnel infrastructure</p>
+          <div className="cols4">
+            <div className="item">
+              <h3>Automatic HTTPS and TLS</h3>
+              <p>Every tunnel gets an HTTPS domain with a valid certificate, terminated for you.</p>
+            </div>
+            <div className="item">
+              <h3>WebSocket and SSE upgrades</h3>
+              <p>
+                Full HTTP/1.1 upgrades for WebSockets, Server-Sent Events and Vite or Next.js hot
+                reloading.
+              </p>
+            </div>
+            <div className="item">
+              <h3>Request inspection</h3>
+              <p>
+                Read incoming headers, payloads, methods and status codes in real time from the
+                dashboard.
+              </p>
+            </div>
+            <div className="item">
+              <h3>Persistent subdomains</h3>
+              <p>
+                Reserve a fixed name such as <code className="i">my-app.tunl.online</code>, linked
+                to your SSH key.
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* Quiet Roadmap Line */}
-        <div className="border-border/40 mt-10 flex flex-col justify-between gap-2 border-t pt-5 text-xs sm:flex-row sm:items-center">
-          <span className="text-muted-foreground font-mono text-[11px] font-medium tracking-wider uppercase">
-            In development
-          </span>
-          <span className="text-muted-foreground text-xs">
-            TCP port forwarding · Team workspaces · Custom rate limits
-          </span>
+        <div className="group">
+          <p className="glabel">Security and access control</p>
+          <div className="cols4">
+            <div className="item">
+              <h3>OpenSSH key authentication</h3>
+              <p>Sign in with an Ed25519 or RSA key. No API tokens and no static passwords.</p>
+            </div>
+            <div className="item">
+              <h3>IP allowlisting</h3>
+              <p>
+                Limit who can reach a tunnel with CIDR blocks or client IP ranges set in your
+                dashboard.
+              </p>
+            </div>
+            <div className="item">
+              <h3>Scoped forwarding</h3>
+              <p>Only the port you choose is forwarded. No local files or network are exposed.</p>
+            </div>
+            <div className="item">
+              <h3>Key revocation</h3>
+              <p>
+                Register keys, verify fingerprints and revoke access instantly from the web console.
+              </p>
+            </div>
+          </div>
         </div>
+
+        <p className="soon">
+          <b>In development:</b> custom domains (.yourdomain.com), TCP port forwarding and team
+          workspaces.
+        </p>
       </div>
     </section>
   );

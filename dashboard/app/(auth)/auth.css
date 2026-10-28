@@ -44,11 +44,15 @@
 
 .auth-brand-content {
   width: 100%;
-  max-width: 600px;
+  max-width: 640px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: 1.75rem;
+}
+
+.auth-brand-content .tunl-terminal .lgs {
+  min-width: 0;
 }
 
 .auth-brand-text {

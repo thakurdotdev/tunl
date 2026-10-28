@@ -1,56 +1,33 @@
 export function WhySsh() {
   return (
-    <section className="py-14 md:py-20">
-      <div className="mx-auto max-w-5xl px-5 sm:px-6">
-        <h2 className="text-foreground mb-3 text-xl font-bold tracking-tight sm:text-2xl">
-          Standard SSH. Nothing extra.
-        </h2>
-        <p className="text-muted-foreground mb-10 max-w-lg text-sm leading-relaxed">
-          Most tunneling utilities require installing a custom CLI agent. tunl relies on the
-          standard OpenSSH client already installed on your system.
-        </p>
-
-        <div className="grid gap-12 md:grid-cols-2 md:gap-10">
-          {/* What you don't need */}
-          <div>
-            <h3 className="text-muted-foreground mb-5 font-mono text-[11px] font-medium tracking-wider uppercase">
-              No proprietary client stack
-            </h3>
-            <ul className="flex flex-col gap-3">
-              {[
-                "No CLI binary to download",
-                "No background daemon process",
-                "No API tokens for basic tunneling",
-                "No local configuration files",
-                "No custom package manager updates",
-              ].map((item) => (
-                <li
-                  key={item}
-                  className="text-muted-foreground/80 decoration-border text-sm leading-snug line-through"
-                >
-                  {item}
-                </li>
-              ))}
+    <section className="sec">
+      <div className="wrap zero-grid">
+        <div className="head">
+          <h2>Nothing to install.</h2>
+          <p>
+            Most tunneling tools ask you to add a custom agent. tunl uses the OpenSSH client already
+            on your machine.
+          </p>
+        </div>
+        <div className="lists">
+          <div className="no">
+            <h3>What you skip</h3>
+            <ul>
+              <li>A CLI binary to download</li>
+              <li>A background daemon process</li>
+              <li>API tokens for basic tunneling</li>
+              <li>Local configuration files</li>
+              <li>Custom package manager updates</li>
             </ul>
           </div>
-
-          {/* What you already have */}
-          <div>
-            <h3 className="text-muted-foreground mb-5 font-mono text-[11px] font-medium tracking-wider uppercase">
-              Native system capabilities
-            </h3>
-            <ul className="flex flex-col gap-3">
-              {[
-                "OpenSSH preinstalled on macOS, Linux, and Windows 10/11",
-                "Ed25519 & RSA public key authentication",
-                "Encrypted SSH transport layer",
-                "Outbound client connection over TCP port 2222",
-                "Standard OpenSSH port forwarding syntax",
-              ].map((item) => (
-                <li key={item} className="text-foreground text-sm leading-snug">
-                  {item}
-                </li>
-              ))}
+          <div className="yes">
+            <h3>What you already have</h3>
+            <ul>
+              <li>OpenSSH on macOS, Linux and Windows 10 and 11</li>
+              <li>Ed25519 and RSA key authentication</li>
+              <li>An encrypted SSH transport</li>
+              <li>Standard port forwarding syntax</li>
+              <li>Outbound access to TCP port 2222, the only network requirement</li>
             </ul>
           </div>
         </div>

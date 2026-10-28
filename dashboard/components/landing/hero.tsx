@@ -1,50 +1,43 @@
-"use client";
-
-import { HeroFlow } from "@/components/hero-flow";
-import { Button } from "@/components/ui/button";
-import { ArrowRight } from "lucide-react";
+import { CopyButton } from "@/components/landing/copy-button";
+import { SSH_COMMAND } from "@/components/landing/constants";
+import { HeroTerminal } from "@/components/landing/hero-terminal";
 import Link from "next/link";
 
 export function Hero() {
   return (
-    <section className="relative pt-12 pb-16 md:pt-20 md:pb-24">
-      <div className="mx-auto max-w-5xl px-4 sm:px-6">
-        <div className="flex flex-col items-center text-center">
-          {/* Descriptor */}
-          <p className="text-muted-foreground mb-4 font-mono text-[11px] font-medium tracking-wider uppercase sm:text-xs">
-            Free OpenSSH Reverse Tunnels · tunl.online
+    <div className="hero">
+      <div className="wrap hero-grid">
+        <div>
+          <h1>Make localhost public with one ssh command.</h1>
+          <p className="lead">
+            tunl is a reverse tunnel built on the OpenSSH you already have. There is no binary to
+            download, and basic tunnels need no account.
           </p>
 
-          {/* Headline */}
-          <h1 className="text-foreground mb-10 max-w-3xl text-3xl leading-[1.12] font-bold tracking-tight sm:text-5xl md:text-6xl">
-            Expose localhost to the internet with one SSH command.
-          </h1>
-
-          {/* Reusable Animated Hero Flow & Command Box */}
-          <div className="mb-8 w-full max-w-2xl">
-            <HeroFlow />
+          <div className="cmd">
+            <span className="tg" aria-hidden="true">
+              $
+            </span>
+            <code>{SSH_COMMAND}</code>
+            <CopyButton text={SSH_COMMAND} />
           </div>
+          <p className="hero-meta">
+            Works with the OpenSSH on macOS, Linux, and Windows 10 and 11. Change 3000 to your local
+            port.
+          </p>
 
-          {/* CTAs */}
-          <div className="flex flex-col items-center gap-3">
-            <div className="flex flex-wrap items-center justify-center gap-3">
-              <Link href="/dashboard" aria-label="Start free SSH tunnel with tunl">
-                <Button size="lg" className="gap-2 px-5 text-xs font-semibold">
-                  Start Tunnel <ArrowRight className="h-3.5 w-3.5" />
-                </Button>
-              </Link>
-              <Link href="/login" aria-label="Register your SSH public key on tunl.online">
-                <Button variant="outline" size="lg" className="px-5 text-xs">
-                  Add SSH Key
-                </Button>
-              </Link>
-            </div>
-            <p className="text-muted-foreground text-xs font-medium">
-              Free to use · No credit card or account required for basic tunnels
-            </p>
+          <div className="actions">
+            <Link className="btn" href="/dashboard">
+              Open dashboard
+            </Link>
+            <Link className="btn" href="/login">
+              Add SSH key
+            </Link>
           </div>
         </div>
+
+        <HeroTerminal />
       </div>
-    </section>
+    </div>
   );
 }

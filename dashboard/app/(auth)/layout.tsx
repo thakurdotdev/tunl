@@ -23,7 +23,6 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
         <div className="auth-brand-panel">
           <div className="auth-brand-content">
-            {/* Same Animated Hero Flow as Landing Page */}
             <div className="w-full">
               <HeroFlow />
             </div>
