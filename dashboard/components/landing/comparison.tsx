@@ -1,175 +1,124 @@
-import { Check, Minus } from "lucide-react";
+type Cell = { kind: "y" | "n" | "t"; text: string };
 
-interface ComparisonFeature {
-  name: string;
-  description: string;
-  tunl: boolean | string;
-  ngrok: boolean | string;
-  cloudflare: boolean | string;
-}
-
-const COMPARISON_FEATURES: ComparisonFeature[] = [
+const ROWS: {
+  feature: string;
+  note?: string;
+  tunl: Cell;
+  ngrok: Cell;
+  cloudflare: Cell;
+}[] = [
   {
-    name: "Zero CLI Download",
-    description: "Uses standard preinstalled OpenSSH client directly from your terminal",
-    tunl: true,
-    ngrok: false,
-    cloudflare: false,
+    feature: "Runs on the OpenSSH you already have",
+    note: "No agent or binary to install",
+    tunl: { kind: "y", text: "Yes" },
+    ngrok: { kind: "y", text: "Via SSH mode*" },
+    cloudflare: { kind: "n", text: "Needs cloudflared" },
   },
   {
-    name: "No Signup Required",
-    description: "Run tunnels immediately without signing up or creating an account",
-    tunl: true,
-    ngrok: false,
-    cloudflare: false,
+    feature: "No account for a first tunnel",
+    note: "Run a tunnel before signing up",
+    tunl: { kind: "y", text: "Yes" },
+    ngrok: { kind: "n", text: "Account required" },
+    cloudflare: { kind: "t", text: "Quick Tunnels only" },
   },
   {
-    name: "Public Key Authentication",
-    description: "Secure cryptographic authentication using Ed25519 & RSA SSH keys",
-    tunl: true,
-    ngrok: false,
-    cloudflare: false,
+    feature: "SSH key authentication",
+    note: "Ed25519 and RSA public keys",
+    tunl: { kind: "y", text: "Yes" },
+    ngrok: { kind: "y", text: "In SSH mode*" },
+    cloudflare: { kind: "n", text: "Login or token" },
   },
   {
-    name: "Automatic HTTPS / TLS",
-    description: "Instant SSL certificates and TLS termination on public tunnel URLs",
-    tunl: true,
-    ngrok: true,
-    cloudflare: true,
+    feature: "Automatic HTTPS and TLS",
+    tunl: { kind: "y", text: "Yes" },
+    ngrok: { kind: "y", text: "Yes" },
+    cloudflare: { kind: "y", text: "Yes" },
   },
   {
-    name: "Persistent Custom Subdomains",
-    description: "Claim reserved static subdomains tied directly to your SSH key",
-    tunl: "Free in Preview",
-    ngrok: "Paid Tier Only",
-    cloudflare: "Requires Domain",
+    feature: "Persistent subdomain",
+    note: "A fixed name that survives restarts",
+    tunl: { kind: "t", text: "Free in preview, tied to your SSH key" },
+    ngrok: { kind: "t", text: "1 free dev domain with an account" },
+    cloudflare: { kind: "t", text: "Needs a domain on Cloudflare DNS" },
   },
   {
-    name: "Custom Domains",
-    description: "Route traffic from your own domain (e.g. api.yourbrand.com) directly to local tunnels",
-    tunl: "Free in Preview",
-    ngrok: "Paid Tier Only",
-    cloudflare: "Complex DNS Setup",
+    feature: "WebSocket and SSE upgrades",
+    tunl: { kind: "y", text: "Yes" },
+    ngrok: { kind: "y", text: "Yes" },
+    cloudflare: { kind: "y", text: "Yes" },
   },
   {
-    name: "WebSocket & SSE Protocol Upgrades",
-    description: "Full HTTP/1.1 connection upgrades for Vite, Next.js HMR, and sockets",
-    tunl: true,
-    ngrok: true,
-    cloudflare: true,
+    feature: "Request inspection in a web UI",
+    note: "Headers, payloads, status and latency",
+    tunl: { kind: "y", text: "Yes" },
+    ngrok: { kind: "y", text: "Yes" },
+    cloudflare: { kind: "t", text: "Audit logs" },
   },
   {
-    name: "Real-time Traffic Telemetry",
-    description: "Inspect HTTP headers, payloads, status codes, and latency in web UI",
-    tunl: true,
-    ngrok: true,
-    cloudflare: "Audit Logs",
+    feature: "Custom domains",
+    tunl: { kind: "t", text: "In development" },
+    ngrok: { kind: "t", text: "Paid plans" },
+    cloudflare: { kind: "y", text: "Via Cloudflare DNS" },
+  },
+  {
+    feature: "TCP forwarding",
+    tunl: { kind: "t", text: "In development" },
+    ngrok: { kind: "y", text: "Yes" },
+    cloudflare: { kind: "y", text: "Yes" },
   },
 ];
 
+function CellValue({ cell }: { cell: Cell }) {
+  return <span className={`v ${cell.kind}`}>{cell.text}</span>;
+}
+
 export function Comparison() {
   return (
-    <section id="comparison" className="border-border/40 border-t py-14 md:py-20">
-      <div className="mx-auto max-w-5xl px-5 sm:px-6">
-        <div className="mb-10 max-w-xl">
-          <span className="text-muted-foreground mb-2 block font-mono text-[11px] font-medium tracking-wider uppercase">
-            Comparison & Alternatives
-          </span>
-          <h2 className="text-foreground mb-3 text-xl font-bold tracking-tight sm:text-2xl">
-            tunl vs Traditional Tunneling Tools
-          </h2>
-          <p className="text-muted-foreground text-sm leading-relaxed">
-            Why developers choose{" "}
-            <strong className="text-foreground font-semibold">tunl.online</strong> over proprietary
-            agents like ngrok or cloudflared.
+    <section className="sec band" id="compare" aria-labelledby="compare-heading">
+      <div className="wrap">
+        <div className="head">
+          <h2 id="compare-heading">tunl next to the tools you may use now.</h2>
+          <p>
+            A side by side with ngrok and Cloudflare Tunnel, including where tunl is still catching
+            up.
           </p>
         </div>
-
-        {/* Comparison Table */}
-        <div className="border-border/60 bg-card overflow-x-auto rounded-lg border">
-          <table className="w-full text-left text-xs">
+        <div className="tw">
+          <table>
             <thead>
-              <tr className="border-border/60 bg-muted/30 border-b font-mono">
-                <th scope="col" className="text-foreground p-4 font-semibold sm:px-6 sm:py-3.5">
-                  Feature
-                </th>
-                <th
-                  scope="col"
-                  className="text-primary bg-primary/5 border-border/60 border-x p-4 font-semibold sm:px-6 sm:py-3.5"
-                >
-                  tunl (tunl.online)
-                </th>
-                <th
-                  scope="col"
-                  className="text-muted-foreground p-4 font-semibold sm:px-6 sm:py-3.5"
-                >
-                  ngrok
-                </th>
-                <th
-                  scope="col"
-                  className="text-muted-foreground p-4 font-semibold sm:px-6 sm:py-3.5"
-                >
-                  Cloudflare Tunnel
-                </th>
+              <tr>
+                <th>Feature</th>
+                <th className="me">tunl</th>
+                <th>ngrok</th>
+                <th>Cloudflare Tunnel</th>
               </tr>
             </thead>
-            <tbody className="divide-border/40 divide-y">
-              {COMPARISON_FEATURES.map((feat) => (
-                <tr key={feat.name} className="hover:bg-muted/15 transition-colors">
-                  <td className="p-4 sm:px-6">
-                    <div className="text-foreground font-semibold">{feat.name}</div>
-                    <div className="text-muted-foreground mt-0.5 text-[11px]">
-                      {feat.description}
-                    </div>
+            <tbody>
+              {ROWS.map((row) => (
+                <tr key={row.feature}>
+                  <td>
+                    {row.feature}
+                    {row.note ? <small>{row.note}</small> : null}
                   </td>
-                  <td className="bg-primary/[0.02] border-border/60 border-x p-4 sm:px-6">
-                    {typeof feat.tunl === "boolean" ? (
-                      feat.tunl ? (
-                        <span className="inline-flex items-center gap-1.5 font-medium text-emerald-400">
-                          <Check className="h-4 w-4" /> Yes
-                        </span>
-                      ) : (
-                        <Minus className="text-muted-foreground h-4 w-4" />
-                      )
-                    ) : (
-                      <span className="font-mono font-medium text-emerald-400">{feat.tunl}</span>
-                    )}
+                  <td className="me">
+                    <CellValue cell={row.tunl} />
                   </td>
-                  <td className="text-muted-foreground p-4 sm:px-6">
-                    {typeof feat.ngrok === "boolean" ? (
-                      feat.ngrok ? (
-                        <span className="text-foreground inline-flex items-center gap-1.5 font-medium">
-                          <Check className="h-4 w-4" /> Yes
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground inline-flex items-center gap-1.5">
-                          <Minus className="h-4 w-4" /> No
-                        </span>
-                      )
-                    ) : (
-                      <span className="font-mono">{feat.ngrok}</span>
-                    )}
+                  <td>
+                    <CellValue cell={row.ngrok} />
                   </td>
-                  <td className="text-muted-foreground p-4 sm:px-6">
-                    {typeof feat.cloudflare === "boolean" ? (
-                      feat.cloudflare ? (
-                        <span className="text-foreground inline-flex items-center gap-1.5 font-medium">
-                          <Check className="h-4 w-4" /> Yes
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground inline-flex items-center gap-1.5">
-                          <Minus className="h-4 w-4" /> No
-                        </span>
-                      )
-                    ) : (
-                      <span className="font-mono">{feat.cloudflare}</span>
-                    )}
+                  <td>
+                    <CellValue cell={row.cloudflare} />
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+        <p className="fn">
+          * ngrok&apos;s SSH mode needs an ngrok account and an uploaded public key, and has
+          limitations compared with the ngrok agent. Based on each project&apos;s public
+          documentation, October 2026.
+        </p>
       </div>
     </section>
   );

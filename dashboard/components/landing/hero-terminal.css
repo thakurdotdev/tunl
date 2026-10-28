@@ -1,0 +1,189 @@
+/* Shared tunl terminal demo — works on landing and auth */
+.tunl-terminal {
+  --term-mono: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --term-xs: 13px;
+  --term-sm: 15px;
+  --term-mute: #8f9b94;
+  width: 100%;
+}
+
+.tunl-terminal .tg {
+  color: #16c60c;
+}
+.tunl-terminal .ty {
+  color: #f9f1a5;
+}
+.tunl-terminal .tr {
+  color: #e74856;
+}
+.tunl-terminal .tc {
+  color: #61d6d6;
+}
+.tunl-terminal .td {
+  color: #8c8c8c;
+}
+.tunl-terminal .tx {
+  color: #f2f2f2;
+}
+.tunl-terminal .tl {
+  color: #5b8dff;
+  text-decoration: underline;
+}
+
+.tunl-terminal .term {
+  background: #0c0c0c;
+  color: #ccc;
+  border-radius: 12px;
+  border: 1px solid #2a2a2a;
+  padding: 22px;
+  font-family: var(--term-mono);
+  font-size: var(--term-xs);
+  line-height: 1.75;
+  height: 456px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  box-sizing: border-box;
+}
+
+.tunl-terminal.compact .term {
+  padding: 18px;
+}
+
+.tunl-terminal .term p {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.tunl-terminal .term hr {
+  border: 0;
+  border-top: 1px solid #4a4a4a;
+  margin: 10px 0;
+}
+
+.tunl-terminal .term .hd {
+  font-size: var(--term-sm);
+}
+
+.tunl-terminal .term .hd b {
+  font-weight: 600;
+  color: #f2f2f2;
+}
+
+.tunl-terminal .cur {
+  display: inline-block;
+  width: 0.6em;
+  height: 1.05em;
+  background: #16c60c;
+  vertical-align: text-bottom;
+  margin: 0 8px 0 4px;
+  animation: tunl-term-blink 1.1s steps(1) infinite;
+}
+
+@keyframes tunl-term-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.tunl-terminal .caret {
+  display: none;
+  margin: 0 0 0 2px;
+}
+
+.tunl-terminal.anim .term:not(.hdr) .caret {
+  display: inline-block;
+}
+
+.tunl-terminal .kv {
+  display: grid;
+  grid-template-columns: 12ch 1fr;
+  margin: 0;
+}
+
+.tunl-terminal .kv dt {
+  color: #8c8c8c;
+}
+
+.tunl-terminal .kv dd {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.tunl-terminal .pre {
+  margin-top: 14px;
+}
+
+.tunl-terminal.anim .term .pre {
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+
+.tunl-terminal.anim .term.hdr .pre {
+  opacity: 1;
+}
+
+.tunl-terminal .lgs {
+  margin-top: 16px;
+  min-width: 58ch;
+}
+
+.tunl-terminal .lg {
+  display: grid;
+  grid-template-columns: 8ch 5ch minmax(12ch, 1fr) 16ch 7ch;
+  column-gap: 1.4ch;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.tunl-terminal .lg .p {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tunl-terminal .lg .ms {
+  text-align: right;
+  color: #8c8c8c;
+}
+
+.tunl-terminal .lg.new {
+  animation: tunl-term-rowin 0.25s ease;
+}
+
+@keyframes tunl-term-rowin {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.tunl-terminal .caption {
+  margin: 16px 0 0;
+  font-size: 15px;
+  color: var(--term-mute);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+.landing .tunl-terminal .caption {
+  color: var(--mute);
+  font-size: var(--t-sm);
+}
+
+@media (max-width: 640px) {
+  .tunl-terminal .term {
+    height: auto;
+    min-height: 360px;
+    padding: 16px;
+    font-size: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tunl-terminal *,
+  .tunl-terminal *::before,
+  .tunl-terminal *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
