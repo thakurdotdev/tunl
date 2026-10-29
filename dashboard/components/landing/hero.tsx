@@ -27,10 +27,10 @@ export function Hero() {
           </p>
 
           <div className="actions">
-            <Link className="btn" href="/dashboard">
-              Open dashboard
+            <Link className="btn primary hero-primary" href="/dashboard">
+              Open dashboard <span aria-hidden="true">→</span>
             </Link>
-            <Link className="btn" href="/login">
+            <Link className="btn hero-secondary" href="/login">
               Add SSH key
             </Link>
           </div>

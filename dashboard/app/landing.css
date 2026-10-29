@@ -82,6 +82,7 @@ html.dark .landing {
 }
 
 .landing .wrap {
+  width: 100%;
   max-width: 1160px;
   margin: 0 auto;
   padding: 0 28px;
@@ -395,6 +396,52 @@ html.dark .landing .i-moon {
   margin: var(--s2) 0 var(--s3);
   color: var(--mute);
   font-size: var(--t-sm);
+}
+
+.landing .hero .actions {
+  align-items: center;
+  gap: 12px;
+  margin-top: var(--s3);
+}
+
+.landing .hero .actions .btn {
+  min-height: 46px;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-weight: 600;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.landing .hero .actions .btn:hover {
+  transform: translateY(-1px);
+}
+
+.landing .hero .actions .hero-primary {
+  gap: 10px;
+  box-shadow: 0 6px 18px rgba(47, 210, 114, 0.18);
+}
+
+.landing .hero .actions .hero-primary span {
+  font-size: 18px;
+  line-height: 0.8;
+  transition: transform 0.15s ease;
+}
+
+.landing .hero .actions .hero-primary:hover span {
+  transform: translateX(2px);
+}
+
+.landing .hero .actions .hero-secondary {
+  background: transparent;
+}
+
+.landing .hero .actions .hero-secondary:hover {
+  border-color: var(--green-ink);
+  background: var(--tint);
 }
 
 /* terminal / snip colors (shared with hero terminal demo) */
@@ -1075,6 +1122,10 @@ html.dark .landing .i-moon {
   align-items: center;
 }
 
+.landing .box > * {
+  min-width: 0;
+}
+
 .landing .box h2 {
   margin-bottom: var(--s1);
 }
@@ -1203,6 +1254,9 @@ html.dark .landing .i-moon {
     left: 0;
     right: 0;
     top: 100%;
+    max-height: calc(100dvh - 64px - env(safe-area-inset-top, 0px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
     margin: 0;
     flex-direction: column;
     gap: 0;
@@ -1294,7 +1348,142 @@ html.dark .landing .i-moon {
   }
 
   .landing .cmd {
-    padding-left: var(--s2);
+    gap: 8px;
+    padding: 8px 8px 8px 12px;
+  }
+
+  .landing .hero {
+    padding-top: 36px;
+    padding-bottom: var(--s5);
+  }
+
+  .landing .hero-grid {
+    gap: var(--s4);
+  }
+
+  .landing .hero h1 {
+    max-width: 13ch;
+    font-size: clamp(34px, 9vw, 44px);
+    line-height: 1.06;
+    letter-spacing: -0.045em;
+  }
+
+  .landing .hero .lead {
+    margin: var(--s2) 0 var(--s3);
+    font-size: 16px;
+    line-height: 1.55;
+  }
+
+  .landing .hero .cmd {
+    gap: 7px;
+    padding: 8px;
+  }
+
+  .landing .hero .cmd code {
+    font-size: 11px;
+  }
+
+  .landing .hero .copy {
+    padding: 9px 10px;
+    font-size: 12px;
+  }
+
+  .landing .hero-meta {
+    margin: 10px 0 18px;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .landing .hero .actions {
+    gap: 9px;
+  }
+
+  .landing .hero .actions .btn {
+    min-height: 44px;
+    padding: 11px 14px;
+    font-size: 13px;
+  }
+
+  .landing .copy {
+    min-width: 0;
+    padding: 9px 10px;
+  }
+
+  .landing .box {
+    padding: var(--s3) var(--s2);
+  }
+
+  .landing .box .cmd {
+    width: 100%;
+    min-width: 0;
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .landing .box .cmd code {
+    font-size: 11px;
+  }
+
+  .landing .box .copy {
+    min-width: 0;
+    padding: 9px 8px;
+    font-size: 12px;
+  }
+
+  .landing .box .actions {
+    flex-wrap: wrap;
+  }
+
+  .landing footer .legal {
+    overflow-wrap: anywhere;
+  }
+
+  .landing .hero-grid > * {
+    min-width: 0;
+  }
+
+  .landing .tw {
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tunl-terminal .term {
+    min-height: 0;
+    padding: 12px;
+    overflow-x: hidden;
+    font-size: 11px;
+  }
+
+  .tunl-terminal .term p,
+  .tunl-terminal .kv dd {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .tunl-terminal .kv {
+    grid-template-columns: 8ch minmax(0, 1fr);
+  }
+
+  .tunl-terminal .lgs {
+    min-width: 0;
+  }
+
+  .tunl-terminal .lg {
+    grid-template-columns: 4ch minmax(0, 1fr) 8ch 4ch;
+    column-gap: 0.6ch;
+    font-size: 10px;
+  }
+
+  .tunl-terminal .lg > :first-child {
+    display: none;
+  }
+
+  .tunl-terminal .lg .p {
+    min-width: 0;
+  }
+
+  .landing .foot {
+    gap: var(--s3);
   }
 }
 
