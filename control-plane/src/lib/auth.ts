@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { customSession } from "better-auth/plugins";
+import { passkey } from "@better-auth/passkey";
 import { eq } from "drizzle-orm";
 import { db } from "../db/client.js";
 import * as schema from "../db/schema.js";
@@ -28,6 +29,7 @@ export const auth = betterAuth({
       session: schema.session,
       account: schema.account,
       verification: schema.verification,
+      passkey: schema.passkey,
     },
   }),
   account: {
@@ -117,6 +119,12 @@ export const auth = betterAuth({
     },
   },
   plugins: [
+    passkey({
+      rpID: new URL(process.env.BETTER_AUTH_URL!).hostname,
+      rpName: "tunl",
+      origin: process.env.DASHBOARD_URL!,
+      authenticatorSelection: { residentKey: "required", userVerification: "required" },
+    }),
     customSession(async ({ user, session }) => {
       let userPlan = { name: "free", maxReservedSubdomains: 1 };
       const rawUser = user as Record<string, any>;

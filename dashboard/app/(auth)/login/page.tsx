@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth-client";
 import { useAuth } from "@/lib/auth-context";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Eye, EyeOff, Loader2, Mail } from "lucide-react";
+import { Eye, EyeOff, Loader2, Mail, Fingerprint } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -236,6 +236,20 @@ export default function LoginPage() {
           )}
         </Button>
       </div>
+
+      <Button type="button" variant="outline" disabled={isSubmitting || !!isSocialLoading} onClick={async () => {
+        setIsSubmitting(true);
+        try {
+          const result = await authClient.signIn.passkey();
+          if (result.error) throw new Error(result.error.message || "Passkey sign-in failed");
+          saveLastUsed("passkey");
+          router.push("/dashboard");
+        } catch (err: any) {
+          toast.error(err?.message || "Passkey sign-in failed. Try another sign-in method.");
+        } finally { setIsSubmitting(false); }
+      }} className="h-9 w-full gap-2 text-xs font-semibold">
+        <Fingerprint className="h-4 w-4" /> Sign in with a passkey
+      </Button>
 
       <div className="relative flex items-center justify-center">
         <div className="border-border/60 w-full border-t" />

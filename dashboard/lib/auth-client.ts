@@ -1,4 +1,5 @@
 import { createAuthClient } from "better-auth/react";
+import { passkeyClient } from "@better-auth/passkey/client";
 
 const getAuthBaseUrl = () => {
   const url = process.env.NEXT_PUBLIC_CONTROL_PLANE_URL;
@@ -11,6 +12,7 @@ const getAuthBaseUrl = () => {
 
 export const authClient = createAuthClient({
   baseURL: getAuthBaseUrl(),
+  plugins: [passkeyClient()],
 });
 
 export const { signIn, signUp, signOut, useSession, getSession } = authClient;
