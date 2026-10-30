@@ -18,9 +18,10 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@better-auth/passkey": "^1.7.14",
     "@node-rs/argon2": "^2.0.2",
     "@types/geoip-lite": "^1.4.4",
-    "better-auth": "^1.6.25",
+    "better-auth": "^1.7.14",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",

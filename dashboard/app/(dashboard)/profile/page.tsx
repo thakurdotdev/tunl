@@ -11,6 +11,7 @@ import { useAuth } from "@/lib/auth-context";
 import { ProfileInfoCard } from "@/components/profile/profile-info-card";
 import { TwoFactorCard } from "@/components/profile/two-factor-card";
 import { IpWhitelistCard } from "@/components/profile/ip-whitelist-card";
+import { PasskeysCard } from "@/components/profile/passkeys-card";
 import { AlertCircle, Loader2 } from "lucide-react";
 
 export default function ProfilePage() {
@@ -73,6 +74,8 @@ export default function ProfilePage() {
         isVerifyPending={verify2FA.isPending}
         isDisablePending={disable2FA.isPending}
       />
+
+      <PasskeysCard />
 
       {/* IP Whitelist Security Card */}
       <IpWhitelistCard
