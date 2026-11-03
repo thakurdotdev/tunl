@@ -30,12 +30,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 24
-          cache: pnpm
+          bun-version: 1.4.4
 
       - uses: actions/setup-go@v5
         with:
@@ -46,21 +43,21 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ github.workspace }}/dashboard/.next/cache
-          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/pnpm-lock.yaml') }}-${{ hashFiles('dashboard/**/*.[jt]s*', 'dashboard/**/*.[jt]sx*') }}
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/bun.lock') }}-${{ hashFiles('dashboard/**/*.[jt]s*', 'dashboard/**/*.[jt]sx*') }}
           restore-keys: |
-            ${{ runner.os }}-nextjs-${{ hashFiles('**/pnpm-lock.yaml') }}-
+            ${{ runner.os }}-nextjs-${{ hashFiles('**/bun.lock') }}-
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: bun install --frozen-lockfile
 
       - name: Run checks & build in parallel
         run: |
-          pnpm run format:check &
-          pnpm run lint &
-          pnpm run test &
-          pnpm run go:format:check &
-          pnpm run go:check &
-          pnpm run build &
+          bun run format:check &
+          bun run lint &
+          bun run test &
+          bun run go:format:check &
+          bun run go:check &
+          bun run build &
           wait
 
   # ─── CD: deploy to server on push to main ────────────────────────────────────
@@ -69,7 +66,7 @@ jobs:
   #   runs-on: ubuntu-latest
   #   needs: check
   #   if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-
+  #
   #   steps:
   #     - name: Deploy to server
   #       uses: appleboy/ssh-action@v1
@@ -80,27 +77,26 @@ jobs:
   #         port: 22
   #         script: |
   #           set -euo pipefail
-  #           export PNPM_HOME="$HOME/.local/share/pnpm"
-  #           export PATH="$PNPM_HOME:$HOME/.nvm/versions/node/$(ls $HOME/.nvm/versions/node 2>/dev/null | tail -n 1 2>/dev/null)/bin:/usr/local/go/bin:$PATH"
-
+  #           export PATH="$HOME/.bun/bin:/usr/local/go/bin:$PATH"
+  #
   #           cd /opt/tunl
-
+  #
   #           echo "── pulling latest code ──"
   #           git pull origin main
-
-  #           echo "── installing node dependencies ──"
-  #           pnpm install --frozen-lockfile
-
+  #
+  #           echo "── installing dependencies ──"
+  #           bun install --frozen-lockfile
+  #
   #           echo "── building services in parallel ──"
-  #           pnpm run build
-
+  #           bun run build
+  #
   #           echo "── running database migrations ──"
-  #           pnpm run db:migrate
-
+  #           bun run db:migrate
+  #
   #           echo "── running seeder ──"
-  #           pnpm run db:seed
-
+  #           bun run db:seed
+  #
   #           echo "── reloading pm2 ──"
   #           pm2 reload ecosystem.config.js --update-env
-
+  #
   #           echo "── deploy complete ──"

@@ -49,9 +49,7 @@ export function HowItWorks() {
               <span className="num">2</span>SSH transport
             </h3>
             <code>tunl.online:2222</code>
-            <p>
-              A standard OpenSSH reverse forward, encrypted end to end with Ed25519 key pairs.
-            </p>
+            <p>A standard OpenSSH reverse forward, encrypted end to end with Ed25519 key pairs.</p>
           </div>
           <div className="link b" aria-hidden="true">
             <span className="lab">HTTPS</span>

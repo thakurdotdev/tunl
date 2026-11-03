@@ -511,7 +511,10 @@ export default function AdminOverviewPage() {
                     Loading conversions...
                   </p>
                 ) : engagement.isError ? (
-                  <p role="alert" className="text-destructive flex flex-1 items-center justify-center">
+                  <p
+                    role="alert"
+                    className="text-destructive flex flex-1 items-center justify-center"
+                  >
                     Unable to load conversions.
                   </p>
                 ) : engagement.data.recentConversions.length === 0 ? (

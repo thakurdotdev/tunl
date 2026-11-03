@@ -459,9 +459,7 @@ export function internalRouter(db: Database, redis: RedisClient, config: Config)
 
         await db.delete(activeTunnelSessions);
 
-        const tunnelIds = activeSessions
-          .map((s) => s.tunnelId)
-          .filter((id): id is string => !!id);
+        const tunnelIds = activeSessions.map((s) => s.tunnelId).filter((id): id is string => !!id);
 
         if (tunnelIds.length > 0) {
           await db

@@ -423,7 +423,7 @@ export function UserManagementTable({
                         ];
 
                         return domains.length > 0 ? (
-                          <div className="flex min-w-0 max-w-full flex-nowrap items-center gap-1.5 overflow-hidden">
+                          <div className="flex max-w-full min-w-0 flex-nowrap items-center gap-1.5 overflow-hidden">
                             {domains.slice(0, 2).map((entry) => (
                               <span
                                 key={`${entry.kind}-${entry.domain}`}
@@ -432,7 +432,7 @@ export function UserManagementTable({
                                     ? `${entry.domain} (${entry.status})`
                                     : entry.domain
                                 }
-                                className={`inline-flex min-w-0 max-w-[45%] shrink items-center gap-1 overflow-hidden rounded-md border px-2 py-0.5 font-mono text-[11px] font-medium ${
+                                className={`inline-flex max-w-[45%] min-w-0 shrink items-center gap-1 overflow-hidden rounded-md border px-2 py-0.5 font-mono text-[11px] font-medium ${
                                   entry.kind === "subdomain"
                                     ? "border-border/60 bg-secondary/60 text-foreground"
                                     : entry.status === "verified"

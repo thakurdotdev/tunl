@@ -1,25 +1,27 @@
 {
   "name": "tunl",
   "private": true,
-  "packageManager": "pnpm@11.15.0+sha512.266f8957a30d2be6e9468e5e66bcdedd35a794175f71b067ba8504d686cce1d0c0f429b33c323c3c569ad4891e667574a49ff71d1b89a22cc66f13c65818c578",
+  "workspaces": [
+    "control-plane",
+    "dashboard"
+  ],
   "scripts": {
-    "dev": "concurrently --kill-others \"pnpm --filter control-plane dev\" \"pnpm --filter dashboard dev\" \"cd tunnel-server && go run ./cmd/tunneld\"",
-    "build": "pnpm --filter control-plane build & pnpm --filter dashboard build & (cd tunnel-server && go build -o bin/tunneld ./cmd/tunneld) & wait",
-    "db:migrate": "pnpm --filter control-plane db:migrate",
-    "db:seed": "pnpm --filter control-plane db:seed",
-    "lint": "oxlint control-plane dashboard",
-    "lint:fix": "oxlint --fix control-plane dashboard",
+    "dev": "concurrently --kill-others \"bun --filter control-plane dev\" \"bun --filter dashboard dev\" \"cd tunnel-server && go run ./cmd/tunneld\"",
+    "build": "bun --filter control-plane build & bun --filter dashboard build & (cd tunnel-server && go build -o bin/tunneld ./cmd/tunneld) & wait",
+    "db:migrate": "bun --filter control-plane db:migrate",
+    "db:seed": "bun --filter control-plane db:seed",
+    "lint": "bun lint",
+    "lint:fix": "bun lint --fix",
     "go:format": "find tunnel-server -type f -name '*.go' -print0 | xargs -0 gofmt -w",
     "go:format:check": "test -z \"$(find tunnel-server -type f -name '*.go' -print0 | xargs -0 gofmt -l)\"",
     "go:check": "cd tunnel-server && go vet ./... && go test -race ./...",
-    "format": "oxfmt --write control-plane dashboard && pnpm run go:format",
-    "format:check": "oxfmt --check control-plane dashboard && pnpm run go:format:check",
-    "test": "pnpm --filter control-plane test",
-    "check": "pnpm run format:check && pnpm run lint && pnpm run test && pnpm run go:check"
+    "format": "bun fmt && bun run go:format",
+    "format:check": "bun fmt --check && bun run go:format:check",
+    "test": "bun --filter control-plane test",
+    "check": "bun run format:check && bun run lint && bun run test && bun run go:check"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2",
-    "oxfmt": "^0.59.0",
-    "oxlint": "^1.74.0"
-  }
+    "concurrently": "^8.2.2"
+  },
+  "packageManager": "bun@1.4.4"
 }

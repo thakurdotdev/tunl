@@ -60,7 +60,12 @@ function validateDomainName(value: string): string | null {
   const domain = value.trim().toLowerCase().replace(/\.+$/, "");
   if (!domain) return "Domain is required";
   if (domain.length > 253) return "Domain must be at most 253 characters";
-  if (domain.includes(" ") || domain.includes("/") || domain.includes(":") || domain.includes("..")) {
+  if (
+    domain.includes(" ") ||
+    domain.includes("/") ||
+    domain.includes(":") ||
+    domain.includes("..")
+  ) {
     return "Enter a valid hostname (e.g. app.example.com)";
   }
   if (/^\d{1,3}(\.\d{1,3}){3}$/.test(domain)) return "Enter a hostname, not an IP address";
@@ -113,7 +118,7 @@ function CopyField({
 
   const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigator.clipboard.writeText(value).catch(() => { });
+    navigator.clipboard.writeText(value).catch(() => {});
     setCopied(true);
     toast.success(`Copied ${label} to clipboard`);
     setTimeout(() => setCopied(false), 1500);
@@ -136,8 +141,9 @@ function CopyField({
       <span className="flex min-w-0 items-center gap-1.5">
         {prefix && <span className="text-muted-foreground shrink-0">{prefix}</span>}
         <span
-          className={`truncate font-mono ${subtle ? "text-[11px]" : "text-[13px] font-medium"} ${subtle ? "" : valueClassName
-            }`}
+          className={`truncate font-mono ${subtle ? "text-[11px]" : "text-[13px] font-medium"} ${
+            subtle ? "" : valueClassName
+          }`}
         >
           {value}
         </span>
@@ -468,9 +474,9 @@ export default function CustomDomainsCard() {
               variant="outline"
               size="sm"
               onClick={() => setShowIntroDialog(true)}
-              className="h-8 gap-1.5 text-xs font-medium text-foreground hover:bg-muted/60"
+              className="text-foreground hover:bg-muted/60 h-8 gap-1.5 text-xs font-medium"
             >
-              <Sparkles className="h-3.5 w-3.5 text-primary" />
+              <Sparkles className="text-primary h-3.5 w-3.5" />
               <span>How it works</span>
             </Button>
           </div>
@@ -603,7 +609,7 @@ export default function CustomDomainsCard() {
               onClick={() => setShowIntroDialog(true)}
               className="gap-1.5 text-xs font-medium"
             >
-              <Sparkles className="h-3.5 w-3.5 text-primary" />
+              <Sparkles className="text-primary h-3.5 w-3.5" />
               <span>How custom domains work</span>
             </Button>
           </div>
@@ -658,8 +664,9 @@ export default function CustomDomainsCard() {
                         </span>
                         <span className="inline-flex items-center gap-1.5">
                           <span
-                            className={`h-1.5 w-1.5 rounded-full ${tunnelOnline ? "bg-emerald-400" : "bg-muted-foreground/40"
-                              }`}
+                            className={`h-1.5 w-1.5 rounded-full ${
+                              tunnelOnline ? "bg-emerald-400" : "bg-muted-foreground/40"
+                            }`}
                           />
                           {tunnelOnline ? "Tunnel online" : "Tunnel offline"}
                         </span>

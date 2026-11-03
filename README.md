@@ -100,12 +100,12 @@ Serve a reserved tunnel on your own domain (`app.example.com`):
 2. In the dashboard, open **Custom domains**, enter your domain, and pick the target tunnel.
 3. Create two DNS records at your registrar (in your domain's zone, e.g. `example.com`):
 
-   | Type    | Name                      | Value               |
-   | ------- | ------------------------- | ------------------- |
-   | `CNAME` | `app`                     | `cname.tunl.online` |
-   | `TXT`   | `_tunl-challenge.app`     | your one-time token |
+   | Type    | Name                  | Value               |
+   | ------- | --------------------- | ------------------- |
+   | `CNAME` | `app`                 | `cname.tunl.online` |
+   | `TXT`   | `_tunl-challenge.app` | your one-time token |
 
-4. Click **Verify DNS**. A matching `CNAME` *or* `TXT` record proves ownership; only then does the edge route the domain.
+4. Click **Verify DNS**. A matching `CNAME` _or_ `TXT` record proves ownership; only then does the edge route the domain.
 5. For TLS, proxy the `CNAME` through **Cloudflare** (orange cloud) or Cloudflare for SaaS — Cloudflare terminates HTTPS and forwards to the tunl origin, which resolves the `Host` header to your tunnel.
 
 Custom domains reuse the tunnel's password protection, CIDR allowlist, request inspector, and analytics. Plan limits are controlled by `plans.max_custom_domains` (set `0` to disable).
@@ -147,13 +147,13 @@ Custom domains reuse the tunnel's password protection, CIDR allowlist, request i
 
 ### Service Ports
 
-| Service | Port | Description |
-| :--- | :--- | :--- |
-| `tunnel-server` (SSH) | `2222` | Inbound SSH reverse tunnels |
-| `tunnel-server` (HTTP) | `8080` | Inbound HTTP traffic routed to active tunnels |
-| `tunnel-server` (Health) | `9090` | Daemon health check endpoint (`/healthz`) |
-| `control-plane` | `3001` | Core REST API, authentication, and session state |
-| `dashboard` | `3000` | Web UI, key management, and traffic inspector |
+| Service                  | Port   | Description                                      |
+| :----------------------- | :----- | :----------------------------------------------- |
+| `tunnel-server` (SSH)    | `2222` | Inbound SSH reverse tunnels                      |
+| `tunnel-server` (HTTP)   | `8080` | Inbound HTTP traffic routed to active tunnels    |
+| `tunnel-server` (Health) | `9090` | Daemon health check endpoint (`/healthz`)        |
+| `control-plane`          | `3001` | Core REST API, authentication, and session state |
+| `dashboard`              | `3000` | Web UI, key management, and traffic inspector    |
 
 ---
 
@@ -161,7 +161,7 @@ Custom domains reuse the tunnel's password protection, CIDR allowlist, request i
 
 ### Prerequisites
 
-- **Node.js** `20+` and **pnpm** `9+`
+- **Bun** `1.4+` (or **Node.js** `20+`)
 - **Go** `1.22+`
 - **PostgreSQL** `14+`
 - **Redis** `7+`
@@ -172,7 +172,7 @@ Custom domains reuse the tunnel's password protection, CIDR allowlist, request i
 ```bash
 git clone https://github.com/thakurdotdev/tunl.git
 cd tunl
-pnpm install
+bun install
 ```
 
 ### 2. Environment Configuration
@@ -187,6 +187,7 @@ cp tunnel-server/.env.example tunnel-server/.env
 Ensure the databases and shared secrets are set:
 
 **`control-plane/.env`**:
+
 ```env
 DATABASE_URL=postgres://postgres:postgres@localhost:5432/tunnel_saas
 REDIS_URL=redis://localhost:6379/0
@@ -199,6 +200,7 @@ BETTER_AUTH_URL=http://localhost:3001
 ```
 
 **`tunnel-server/.env`**:
+
 ```env
 BASE_DOMAIN=localhost
 TUNNEL_URL_SCHEME=http
@@ -213,6 +215,7 @@ LOG_LEVEL=info
 ```
 
 **`dashboard/.env`**:
+
 ```env
 NEXT_PUBLIC_CONTROL_PLANE_URL=http://localhost:3001
 ```
@@ -222,10 +225,10 @@ NEXT_PUBLIC_CONTROL_PLANE_URL=http://localhost:3001
 Initialize the PostgreSQL schema:
 
 ```bash
-pnpm db:migrate
+bun db:migrate
 
 # Optional: populate seed data
-pnpm db:seed
+bun db:seed
 ```
 
 ### 4. Run Development Stack
@@ -233,22 +236,25 @@ pnpm db:seed
 Start `control-plane`, `dashboard`, and `tunnel-server` in parallel:
 
 ```bash
-pnpm dev
+bun dev
 ```
 
 ### 5. Verify Local Tunnel
 
 1. Start a dummy HTTP server:
+
    ```bash
    python3 -m http.server 5000
    ```
 
 2. Establish an SSH tunnel against the local daemon using `-p 2222`:
+
    ```bash
    ssh -p 2222 -R 80:localhost:5000 localhost
    ```
 
 3. The terminal outputs your assigned local subdomain (e.g. `sunny-lake`):
+
    ```text
      >_ tunl █  •  ● Online
      ──────────────────────────────────────────────────────────
@@ -260,6 +266,7 @@ pnpm dev
    ```
 
 4. Send a request to the tunnel proxy:
+
    ```bash
    curl -H "Host: sunny-lake.localhost" http://localhost:8080
    ```
@@ -273,18 +280,18 @@ pnpm dev
 Run the workspace validation suite:
 
 ```bash
-# Full check: oxfmt check + oxlint + Vitest + Go race tests
-pnpm run check
+# Full check: bun fmt check + bun lint + Vitest + Go race tests
+bun run check
 
 # Go unit tests & race detector
 cd tunnel-server && go test -race ./...
 
 # Control plane unit tests
-pnpm --filter control-plane test
+bun --filter control-plane test
 
 # TypeScript type checks
-pnpm --filter control-plane exec tsc --noEmit
-pnpm --filter dashboard exec tsc --noEmit
+bun --filter control-plane exec tsc --noEmit
+bun --filter dashboard exec tsc --noEmit
 ```
 
 ---
@@ -297,7 +304,7 @@ Production process orchestration is configured via [ecosystem.config.js](file://
 
 ```bash
 # Build production assets
-pnpm build
+bun build
 
 # Start services under PM2
 pm2 start ecosystem.config.js
@@ -322,17 +329,17 @@ In production, place Nginx in front of the HTTP proxy and dashboard. See [shared
 
 ## Comparison
 
-| Feature | tunl | ngrok | Cloudflare Tunnel | localtunnel |
-| :--- | :---: | :---: | :---: | :---: |
-| **Client Requirement** | Native OpenSSH (`ssh -p 2222`) | Proprietary CLI | `cloudflared` | Node CLI |
-| **Anonymous / Ephemeral** | Supported | Account required | Account required | Supported |
-| **License** | MIT (100% Open Source) | Proprietary core | Proprietary edge | MIT |
-| **Self-Hostable** | Yes | No | Enterprise only | Abandoned |
-| **Request Inspector** | Built-in SSE + cURL | Web interface | Dashboard only | No |
-| **Subdomain Reservation** | SSH Key fingerprint | Paid plans | Yes | Unreliable |
-| **CIDR IP Allowlist** | Built-in | Paid plans | Cloudflare Access | No |
-| **Tunnel Passwords** | Built-in | Paid plans | Access policies | No |
-| **WebSocket / HMR** | Native | Supported | Supported | Partial |
+| Feature                   |              tunl              |      ngrok       | Cloudflare Tunnel | localtunnel |
+| :------------------------ | :----------------------------: | :--------------: | :---------------: | :---------: |
+| **Client Requirement**    | Native OpenSSH (`ssh -p 2222`) | Proprietary CLI  |   `cloudflared`   |  Node CLI   |
+| **Anonymous / Ephemeral** |           Supported            | Account required | Account required  |  Supported  |
+| **License**               |     MIT (100% Open Source)     | Proprietary core | Proprietary edge  |     MIT     |
+| **Self-Hostable**         |              Yes               |        No        |  Enterprise only  |  Abandoned  |
+| **Request Inspector**     |      Built-in SSE + cURL       |  Web interface   |  Dashboard only   |     No      |
+| **Subdomain Reservation** |      SSH Key fingerprint       |    Paid plans    |        Yes        | Unreliable  |
+| **CIDR IP Allowlist**     |            Built-in            |    Paid plans    | Cloudflare Access |     No      |
+| **Tunnel Passwords**      |            Built-in            |    Paid plans    |  Access policies  |     No      |
+| **WebSocket / HMR**       |             Native             |    Supported     |     Supported     |   Partial   |
 
 ---
 

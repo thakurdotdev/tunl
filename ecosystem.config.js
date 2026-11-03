@@ -13,7 +13,7 @@ module.exports = {
     {
       name: "tunl-dashboard",
       cwd: "./dashboard",
-      script: "pnpm",
+      script: "bun",
       args: "run start",
       env: {
         NODE_ENV: "production",

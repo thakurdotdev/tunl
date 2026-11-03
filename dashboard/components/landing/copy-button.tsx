@@ -13,7 +13,9 @@ export function CopyButton({ text }: { text: string }) {
 
   const done = (ok: boolean) => {
     setLabel(ok ? "Copied" : "Select and copy");
-    announce(ok ? "Command copied to clipboard" : "Copy failed. Select the command and copy it manually.");
+    announce(
+      ok ? "Command copied to clipboard" : "Copy failed. Select the command and copy it manually.",
+    );
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => setLabel("Copy"), 1800);
   };
