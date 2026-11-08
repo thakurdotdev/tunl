@@ -69,7 +69,7 @@ export function PasskeysCard() {
     }
   };
   return (
-    <section className="border-border/60 bg-card overflow-hidden rounded-lg border font-sans">
+    <section className="surface-card bg-card overflow-hidden rounded-xl border font-sans">
       <header className="border-border/60 bg-muted/40 flex items-center gap-2 border-b px-4 py-3 text-xs font-semibold">
         <Fingerprint className="h-4 w-4 text-emerald-400" />
         Passkeys

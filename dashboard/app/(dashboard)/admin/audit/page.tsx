@@ -169,7 +169,7 @@ export default function AdminAuditPage() {
       </div>
 
       {/* Main Audit Trail Container */}
-      <div className="border-border/60 bg-card flex flex-col overflow-hidden rounded-xl border shadow-2xs">
+      <div className="surface-card bg-card flex flex-col overflow-hidden rounded-xl border">
         {/* Controls: Search, Filter Tabs & Page Size */}
         <div className="border-border/60 bg-muted/20 flex flex-col gap-3 border-b p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="relative flex-1 sm:max-w-md">

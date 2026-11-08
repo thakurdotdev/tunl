@@ -72,7 +72,7 @@ export function TwoFactorCard({
 
   return (
     <>
-      <div className="border-border/60 bg-card flex flex-col overflow-hidden rounded-lg border font-sans shadow-2xs">
+      <div className="surface-card bg-card flex flex-col overflow-hidden rounded-xl border font-sans">
         <div className="border-border/60 bg-muted/40 flex items-center justify-between border-b px-4 py-2.5 text-xs">
           <div className="text-foreground flex items-center gap-2 font-medium">
             <KeyRound className="h-4 w-4 text-emerald-400" />
@@ -129,7 +129,7 @@ export function TwoFactorCard({
         {/* 2FA Setup Modal */}
         {setupData && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 font-sans backdrop-blur-xs">
-            <div className="bg-card border-border/60 w-full max-w-md rounded-lg border p-6 shadow-2xl">
+            <div className="bg-card surface-card w-full max-w-md rounded-xl border p-6 shadow-2xl">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold">Setup Two-Factor Authentication</h3>
                 <button

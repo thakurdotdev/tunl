@@ -49,8 +49,8 @@ export default function ProfilePage() {
   return (
     <div className="flex flex-col gap-8 font-sans">
       {/* Header Bar */}
-      <div className="border-border/60 flex flex-col gap-1 border-b pb-5">
-        <h1 className="text-foreground text-xl font-bold tracking-tight">Account & Security</h1>
+      <div className="flex flex-col gap-1.5 border-b border-[var(--hairline)] pb-5">
+        <h1 className="page-title">Account & Security</h1>
         <p className="text-muted-foreground text-xs">
           Manage profile details, 2FA authentication, and IP whitelisting rules.
         </p>

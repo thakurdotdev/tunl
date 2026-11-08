@@ -41,10 +41,7 @@ export default function AdminPlansPage() {
       ) : plansList?.length ? (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {plansList.map((plan) => (
-            <Card
-              key={plan.id}
-              className="hover:border-primary/30 gap-0 shadow-none transition-colors"
-            >
+            <Card key={plan.id} className="hover:border-primary/30 gap-0 transition-colors">
               <CardHeader className="border-border/60 border-b pb-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
@@ -87,7 +84,7 @@ export default function AdminPlansPage() {
           ))}
         </div>
       ) : (
-        <Card className="border-dashed shadow-none">
+        <Card className="border-dashed">
           <CardContent className="flex flex-col items-center py-14 text-center">
             <Layers className="text-muted-foreground/50 mb-3 h-8 w-8" />
             <h3 className="font-medium">No plan tiers yet</h3>

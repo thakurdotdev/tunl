@@ -147,12 +147,12 @@ export default function SshKeysPage() {
 
   return (
     <div className="space-y-6 font-sans">
-      <div className="border-border/60 border-b pb-5">
-        <h1 className="text-foreground text-2xl font-semibold tracking-tight">SSH public keys</h1>
+      <div className="border-b border-[var(--hairline)] pb-5">
+        <h1 className="page-title">SSH public keys</h1>
       </div>
 
       <div className="grid items-stretch gap-5 lg:grid-cols-2">
-        <Card className="flex h-full flex-col gap-0 p-0 shadow-none">
+        <Card className="flex h-full flex-col gap-0 p-0">
           <CardHeader className="border-border/60 flex min-h-[74px] flex-row flex-wrap items-center justify-between gap-3 border-b px-5 py-4">
             <div className="min-w-0">
               <CardTitle className="text-sm">Generate or copy a key</CardTitle>
@@ -221,7 +221,7 @@ export default function SshKeysPage() {
           </CardContent>
         </Card>
 
-        <Card className="flex h-full flex-col gap-0 p-0 shadow-none">
+        <Card className="flex h-full flex-col gap-0 p-0">
           <CardHeader className="border-border/60 flex min-h-[74px] flex-row items-center border-b px-5 py-4">
             <CardTitle className="text-sm">Add a public key</CardTitle>
           </CardHeader>
@@ -262,7 +262,7 @@ export default function SshKeysPage() {
         </Card>
       </div>
 
-      <Card className="gap-0 p-0 shadow-none">
+      <Card className="gap-0 p-0">
         <div className="border-border/60 flex flex-col justify-between gap-2 border-b px-5 py-4 sm:flex-row sm:items-center">
           <div>
             <h2 className="text-sm font-semibold">Authorized devices</h2>
@@ -359,10 +359,7 @@ export default function SshKeysPage() {
             <AlertDialogCancel onClick={() => setDeleteKeyId(null)} className="text-xs">
               Cancel
             </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteConfirm}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 text-xs font-semibold"
-            >
+            <AlertDialogAction onClick={handleDeleteConfirm} variant="danger" className="text-xs">
               Revoke Key
             </AlertDialogAction>
           </AlertDialogFooter>

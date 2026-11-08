@@ -46,7 +46,7 @@ function MetricCard({
   highlight?: boolean;
 }) {
   return (
-    <Card className="min-w-0 gap-0 p-3 shadow-none sm:p-4">
+    <Card className="min-w-0 gap-0 p-3 sm:p-4">
       <CardContent className="min-w-0 p-0">
         <p className="text-muted-foreground min-h-8 text-xs leading-4 font-medium sm:text-sm sm:leading-5">
           {label}

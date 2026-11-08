@@ -238,11 +238,11 @@ export default function InspectPage() {
           {/* Right Inspector Panel Skeleton */}
           <div className="hidden flex-1 flex-col gap-4 p-6 sm:flex">
             <div className="bg-muted h-6 w-56 animate-pulse rounded" />
-            <div className="border-border/60 bg-card space-y-3 rounded-lg border p-5">
+            <div className="surface-card bg-card space-y-3 rounded-xl border p-5">
               <div className="bg-muted h-4 w-32 animate-pulse rounded" />
               <div className="bg-muted/40 h-20 w-full animate-pulse rounded-md" />
             </div>
-            <div className="border-border/60 bg-card space-y-3 rounded-lg border p-5">
+            <div className="surface-card bg-card space-y-3 rounded-xl border p-5">
               <div className="bg-muted h-4 w-40 animate-pulse rounded" />
               <div className="bg-muted/40 h-32 w-full animate-pulse rounded-md" />
             </div>
@@ -255,7 +255,7 @@ export default function InspectPage() {
   // General Error State
   if (requestsError && !isForbidden) {
     return (
-      <div className="border-border/60 bg-card mx-auto my-12 max-w-md rounded-xl border p-6 text-center font-sans">
+      <div className="surface-card bg-card mx-auto my-12 max-w-md rounded-xl border p-6 text-center font-sans">
         <AlertCircle className="text-destructive mx-auto mb-2.5 h-8 w-8" />
         <h3 className="text-foreground text-sm font-bold">Failed to connect to inspector</h3>
         <p className="text-muted-foreground mt-1 text-xs">

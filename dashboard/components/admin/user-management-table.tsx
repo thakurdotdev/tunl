@@ -152,7 +152,7 @@ export function UserManagementTable({
 
   return (
     <>
-      <Card className="gap-0 rounded-xl p-0 font-sans shadow-none">
+      <Card className="gap-0 rounded-xl p-0 font-sans">
         {/* Header Section */}
         <div className="border-border/60 bg-muted/20 flex flex-col gap-3 border-b p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
