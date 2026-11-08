@@ -62,7 +62,7 @@ export default function CreatePlanPage() {
         </div>
       </div>
 
-      <Card className="gap-0 shadow-none">
+      <Card className="gap-0">
         <CardHeader className="border-border/60 border-b">
           <CardTitle>Plan details</CardTitle>
         </CardHeader>

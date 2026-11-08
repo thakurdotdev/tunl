@@ -78,7 +78,7 @@ export default function SubdomainAnalyticsPage() {
     return (
       <div className="flex flex-col gap-6 font-sans">
         {/* Header Skeleton */}
-        <div className="border-border/60 flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 border-b border-[var(--hairline)] pb-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div className="bg-muted h-8 w-8 animate-pulse rounded-md" />
             <div className="space-y-1.5">
@@ -95,10 +95,7 @@ export default function SubdomainAnalyticsPage() {
         {/* 4 KPI Cards Skeleton */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div
-              key={`kpi-skel-${i}`}
-              className="border-border/60 bg-card rounded-lg border p-4 shadow-2xs"
-            >
+            <div key={`kpi-skel-${i}`} className="surface-card bg-card rounded-xl border p-4">
               <div className="flex items-center justify-between">
                 <div className="bg-muted h-3.5 w-24 animate-pulse rounded" />
                 <div className="bg-muted h-7 w-7 animate-pulse rounded-md" />
@@ -110,7 +107,7 @@ export default function SubdomainAnalyticsPage() {
         </div>
 
         {/* Chart Skeleton */}
-        <div className="border-border/60 bg-card rounded-lg border p-5 shadow-2xs">
+        <div className="surface-card bg-card rounded-xl border p-5">
           <div className="bg-muted h-4 w-40 animate-pulse rounded" />
           <div className="bg-muted/40 mt-6 h-48 w-full animate-pulse rounded-md" />
         </div>
@@ -121,7 +118,7 @@ export default function SubdomainAnalyticsPage() {
   // General Error State
   if (analyticsError) {
     return (
-      <div className="border-border/60 bg-card mx-auto my-12 max-w-md rounded-xl border p-6 text-center font-sans">
+      <div className="surface-card bg-card mx-auto my-12 max-w-md rounded-xl border p-6 text-center font-sans">
         <AlertCircle className="text-destructive mx-auto mb-2.5 h-8 w-8" />
         <h3 className="text-foreground text-sm font-bold">Failed to load tunnel analytics</h3>
         <p className="text-muted-foreground mt-1 text-xs">
@@ -154,7 +151,7 @@ export default function SubdomainAnalyticsPage() {
   return (
     <div className="flex flex-col gap-6 font-sans">
       {/* Top Header */}
-      <div className="border-border/60 flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 border-b border-[var(--hairline)] pb-5 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-3">
           <Link href={`/inspect/${subdomain}`}>
             <Button variant="ghost" size="icon-xs" className="h-8 w-8">
@@ -164,7 +161,7 @@ export default function SubdomainAnalyticsPage() {
           <div className="flex flex-col gap-0.5">
             <div className="flex items-center gap-2 font-mono">
               <span className="text-primary text-xs font-semibold">&gt;_</span>
-              <h1 className="text-foreground text-lg font-bold tracking-tight">
+              <h1 className="text-foreground text-lg font-semibold tracking-[-0.02em]">
                 {subdomain}.tunl.online
               </h1>
               <span className="border-primary/20 bg-primary/10 text-primary rounded-md border px-2 py-0.5 text-[10px] font-semibold">
@@ -213,7 +210,7 @@ export default function SubdomainAnalyticsPage() {
       {/* Summary KPI Cards Grid */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* Total Requests */}
-        <div className="border-border/60 bg-card flex flex-col justify-between rounded-lg border p-4 shadow-2xs">
+        <div className="surface-card bg-card flex flex-col justify-between rounded-xl border p-4">
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
               Total Requests
@@ -240,7 +237,7 @@ export default function SubdomainAnalyticsPage() {
         </div>
 
         {/* Total Bandwidth */}
-        <div className="border-border/60 bg-card flex flex-col justify-between rounded-lg border p-4 shadow-2xs">
+        <div className="surface-card bg-card flex flex-col justify-between rounded-xl border p-4">
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
               Bandwidth Transferred
@@ -265,7 +262,7 @@ export default function SubdomainAnalyticsPage() {
         </div>
 
         {/* Average Latency */}
-        <div className="border-border/60 bg-card flex flex-col justify-between rounded-lg border p-4 shadow-2xs">
+        <div className="surface-card bg-card flex flex-col justify-between rounded-xl border p-4">
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
               Average Latency
@@ -297,7 +294,7 @@ export default function SubdomainAnalyticsPage() {
         </div>
 
         {/* Success Rate */}
-        <div className="border-border/60 bg-card flex flex-col justify-between rounded-lg border p-4 shadow-2xs">
+        <div className="surface-card bg-card flex flex-col justify-between rounded-xl border p-4">
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
               Success Rate
@@ -320,7 +317,7 @@ export default function SubdomainAnalyticsPage() {
       </div>
 
       {/* Traffic & Request Volume Chart */}
-      <div className="border-border/60 bg-card flex flex-col gap-4 rounded-lg border p-5 shadow-2xs">
+      <div className="surface-card bg-card flex flex-col gap-4 rounded-xl border p-5">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-foreground text-sm font-semibold">Traffic & Request Volume</h3>

@@ -40,7 +40,7 @@ export function ProfileInfoCard({ profile, onUpdateName, isPending }: ProfileInf
   const userInitial = getInitial(profile?.name, profile?.email);
 
   return (
-    <div className="border-border/60 bg-card flex flex-col overflow-hidden rounded-lg border font-sans shadow-2xs">
+    <div className="surface-card bg-card flex flex-col overflow-hidden rounded-xl border font-sans">
       <div className="border-border/60 bg-muted/40 flex items-center justify-between border-b px-4 py-2.5 font-sans text-xs">
         <div className="text-foreground flex items-center gap-2 font-medium">
           <UserIcon className="text-primary h-4 w-4" />

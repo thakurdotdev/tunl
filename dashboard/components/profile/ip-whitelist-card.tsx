@@ -63,7 +63,7 @@ export function IpWhitelistCard({ profile, onUpdateWhitelist, isPending }: IpWhi
     JSON.stringify(ips) === JSON.stringify(profile?.allowedIps ?? []);
 
   return (
-    <div className="border-border/60 bg-card flex flex-col overflow-hidden rounded-lg border font-sans shadow-2xs">
+    <div className="surface-card bg-card flex flex-col overflow-hidden rounded-xl border font-sans">
       <div className="border-border/60 bg-muted/40 flex items-center justify-between border-b px-4 py-2.5 text-xs">
         <div className="text-foreground flex items-center gap-2 font-medium">
           <Shield className="h-4 w-4 text-emerald-400" />

@@ -147,6 +147,138 @@
   }
 }
 
+/*
+ * Premium surfaces (adapted from the premium-web-ui skill).
+ * Tokens are full oklch colours, so alpha mixes use color-mix.
+ * Kept in @layer components so page-level utilities (shadow-none, bg-*) still win.
+ */
+:root {
+  --hairline: color-mix(in oklab, var(--foreground) 9%, transparent);
+  --hairline-strong: color-mix(in oklab, var(--foreground) 16%, transparent);
+  --highlight: color-mix(in oklab, white 70%, transparent);
+  --scrim: oklch(0.2 0.01 250);
+  --btn-top: oklch(0.6 0.17 152);
+  --btn-bottom: oklch(0.5 0.17 152);
+  --btn-edge: oklch(0.45 0.15 152);
+  --btn-shine: color-mix(in oklab, white 32%, transparent);
+  --ambient: color-mix(in oklab, var(--primary) 9%, transparent);
+}
+
+.dark {
+  --hairline: color-mix(in oklab, var(--foreground) 8%, transparent);
+  --hairline-strong: color-mix(in oklab, var(--foreground) 15%, transparent);
+  --highlight: color-mix(in oklab, var(--foreground) 6%, transparent);
+  --scrim: oklch(0 0 0);
+  --btn-top: oklch(0.8 0.16 152);
+  --btn-bottom: oklch(0.69 0.17 152);
+  --btn-edge: oklch(0.82 0.14 152 / 0.85);
+  --btn-shine: color-mix(in oklab, white 55%, transparent);
+  --ambient: color-mix(in oklab, var(--primary) 7%, transparent);
+}
+
+@layer components {
+  .btn-primary {
+    border-color: var(--btn-edge);
+    background-image: linear-gradient(180deg, var(--btn-top), var(--btn-bottom));
+    box-shadow:
+      inset 0 1px 0 var(--btn-shine),
+      inset 0 -1px 0 color-mix(in oklab, var(--scrim) 14%, transparent),
+      0 1px 2px color-mix(in oklab, var(--scrim) 18%, transparent),
+      0 6px 16px -8px color-mix(in oklab, var(--primary) 55%, transparent);
+  }
+  .btn-primary:hover {
+    filter: brightness(1.06);
+  }
+
+  .btn-surface {
+    border-color: var(--hairline-strong);
+    background-color: var(--card);
+    background-image: linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--foreground) 5%, transparent),
+      color-mix(in oklab, var(--foreground) 1.5%, transparent)
+    );
+    box-shadow:
+      inset 0 1px 0 var(--highlight),
+      0 1px 2px color-mix(in oklab, var(--scrim) 10%, transparent);
+  }
+  .btn-surface:hover {
+    border-color: color-mix(in oklab, var(--foreground) 24%, transparent);
+    background-image: linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--foreground) 9%, transparent),
+      color-mix(in oklab, var(--foreground) 4%, transparent)
+    );
+  }
+
+  .surface-card {
+    border-color: var(--hairline);
+    background-image: linear-gradient(
+      180deg,
+      var(--card),
+      color-mix(in oklab, var(--card) 70%, var(--background))
+    );
+    box-shadow:
+      inset 0 1px 0 var(--highlight),
+      0 1px 2px color-mix(in oklab, var(--scrim) 7%, transparent),
+      0 16px 36px -28px color-mix(in oklab, var(--scrim) 40%, transparent);
+  }
+
+  .surface-input {
+    border-color: var(--hairline-strong);
+    box-shadow: inset 0 1px 2px color-mix(in oklab, var(--scrim) 10%, transparent);
+  }
+
+  .surface-popover {
+    border: 1px solid var(--hairline);
+    box-shadow:
+      inset 0 1px 0 var(--highlight),
+      0 1px 2px color-mix(in oklab, var(--scrim) 10%, transparent),
+      0 24px 48px -24px color-mix(in oklab, var(--scrim) 45%, transparent);
+  }
+
+  /* Double-framed card for the one surface per page that matters most. */
+  .bezel {
+    padding: 5px;
+    border-radius: 1.125rem;
+    border: 1px solid var(--hairline);
+    background: color-mix(in oklab, var(--foreground) 2%, transparent);
+  }
+  .bezel > .bezel-inner {
+    border-radius: calc(1.125rem - 6px);
+  }
+
+  .page-title {
+    font-size: clamp(1.5rem, 3.2vw, 1.875rem);
+    font-weight: 600;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    color: var(--foreground);
+  }
+
+  /* Soft brand glow at the top of signed-in pages. */
+  .portal-ambient {
+    background-image: radial-gradient(
+      ellipse 70% 320px at 50% -80px,
+      var(--ambient),
+      transparent 70%
+    );
+    background-repeat: no-repeat;
+  }
+
+  .hairline-glow {
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      var(--hairline) 20%,
+      color-mix(in oklab, var(--primary) 45%, transparent) 50%,
+      var(--hairline) 80%,
+      transparent
+    );
+  }
+}
+
 /* No-scrollbar utilities */
 .no-scrollbar::-webkit-scrollbar {
   display: none;

@@ -154,7 +154,7 @@ export default function AdminOverviewPage() {
       <AdminAnalyticsInsights growth={growth} geo={geo} sessions={sessions} />
 
       {/* Platform Bandwidth & Traffic Telemetry Section */}
-      <Card className="gap-5 rounded-xl p-5 shadow-none">
+      <Card className="gap-5 rounded-xl p-5">
         <div className="border-border/60 flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-md border border-blue-500/20 bg-blue-500/10 text-blue-400">
@@ -342,7 +342,7 @@ export default function AdminOverviewPage() {
       <div className="grid min-w-0 items-stretch gap-6 lg:auto-rows-[32rem] lg:grid-cols-2">
         {/* Live Active Sessions Section */}
         <div className="flex min-h-0 min-w-0">
-          <div className="bg-card border-border/60 flex min-h-0 min-w-0 flex-1 flex-col rounded-xl border p-4 shadow-none sm:p-5">
+          <div className="surface-card bg-card flex min-h-0 min-w-0 flex-1 flex-col rounded-xl border p-4 sm:p-5">
             <div className="flex min-h-0 min-w-0 flex-1 flex-col">
               <div className="border-border/60 flex shrink-0 flex-wrap items-center justify-between gap-3 border-b pb-4">
                 <div className="flex min-w-0 items-center gap-2.5">
@@ -489,7 +489,7 @@ export default function AdminOverviewPage() {
 
         {/* Recent Conversions */}
         <div className="flex min-h-0 min-w-0">
-          <div className="bg-card border-border/60 flex min-h-0 min-w-0 flex-1 flex-col rounded-xl border p-4 shadow-none sm:p-5">
+          <div className="surface-card bg-card flex min-h-0 min-w-0 flex-1 flex-col rounded-xl border p-4 sm:p-5">
             <div className="flex min-h-0 min-w-0 flex-1 flex-col">
               <div className="border-border/60 flex shrink-0 flex-wrap items-center gap-3 border-b pb-4">
                 <div className="flex min-w-0 items-center gap-2.5">
@@ -563,7 +563,7 @@ export default function AdminOverviewPage() {
       </div>
 
       {/* Subscription Plan Tier Utilization */}
-      <div className="bg-card border-border/60 rounded-lg border p-5 shadow-2xs">
+      <div className="bg-card surface-card rounded-xl border p-5">
         <div className="border-border/60 flex items-center justify-between border-b pb-3">
           <div className="flex items-center gap-2.5">
             <div className="bg-secondary text-foreground border-border/60 flex h-8 w-8 items-center justify-center rounded-md border">

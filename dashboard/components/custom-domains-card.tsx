@@ -443,7 +443,7 @@ export default function CustomDomainsCard() {
 
   return (
     <>
-      <Card className="border-border/60 gap-0 overflow-hidden rounded-xl p-0 shadow-none">
+      <Card className="border-border/60 gap-0 overflow-hidden rounded-xl p-0">
         {/* ------------------------------ Header ------------------------------ */}
         <div className="border-border/60 flex flex-wrap items-center justify-between gap-3 border-b px-4 py-4 sm:px-5">
           <div className="flex items-center gap-3">
@@ -772,7 +772,8 @@ export default function CustomDomainsCard() {
             <AlertDialogAction
               onClick={confirmDelete}
               disabled={deleteMutation.isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 text-xs font-semibold"
+              variant="danger"
+              className="text-xs"
             >
               {deleteMutation.isPending ? "Removing…" : "Remove domain"}
             </AlertDialogAction>

@@ -101,7 +101,7 @@ export default function AdminUsersPage() {
       </div>
       {/* KPI Metric Summary Strip */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <Card className="shadow-none">
+        <Card>
           <CardContent className="flex items-center justify-between p-4">
             <div>
               <span className="text-muted-foreground block text-xs font-medium">
@@ -117,7 +117,7 @@ export default function AdminUsersPage() {
           </CardContent>
         </Card>
 
-        <Card className="shadow-none">
+        <Card>
           <CardContent className="flex items-center justify-between p-4">
             <div>
               <span className="text-muted-foreground block text-xs font-medium">
@@ -133,7 +133,7 @@ export default function AdminUsersPage() {
           </CardContent>
         </Card>
 
-        <Card className="shadow-none">
+        <Card>
           <CardContent className="flex items-center justify-between p-4">
             <div>
               <span className="text-muted-foreground block text-xs font-medium">

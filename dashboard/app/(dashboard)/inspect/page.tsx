@@ -49,11 +49,9 @@ export default function InspectLandingPage() {
 
   return (
     <div className="space-y-6 font-sans">
-      <div className="border-border/60 flex flex-col justify-between gap-4 border-b pb-5 sm:flex-row sm:items-end">
+      <div className="flex flex-col justify-between gap-4 border-b border-[var(--hairline)] pb-5 sm:flex-row sm:items-end">
         <div>
-          <h1 className="text-foreground text-2xl font-semibold tracking-tight">
-            Request inspector
-          </h1>
+          <h1 className="page-title">Request inspector</h1>
         </div>
 
         <Card size="sm" className="flex-row items-center gap-0 self-start p-0 sm:self-auto">
@@ -92,7 +90,7 @@ export default function InspectLandingPage() {
       )}
 
       {allSubdomains.length === 0 ? (
-        <Card className="border-dashed shadow-none">
+        <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center px-5 py-14 text-center">
             <div className="border-border/60 bg-muted/40 mb-4 flex h-12 w-12 items-center justify-center rounded-xl border">
               <WifiOff className="text-muted-foreground/60 h-6 w-6" />
@@ -113,7 +111,7 @@ export default function InspectLandingPage() {
           </CardContent>
         </Card>
       ) : filteredSubdomains.length === 0 ? (
-        <Card className="border-dashed shadow-none">
+        <Card className="border-dashed">
           <CardContent className="flex flex-col items-center py-10 text-center">
             <Search className="text-muted-foreground/60 mb-3 h-6 w-6" />
             <p className="text-muted-foreground text-sm">
@@ -126,7 +124,7 @@ export default function InspectLandingPage() {
           </CardContent>
         </Card>
       ) : (
-        <Card className="gap-0 p-0 shadow-none">
+        <Card className="gap-0 p-0">
           <div className="border-border/60 flex items-center justify-between border-b px-4 py-3">
             <div>
               <h2 className="text-sm font-semibold">Your endpoints</h2>

@@ -36,7 +36,7 @@ export function AdminAnalyticsInsights({
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
-      <Card className="gap-4 p-5 shadow-none">
+      <Card className="gap-4 p-5">
         <div>
           <h3 className="text-sm font-semibold">User growth · 30 days</h3>
           <p className="text-muted-foreground text-xs">Daily signups · UTC calendar days</p>
@@ -129,7 +129,7 @@ export function AdminAnalyticsInsights({
           )}
         </div>
       </Card>
-      <Card className="gap-4 p-5 shadow-none">
+      <Card className="gap-4 p-5">
         <div>
           <h3 className="text-sm font-semibold">Geographic activity · last 24h</h3>
           <p className="text-muted-foreground text-xs">

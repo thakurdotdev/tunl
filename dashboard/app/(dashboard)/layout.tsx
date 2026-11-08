@@ -49,25 +49,29 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <RouteGuard>
-      <div className="bg-background flex min-h-screen flex-col font-sans">
-        <header className="border-border/60 bg-card/90 sticky top-0 z-50 border-b backdrop-blur-xs">
+      <div className="bg-background portal-ambient flex min-h-screen flex-col font-sans">
+        <header className="bg-background/95 sticky top-0 z-50 border-b border-[var(--hairline)] backdrop-blur-md">
           <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-2 px-3 sm:px-6">
             <div className="flex min-w-0 items-center gap-2 sm:gap-6">
               <Link href="/dashboard" className="flex shrink-0 items-center gap-2">
                 <Logo />
               </Link>
-              <div className="bg-border/60 hidden h-4 w-px shrink-0 sm:block" />
-              <nav className="no-scrollbar flex items-center gap-1 overflow-x-auto py-1 sm:gap-1.5">
+              <div className="hidden h-4 w-px shrink-0 bg-[var(--hairline-strong)] sm:block" />
+              <nav
+                aria-label="Main"
+                className="no-scrollbar bg-muted/50 flex items-center gap-0.5 overflow-x-auto rounded-xl border border-[var(--hairline)] p-0.5"
+              >
                 {navItems.map((item) => {
                   const isActive = pathname.startsWith(item.pathMatch);
                   return (
                     <Link
                       key={item.href}
                       href={item.href}
-                      className={`flex items-center rounded-md px-2.5 py-1 text-xs font-medium whitespace-nowrap transition-colors sm:px-3 sm:py-1.5 ${
+                      aria-current={isActive ? "page" : undefined}
+                      className={`flex items-center rounded-[10px] px-2.5 py-1 text-xs font-medium whitespace-nowrap transition-[color,background-color,box-shadow] sm:px-3 sm:py-1.5 ${
                         isActive
-                          ? "bg-secondary text-foreground font-semibold"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                          ? "bg-card text-foreground shadow-[inset_0_1px_0_var(--highlight),0_1px_2px_color-mix(in_oklab,var(--scrim)_14%,transparent)] dark:bg-[color-mix(in_oklab,var(--foreground)_9%,var(--card))]"
+                          : "text-muted-foreground hover:text-foreground"
                       }`}
                     >
                       {item.label}
@@ -87,7 +91,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       aria-label="User profile menu"
                       className={
                         isProfileActive
-                          ? "bg-secondary text-foreground border-border overflow-hidden font-semibold"
+                          ? "ring-primary/40 overflow-hidden font-semibold ring-2"
                           : "overflow-hidden font-semibold"
                       }
                     >
@@ -171,7 +175,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           </div>
         </header>
-        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
+        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-7 sm:px-6 sm:py-10">
           {children}
         </main>
       </div>
