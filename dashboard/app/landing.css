@@ -11,17 +11,18 @@ html:has(.landing) {
 }
 
 .landing {
-  --bg: #f6f7f6;
-  --panel: #fff;
-  --ink: #0c0f0d;
-  --mute: #202923;
-  --line: #dfe3e0;
-  --green: #2fd272;
-  --green-ink: #0b7a3a;
-  --on-green: #04140b;
-  --tint: rgba(47, 210, 114, 0.12);
-  --no: #c0364b;
-  --warn: #8a5f00;
+  /* Mapped to the app's theme tokens (globals.css) so light/dark and brand stay in one place */
+  --bg: var(--background);
+  --panel: var(--card);
+  --ink: var(--foreground);
+  --mute: var(--muted-foreground);
+  --line: var(--border);
+  --green: var(--primary);
+  --green-ink: var(--primary);
+  --on-green: var(--primary-foreground);
+  --tint: color-mix(in oklab, var(--primary) 12%, transparent);
+  --no: var(--destructive);
+  --warn: color-mix(in oklab, var(--chart-3) 70%, var(--foreground));
   --sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --t-xs: 13px;
@@ -40,7 +41,6 @@ html:has(.landing) {
   --r-s: 8px;
   --r-m: 12px;
   --r-l: 18px;
-  color-scheme: light;
   background: var(--bg);
   color: var(--ink);
   font-family: var(--sans);
@@ -50,19 +50,6 @@ html:has(.landing) {
   min-height: 100vh;
   padding-top: env(safe-area-inset-top, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
-}
-
-html.dark .landing {
-  --bg: #0a0c0b;
-  --panel: #111412;
-  --ink: #e9eeea;
-  --mute: #8f9b94;
-  --line: #222825;
-  --green-ink: #3ddc84;
-  --tint: rgba(47, 210, 114, 0.1);
-  --no: #ef6b7e;
-  --warn: #e0b341;
-  color-scheme: dark;
 }
 
 .landing *,
@@ -192,8 +179,8 @@ html.dark .landing {
 }
 
 .landing .btn.primary:hover {
-  background: #43dc83;
-  border-color: #43dc83;
+  background: color-mix(in oklab, var(--primary) 88%, white);
+  border-color: color-mix(in oklab, var(--primary) 88%, white);
 }
 
 .landing .btn.sm {
@@ -389,7 +376,7 @@ html.dark .landing .i-moon {
 }
 
 .landing .copy:hover {
-  background: #43dc83;
+  background: color-mix(in oklab, var(--primary) 88%, white);
 }
 
 .landing .hero-meta {
@@ -422,7 +409,7 @@ html.dark .landing .i-moon {
 
 .landing .hero .actions .hero-primary {
   gap: 10px;
-  box-shadow: 0 6px 18px rgba(47, 210, 114, 0.18);
+  box-shadow: 0 6px 18px color-mix(in oklab, var(--primary) 25%, transparent);
 }
 
 .landing .hero .actions .hero-primary span {
@@ -1112,8 +1099,10 @@ html.dark .landing .i-moon {
 
 /* closing cta */
 .landing .box {
-  background: #0c0c0c;
-  color: #f2f2f2;
+  background: var(--panel);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  box-shadow: inset 0 1px 0 color-mix(in oklab, var(--ink) 6%, transparent);
   border-radius: var(--r-l);
   padding: var(--s6);
   display: grid;
@@ -1132,23 +1121,23 @@ html.dark .landing .i-moon {
 
 .landing .box p {
   margin: 0;
-  color: #9a9a9a;
+  color: var(--mute);
 }
 
 .landing .box .cmd {
-  background: #161616;
-  border: 1px solid #2a2a2a;
+  background: var(--bg);
+  border: 1px solid var(--line);
   margin-bottom: var(--s2);
 }
 
 .landing .box .btn {
   background: transparent;
-  border-color: #3a3a3a;
-  color: #f2f2f2;
+  border-color: var(--line);
+  color: var(--ink);
 }
 
 .landing .box .btn:hover {
-  border-color: #8a8a8a;
+  border-color: var(--mute);
 }
 
 /* footer */
