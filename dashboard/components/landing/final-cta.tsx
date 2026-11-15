@@ -4,27 +4,27 @@ import Link from "next/link";
 
 export function FinalCta() {
   return (
-    <section className="sec">
+    <section className="sec" aria-labelledby="cta-heading">
       <div className="wrap">
-        <div className="box">
-          <div>
-            <h2>Start your first tunnel.</h2>
-            <p>No signup required. Run standard SSH and get an HTTPS endpoint.</p>
+        <div className="cta">
+          <div className="cta-copy">
+            <h2 id="cta-heading">Your first tunnel is one command away.</h2>
+            <p>No signup, no download. Paste it, change the port, share the URL.</p>
           </div>
-          <div>
-            <div className="cmd">
-              <span className="tg" aria-hidden="true">
+          <div className="cta-term">
+            <div className="cmd cmd-dark">
+              <span className="cmd-sigil" aria-hidden="true">
                 $
               </span>
               <code>{SSH_COMMAND}</code>
               <CopyButton text={SSH_COMMAND} />
             </div>
             <div className="actions">
-              <Link className="btn" href="/dashboard">
-                Open dashboard
+              <Link className="btn primary" href="/dashboard">
+                Open dashboard <span aria-hidden="true">→</span>
               </Link>
-              <Link className="btn" href="/login">
-                Add SSH key
+              <Link className="btn on-dark" href="/login">
+                Add an SSH key
               </Link>
             </div>
           </div>

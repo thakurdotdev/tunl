@@ -16,9 +16,12 @@ function renderAnswer(text: string): ReactNode {
 
 export function Faq() {
   return (
-    <section className="sec band" id="faq" aria-labelledby="faq-heading">
+    <section className="sec sec-tint" id="faq" aria-labelledby="faq-heading">
       <div className="wrap faq-grid">
-        <h2 id="faq-heading">Questions before the first tunnel.</h2>
+        <div className="head">
+          <p className="kicker">FAQ</p>
+          <h2 id="faq-heading">Questions before the first tunnel.</h2>
+        </div>
         <div>
           {FAQ_ITEMS.map((item) => (
             <details key={item.question}>

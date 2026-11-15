@@ -1,51 +1,57 @@
-import { SSH_COMMAND } from "@/components/landing/constants";
+import { Cable, Laptop, MonitorSmartphone, Presentation, ShieldCheck, Webhook } from "lucide-react";
+
+const CASES = [
+  {
+    icon: Webhook,
+    title: "Test webhooks without deploying",
+    body: "Point Stripe, GitHub or Shopify at your tunnel URL and watch each delivery arrive in the inspector.",
+  },
+  {
+    icon: Laptop,
+    title: "Share work in progress",
+    body: "Send teammates or clients a live HTTPS link straight from your local build.",
+  },
+  {
+    icon: MonitorSmartphone,
+    title: "Test on real phones",
+    body: "Point physical devices at the API or site running on your workstation.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Build OAuth sign-in locally",
+    body: "Register a tunl HTTPS address as the redirect URI while you develop.",
+  },
+  {
+    icon: Presentation,
+    title: "Demo without a server",
+    body: "Show a prototype and its live state without standing up a temporary deployment.",
+  },
+  {
+    icon: Cable,
+    title: "Reach your laptop from hardware",
+    body: "Let embedded and IoT devices send requests to a server on localhost.",
+  },
+];
 
 export function UseCases() {
   return (
-    <section className="sec band" id="uses" aria-labelledby="uses-heading">
+    <section className="sec sec-tint" id="uses" aria-labelledby="uses-heading">
       <div className="wrap">
         <div className="head">
+          <p className="kicker">Use cases</p>
           <h2 id="uses-heading">For when a local server has to be reachable.</h2>
         </div>
-        <div className="bento">
-          <article className="tile big">
-            <div>
-              <h3>Test webhooks without deploying</h3>
-              <p>
-                Receive Stripe, GitHub or Shopify callbacks on localhost while you build the
-                integration. Paste your tunnel URL into the provider&apos;s dashboard and watch each
-                delivery arrive in the inspector.
-              </p>
-            </div>
-            <div className="snip">
-              <p>
-                <span className="tg">$</span> {SSH_COMMAND}
-              </p>
-              <p className="td">Webhook endpoint:</p>
-              <p className="tl">https://my-app.tunl.online/api/webhooks/stripe</p>
-            </div>
-          </article>
-          <article className="tile">
-            <h3>Share work in progress</h3>
-            <p>Send teammates or clients a live HTTPS link straight from your local build.</p>
-          </article>
-          <article className="tile">
-            <h3>Test on real phones</h3>
-            <p>Point physical devices at the API server running on your workstation.</p>
-          </article>
-          <article className="tile">
-            <h3>Build OAuth sign-in locally</h3>
-            <p>Register a tunl HTTPS address as the redirect URI while you develop.</p>
-          </article>
-          <article className="tile">
-            <h3>Demo without a cloud server</h3>
-            <p>Show prototypes and live UI state without standing up a temporary deployment.</p>
-          </article>
-          <article className="tile">
-            <h3>Reach your laptop from IoT hardware</h3>
-            <p>Send webhooks and HTTP requests from embedded devices to localhost.</p>
-          </article>
-        </div>
+        <ul className="cases">
+          {CASES.map(({ icon: Icon, title, body }) => (
+            <li key={title} className="case">
+              <span className="case-icon" aria-hidden="true">
+                <Icon />
+              </span>
+              <h3>{title}</h3>
+              <p>{body}</p>
+            </li>
+          ))}
+        </ul>
       </div>
     </section>
   );

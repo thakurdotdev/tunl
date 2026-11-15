@@ -1,5 +1,6 @@
 "use client";
 
+import { Check, Copy } from "lucide-react";
 import { useRef, useState } from "react";
 
 export function CopyButton({ text }: { text: string }) {
@@ -46,8 +47,13 @@ export function CopyButton({ text }: { text: string }) {
   };
 
   return (
-    <button className="copy" type="button" onClick={handleCopy}>
-      {label}
+    <button className="copy" type="button" onClick={handleCopy} aria-label={label}>
+      {label === "Copied" ? (
+        <Check className="copy-icon" aria-hidden="true" />
+      ) : (
+        <Copy className="copy-icon" aria-hidden="true" />
+      )}
+      <span className="copy-label">{label}</span>
     </button>
   );
 }
