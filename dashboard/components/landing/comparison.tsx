@@ -56,7 +56,8 @@ const ROWS: {
   },
   {
     feature: "Custom domains",
-    tunl: { kind: "t", text: "In development" },
+    note: "CNAME plus TXT ownership check",
+    tunl: { kind: "y", text: "Yes" },
     ngrok: { kind: "t", text: "Paid plans" },
     cloudflare: { kind: "y", text: "Via Cloudflare DNS" },
   },
@@ -74,9 +75,10 @@ function CellValue({ cell }: { cell: Cell }) {
 
 export function Comparison() {
   return (
-    <section className="sec band" id="compare" aria-labelledby="compare-heading">
+    <section className="sec" id="compare" aria-labelledby="compare-heading">
       <div className="wrap">
         <div className="head">
+          <p className="kicker">Compare</p>
           <h2 id="compare-heading">tunl next to the tools you may use now.</h2>
           <p>
             A side by side with ngrok and Cloudflare Tunnel, including where tunl is still catching

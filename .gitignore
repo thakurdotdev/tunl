@@ -5,3 +5,7 @@ node_modules/
 **/coverage/
 .env
 .env.local
+
+# Agent skills (reinstall with skills-lock.json)
+.agents/
+.claude/skills/

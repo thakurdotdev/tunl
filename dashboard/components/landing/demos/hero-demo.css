@@ -1,0 +1,298 @@
+/* tunl hero: the page is the ground (no plate). The terminal sits one gutter
+   in from the top and left and runs off the bottom; the browser straddles
+   the terminal's right edge over the empty right half of its lines. */
+.th {
+  & .ss-stage {
+    --gutter: 40px;
+    --ss-term-ok: #5ee39a;
+    --ss-term-sigil: #5ee39a;
+    --ss-term-path: #7d9bd8;
+    --ss-term-dim: #6b6f78;
+    overflow: hidden;
+    background: transparent;
+  }
+
+  /* ---------- terminal (hero) ---------- */
+  .th-term {
+    position: absolute;
+    top: var(--gutter);
+    left: var(--gutter);
+    width: 640px;
+    height: 440px;
+    --ss-term-bg: #121416;
+  }
+
+  .th-term__body {
+    padding: 10px 20px 20px;
+    gap: 0;
+    font-size: 13px;
+    line-height: 1.75;
+  }
+
+  .th-screen {
+    display: flex;
+    flex-direction: column;
+    transition:
+      opacity 0.16s ease,
+      transform 0.4s cubic-bezier(0.45, 0, 0.1, 1);
+    will-change: transform;
+  }
+
+  .th-screen[data-wipe] {
+    opacity: 0;
+  }
+
+  .th-screen[data-wipe="out"] {
+    transform: translateY(-8px);
+  }
+
+  .th-head {
+    margin-top: 10px;
+  }
+
+  .th-hist {
+    color: #c9ccd3;
+  }
+
+  .th-next {
+    margin-top: 10px;
+  }
+
+  .th-head {
+    color: #e9eaee;
+  }
+
+  .th-head b {
+    font-weight: 600;
+  }
+
+  .th-mark {
+    color: var(--ss-term-ok);
+  }
+
+  .th-kv {
+    display: grid;
+    grid-template-columns: 104px auto;
+    column-gap: 12px;
+    white-space: pre;
+  }
+
+  .th-local {
+    color: #f2c46d;
+  }
+
+  .th-url {
+    color: #f4f5f7;
+    font-weight: 500;
+  }
+
+  .th-link {
+    color: #9fb4e3;
+  }
+
+  .th-rule {
+    height: 1px;
+    margin: 12px 0 10px;
+    background: rgba(255, 255, 255, 0.09);
+  }
+
+  .th-req {
+    display: grid;
+    grid-template-columns: 72px 44px 200px 32px 40px;
+    justify-content: start;
+    column-gap: 12px;
+    white-space: pre;
+  }
+
+  .th-method {
+    color: #c9ccd3;
+  }
+
+  .th-method[data-post] {
+    color: #f2c46d;
+  }
+
+  .th-path {
+    color: #e9eaee;
+  }
+
+  .th-ms {
+    text-align: right;
+  }
+
+  .th-closed {
+    margin-top: 10px;
+    color: #c9ccd3;
+  }
+
+  /* ---------- browser (satellite) ---------- */
+  .th-browser {
+    position: absolute;
+    top: 128px;
+    left: 600px;
+    width: 400px;
+    height: 400px;
+    z-index: 2;
+    box-shadow: var(--ss-shadow-hero);
+    opacity: 0;
+    transform: translateY(36px);
+    will-change: transform;
+    transition:
+      opacity 0.5s cubic-bezier(0.25, 0.8, 0.25, 1),
+      transform 0.9s cubic-bezier(0.25, 0.8, 0.25, 1);
+  }
+
+  .th-browser[data-show="true"] {
+    opacity: 1;
+    transform: none;
+  }
+
+  .th-page {
+    height: 100%;
+    padding: 16px 20px;
+    background: var(--ss-surface);
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+
+  .th-page > * {
+    will-change: transform;
+    opacity: 0;
+    transform: translateY(6px);
+    transition:
+      opacity 0.35s ease,
+      transform 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+  }
+
+  .th-page[data-loaded] > * {
+    opacity: 1;
+    transform: none;
+  }
+
+  .th-page[data-loaded] > :nth-child(2) {
+    transition-delay: 60ms;
+  }
+
+  .th-page[data-loaded] > :nth-child(3) {
+    transition-delay: 120ms;
+  }
+
+  .th-nav {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .th-nav-end {
+    margin-left: auto;
+  }
+
+  .th-hero {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .th-h {
+    margin-bottom: 4px;
+    color: var(--ss-text-strong);
+    font-size: 21px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+  }
+
+  .th-cta {
+    display: flex;
+    gap: 10px;
+    margin-top: 8px;
+  }
+
+  .th-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+
+  .th-card {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    padding: 12px;
+    border-radius: 10px;
+    background: var(--ss-canvas);
+  }
+
+  /* ---------- compact: a phone column ---------- */
+  & .ss-stage[data-layout="compact"] {
+    --gutter: 16px;
+  }
+
+  /* On a phone the terminal spans the copy column, flush with its edges */
+  & .ss-stage[data-layout="compact"] .th-term {
+    left: 0;
+    width: 358px;
+    height: 364px;
+  }
+
+  /* A terminal wraps a long command rather than running it off the edge */
+  & .ss-stage[data-layout="compact"] .ss-term__prompt {
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  & .ss-stage[data-layout="compact"] .th-screen {
+    justify-content: flex-end;
+    height: 100%;
+  }
+
+  & .ss-stage[data-layout="compact"] .th-old {
+    opacity: 0.55;
+  }
+
+  & .ss-stage[data-layout="compact"] .th-term__body {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 6px 14px 54px 14px;
+    /* Scrollback leaving the top dissolves, as it scrolls, never sliced */
+    mask-image: linear-gradient(to bottom, transparent 0, #000 36px);
+    font-size: 11px;
+  }
+
+  & .ss-stage[data-layout="compact"] .th-kv {
+    grid-template-columns: 76px auto;
+    column-gap: 10px;
+  }
+
+  & .ss-stage[data-layout="compact"] .th-req {
+    grid-template-columns: 36px 150px 26px 34px;
+    justify-content: start;
+    column-gap: 8px;
+  }
+
+  & .ss-stage[data-layout="compact"] .th-browser {
+    top: 300px;
+    left: 40px;
+    width: 302px;
+    height: 300px;
+  }
+
+  & .ss-stage[data-layout="compact"] .th-page {
+    padding: 14px 16px;
+    gap: 16px;
+  }
+
+  & .ss-stage[data-layout="compact"] .th-h {
+    font-size: 17px;
+  }
+
+  & .ss-stage[data-layout="compact"] .th-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  & .ss-stage[data-layout="compact"] .th-card:nth-child(3) {
+    display: none;
+  }
+}

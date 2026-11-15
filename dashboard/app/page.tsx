@@ -10,7 +10,6 @@ import { LandingNav } from "@/components/landing/landing-nav";
 import { LandingShell } from "@/components/landing/landing-shell";
 import { Pricing } from "@/components/landing/pricing";
 import { UseCases } from "@/components/landing/use-cases";
-import { WhySsh } from "@/components/landing/why-ssh";
 import { SEO_DESCRIPTION, SEO_KEYWORDS, SEO_TITLE, SITE_URL } from "@/lib/seo";
 import "./landing.css";
 
@@ -43,9 +42,8 @@ export default function LandingPage() {
       <main id="top">
         <Hero />
         <HowItWorks />
-        <WhySsh />
-        <UseCases />
         <Features />
+        <UseCases />
         <Comparison />
         <Pricing />
         <Faq />

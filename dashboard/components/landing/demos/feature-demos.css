@@ -1,0 +1,307 @@
+/* tunl feature pictures. Each stage is pinned to its tile's bottom: the
+   surface sits one gutter in from the top and left and runs off the
+   right and bottom, so the tile's edge owns the crop. */
+.tf {
+  & .ss-stage {
+    --gutter: 28px;
+    overflow: hidden;
+    background: transparent;
+  }
+
+  .tf-method {
+    color: var(--ss-text);
+    font: 600 11px/1.3 var(--ss-mono);
+  }
+
+  .tf-method[data-post] {
+    color: oklch(0.62 0.15 70);
+  }
+
+  /* ---------- inspector ---------- */
+  .tf-insp-win {
+    position: absolute;
+    top: var(--gutter);
+    left: var(--gutter);
+    width: calc(100% + 40px);
+    height: 360px;
+    box-shadow: var(--ss-shadow-hero);
+  }
+
+  .tf-insp-body {
+    display: grid;
+    grid-template-columns: 312px 1fr;
+    height: 100%;
+    background: var(--ss-surface);
+  }
+
+  .tf-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 12px 10px;
+    border-right: 1px solid var(--ss-line-faint);
+  }
+
+  .tf-list-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 8px 8px;
+    color: var(--ss-text-faint);
+    font-size: 11px;
+    line-height: 1.3;
+  }
+
+  .tf-live {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--ss-success-text);
+    font-weight: 600;
+  }
+
+  .tf-live-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--ss-success);
+  }
+
+  .tf-req {
+    will-change: transform;
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) 26px 34px;
+    align-items: center;
+    gap: 8px;
+    height: 34px;
+    padding: 0 8px;
+    border-radius: 7px;
+    transition:
+      background-color 0.18s ease,
+      box-shadow 0.18s ease;
+  }
+
+  .tf-req[data-selected] {
+    background: var(--ss-accent-soft);
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--ss-accent) 30%, transparent);
+  }
+
+  .tf-path {
+    overflow: hidden;
+    color: var(--ss-text-strong);
+    font: 11.5px/1.3 var(--ss-mono);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .tf-status {
+    color: var(--ss-success-text);
+    font: 600 11px/1.3 var(--ss-mono);
+  }
+
+  .tf-status[data-warn] {
+    color: var(--ss-warning-text);
+  }
+
+  .tf-ms {
+    color: var(--ss-text-faint);
+    font: 11px/1.3 var(--ss-mono);
+    text-align: right;
+  }
+
+  .tf-detail {
+    position: relative;
+  }
+
+  .tf-detail-page {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 16px 18px;
+    opacity: 0;
+    transform: translateY(8px);
+    transition:
+      opacity 0.2s ease,
+      transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    will-change: transform;
+  }
+
+  .tf-detail-page[data-show] {
+    opacity: 1;
+    transform: none;
+  }
+
+  .tf-dh {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .tf-dpath {
+    color: var(--ss-text-strong);
+    font: 600 12.5px/1.3 var(--ss-mono);
+  }
+
+  .tf-kv {
+    display: grid;
+    grid-template-columns: 112px 1fr;
+    align-items: center;
+    gap: 8px 12px;
+    font: 11px/1.4 var(--ss-mono);
+  }
+
+  .tf-kv > :nth-child(odd) {
+    color: var(--ss-text-faint);
+  }
+
+  .tf-kv > :nth-child(even) {
+    color: var(--ss-text-strong);
+    white-space: nowrap;
+  }
+
+  .tf-code {
+    border-radius: 8px;
+    background: var(--ss-canvas);
+    padding: 10px 12px;
+    font-size: 11px;
+  }
+
+  &.tf-compact .tf-insp-win {
+    width: calc(100% - 2 * var(--gutter));
+  }
+
+  &.tf-compact .tf-insp-body {
+    grid-template-columns: 1fr;
+  }
+
+  &.tf-compact .tf-list {
+    border-right: 0;
+  }
+
+  /* ---------- cards: domain and access ---------- */
+  .tf-card {
+    position: absolute;
+    top: var(--gutter);
+    left: var(--gutter);
+    width: calc(100% + 12px);
+    height: 300px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 18px 20px;
+    border-radius: 14px;
+    background: var(--ss-surface);
+    box-shadow: var(--ss-shadow-ground);
+  }
+
+  .tf-dom-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 4px;
+  }
+
+  .tf-dom-name {
+    color: var(--ss-text-strong);
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .tf-dns {
+    display: grid;
+    grid-template-columns: 52px 52px 1fr;
+    align-items: center;
+    gap: 10px;
+    height: 36px;
+    padding: 0 12px;
+    border-radius: 8px;
+    background: var(--ss-canvas);
+    font: 11.5px/1.3 var(--ss-mono);
+  }
+
+  .tf-dns--route {
+    grid-template-columns: 52px 1fr;
+  }
+
+  .tf-dns-type {
+    color: var(--ss-text-faint);
+    font-weight: 600;
+  }
+
+  .tf-dns-host {
+    color: var(--ss-text);
+  }
+
+  .tf-dns-val {
+    color: var(--ss-text-strong);
+    white-space: nowrap;
+  }
+
+  .tf-acc-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-right: 48px;
+  }
+
+  .tf-acc-label {
+    color: var(--ss-text-strong);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  .tf-acc-sep {
+    height: 1px;
+    margin: 6px 0;
+    background: var(--ss-line-faint);
+  }
+
+  .tf-chips {
+    display: flex;
+    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    gap: 6px;
+    font-family: var(--ss-mono);
+  }
+
+  .tf-allow {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .tf-allow-row {
+    display: grid;
+    grid-template-columns: 136px auto;
+    align-items: center;
+    gap: 12px;
+    height: 32px;
+    border-bottom: 1px solid var(--ss-line-faint);
+  }
+
+  .tf-cidr {
+    color: var(--ss-text-strong);
+    font: 12px/1.3 var(--ss-mono);
+  }
+
+  .tf-allow-label {
+    color: var(--ss-text-faint);
+    font-size: 12px;
+    line-height: 1.3;
+  }
+
+  .tf-acc-note {
+    margin-top: 6px;
+    color: var(--ss-text-faint);
+    font-size: 12px;
+    line-height: 1.3;
+  }
+
+  .tf-chips .ss-chip__label {
+    font-family: var(--ss-mono);
+    font-size: 11.5px;
+  }
+}
