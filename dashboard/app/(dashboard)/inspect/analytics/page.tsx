@@ -17,7 +17,8 @@ import {
   Zap,
 } from "lucide-react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { SubdomainGate } from "@/components/subdomain-gate";
+import { inspectRequestsHref } from "@/lib/inspect-routes";
 import { useState } from "react";
 
 function formatBytes(bytes: number): string {
@@ -30,9 +31,7 @@ function formatBytes(bytes: number): string {
 
 type Period = "24h" | "7d" | "30d";
 
-export default function SubdomainAnalyticsPage() {
-  const params = useParams<{ subdomain: string }>();
-  const subdomain = params.subdomain;
+function SubdomainAnalytics({ subdomain }: { subdomain: string }) {
   const [period, setPeriod] = useState<Period>("24h");
 
   const {
@@ -153,7 +152,7 @@ export default function SubdomainAnalyticsPage() {
       {/* Top Header */}
       <div className="flex flex-col gap-4 border-b border-[var(--hairline)] pb-5 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-3">
-          <Link href={`/inspect/${subdomain}`}>
+          <Link href={inspectRequestsHref(subdomain)}>
             <Button variant="ghost" size="icon-xs" className="h-8 w-8">
               <ArrowLeft className="h-4 w-4" />
             </Button>
@@ -388,5 +387,11 @@ export default function SubdomainAnalyticsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function SubdomainAnalyticsPage() {
+  return (
+    <SubdomainGate>{(subdomain) => <SubdomainAnalytics subdomain={subdomain} />}</SubdomainGate>
   );
 }

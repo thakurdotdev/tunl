@@ -26,7 +26,8 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { SubdomainGate } from "@/components/subdomain-gate";
+import { inspectAnalyticsHref } from "@/lib/inspect-routes";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -88,10 +89,7 @@ function formatShortRelativeTime(date: Date | string): string {
 type DetailTab = "general" | "req-headers" | "res-headers" | "req-body" | "res-body" | "curl";
 type MethodFilter = "ALL" | "GET" | "POST" | "ERRORS";
 
-export default function InspectPage() {
-  const params = useParams<{ subdomain: string }>();
-  const subdomain = params.subdomain;
-
+function InspectRequests({ subdomain }: { subdomain: string }) {
   const [paused, setPaused] = useState(false);
   const [cleared, setCleared] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -303,7 +301,7 @@ export default function InspectPage() {
 
         {/* Right Section: Controls */}
         <div className="flex items-center gap-1.5 font-sans sm:gap-2">
-          <Link href={`/inspect/${subdomain}/analytics`}>
+          <Link href={inspectAnalyticsHref(subdomain)}>
             <Button
               variant="outline"
               size="xs"
@@ -892,4 +890,8 @@ function CurlTab({ req, subdomain }: { req: CapturedRequest; subdomain: string }
       </div>
     </div>
   );
+}
+
+export default function InspectRequestsPage() {
+  return <SubdomainGate>{(subdomain) => <InspectRequests subdomain={subdomain} />}</SubdomainGate>;
 }

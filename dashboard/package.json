@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "bunx serve@14.2.4 out",
     "lint": "eslint"
   },
   "dependencies": {

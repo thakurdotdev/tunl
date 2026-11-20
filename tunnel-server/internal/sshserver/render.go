@@ -21,7 +21,7 @@ func renderTerminalBanner(ch io.Writer, s *Server, sess *sshSession) {
 		localTarget = fmt.Sprintf("\033[1;33m%s\033[0m", target)
 	}
 
-	inspectorURL := fmt.Sprintf("%s://%s/inspect/%s", s.tunnelScheme, s.baseDomain, sess.Subdomain())
+	inspectorURL := fmt.Sprintf("%s://%s/inspect/requests?subdomain=%s", s.tunnelScheme, s.baseDomain, sess.Subdomain())
 
 	fmt.Fprintf(ch, "\r\033[2K  \033[1;32m>_\033[0m \033[1;37mtunl\033[0m \033[1;32m█\033[0m  \033[90m•\033[0m  \033[1;32m● Online\033[0m\r\n")
 	fmt.Fprintf(ch, "  \033[90m──────────────────────────────────────────────────────────\033[0m\r\n")

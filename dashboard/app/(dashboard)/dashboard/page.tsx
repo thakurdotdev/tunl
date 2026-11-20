@@ -49,6 +49,7 @@ import {
   Wifi,
 } from "lucide-react";
 import Link from "next/link";
+import { inspectAnalyticsHref, inspectRequestsHref } from "@/lib/inspect-routes";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -490,7 +491,7 @@ export default function TunnelsPage() {
                     <div className="flex flex-wrap items-center justify-end gap-1.5 xl:pl-1">
                       <Button
                         nativeButton={false}
-                        render={<Link href={`/inspect/${tunnel.subdomain}/analytics`} />}
+                        render={<Link href={inspectAnalyticsHref(tunnel.subdomain)} />}
                         size="sm"
                         variant="outline"
                         className="whitespace-nowrap"
@@ -499,7 +500,7 @@ export default function TunnelsPage() {
                       </Button>
                       <Button
                         nativeButton={false}
-                        render={<Link href={`/inspect/${tunnel.subdomain}`} />}
+                        render={<Link href={inspectRequestsHref(tunnel.subdomain)} />}
                         size="sm"
                         className="whitespace-nowrap"
                       >

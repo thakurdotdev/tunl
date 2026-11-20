@@ -11,16 +11,6 @@ module.exports = {
       },
     },
     {
-      name: "tunl-dashboard",
-      cwd: "./dashboard",
-      script: "bun",
-      args: "run start",
-      env: {
-        NODE_ENV: "production",
-        PORT: 3090,
-      },
-    },
-    {
       name: "tunl-tunnel-server",
       cwd: "./tunnel-server",
       script: "./bin/tunneld",
