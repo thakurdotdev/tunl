@@ -300,11 +300,11 @@ bun --filter dashboard exec tsc --noEmit
 
 ### PM2
 
-Production process orchestration is configured via [ecosystem.config.js](file:///mnt/dev/tunl/ecosystem.config.js):
+Production process orchestration is configured via [ecosystem.config.js](ecosystem.config.js). It runs the control plane and tunnel daemon; the dashboard has no process of its own (see below).
 
 ```bash
-# Build production assets
-bun build
+# Build production assets (dashboard is exported to dashboard/out)
+bun run build
 
 # Start services under PM2
 pm2 start ecosystem.config.js
@@ -314,11 +314,18 @@ pm2 status
 pm2 logs
 ```
 
+### Dashboard (static export)
+
+The dashboard is built with `output: "export"`, so `bun run build` writes plain HTML/JS/CSS to `dashboard/out`, and nginx serves those files directly. There is no Node server for it, so redirects, headers and rewrites belong in nginx, not `next.config.ts`. `NEXT_PUBLIC_CONTROL_PLANE_URL` is baked in at build time.
+
+Preview the export locally with `bun --filter dashboard start`.
+
 ### Reverse Proxy (Nginx)
 
-In production, place Nginx in front of the HTTP proxy and dashboard. See [shared/nginx.conf](file:///mnt/dev/tunl/shared/nginx.conf) for reference:
+In production, Nginx sits in front of everything. See [deploy/nginx/tunl.online.conf](deploy/nginx/tunl.online.conf) for the `tunl.online` block:
 
-- `tunl.online` & `tunl.online/api` -> Dashboard (`:3090`) and API (`:3091`)
+- `tunl.online` -> static files from `dashboard/out`; `tunl.online/api` -> API (`:3091`)
+- Legacy `/inspect/<subdomain>` links are 301-redirected to `/inspect/requests?subdomain=<subdomain>`
 - `*.tunl.online` -> Tunnel HTTP proxy (`:8088`) with WebSocket upgrade headers
 - Open port `2222` on your firewall for incoming SSH tunnels:
   ```bash

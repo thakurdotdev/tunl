@@ -18,6 +18,7 @@ import {
   WifiOff,
 } from "lucide-react";
 import Link from "next/link";
+import { inspectAnalyticsHref, inspectRequestsHref } from "@/lib/inspect-routes";
 import { useMemo, useState } from "react";
 
 export default function InspectLandingPage() {
@@ -198,7 +199,7 @@ export default function InspectLandingPage() {
                     </Button>
                     <Button
                       nativeButton={false}
-                      render={<Link href={`/inspect/${subdomain}/analytics`} />}
+                      render={<Link href={inspectAnalyticsHref(subdomain)} />}
                       size="sm"
                       variant="outline"
                     >
@@ -206,7 +207,7 @@ export default function InspectLandingPage() {
                     </Button>
                     <Button
                       nativeButton={false}
-                      render={<Link href={`/inspect/${subdomain}`} />}
+                      render={<Link href={inspectRequestsHref(subdomain)} />}
                       size="sm"
                     >
                       Inspect <ArrowUpRight className="h-3.5 w-3.5" />

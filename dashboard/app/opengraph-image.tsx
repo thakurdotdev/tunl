@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const runtime = "edge";
+export const dynamic = "force-static";
 export const alt =
   "tunl — Make localhost public with one SSH command. Free zero-install OpenSSH reverse tunnel (tunl.online)";
 export const size = {
