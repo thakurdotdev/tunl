@@ -21,6 +21,7 @@ import (
 	"github.com/thakurdotdev/tunl/tunnel-server/internal/customdomains"
 	"github.com/thakurdotdev/tunl/tunnel-server/internal/health"
 	"github.com/thakurdotdev/tunl/tunnel-server/internal/httpproxy"
+	"github.com/thakurdotdev/tunl/tunnel-server/internal/limits"
 	"github.com/thakurdotdev/tunl/tunnel-server/internal/logging"
 	"github.com/thakurdotdev/tunl/tunnel-server/internal/registry"
 	"github.com/thakurdotdev/tunl/tunnel-server/internal/requestlog"
@@ -51,6 +52,20 @@ func main() {
 	defer cancel()
 
 	reg := registry.New(cfg.ReconnectGraceWindow, cfg.ReservedSubdomains, cfg.MaxTotalTunnels)
+
+	if err := httpproxy.SetTrustedProxies(cfg.TrustedProxies); err != nil {
+		log.Fatalf("config: %v", err)
+	}
+	// Escalating penalties: IPs get temporarily banned, tunnels get their
+	// bandwidth slowed. Both start after 10 bad seconds within 5 minutes.
+	// SSH and HTTP keep separate IP records so a visitor flooding a tunnel
+	// over HTTP doesn't lock out developers behind the same NAT.
+	var ipGuard, sshIPGuard, tunnelGuard *limits.Guard
+	if cfg.BansEnabled {
+		ipGuard = limits.NewGuard(limits.DefaultGuardConfig())
+		sshIPGuard = limits.NewGuard(limits.DefaultGuardConfig())
+		tunnelGuard = limits.NewGuard(limits.DefaultGuardConfig())
+	}
 
 	ccClient := controlclient.New(controlclient.Options{
 		BaseURL:      cfg.ControlPlaneURL,
@@ -94,6 +109,9 @@ func main() {
 		AnonMaxDuration:  cfg.AnonTunnelMaxDuration,
 		HostKey:          hostKey,
 		Logger:           logger,
+		MaxConnsPerUser:  cfg.MaxSSHConnsPerUser,
+		ForwardTimeout:   cfg.SSHForwardTimeout,
+		IPGuard:          sshIPGuard,
 	})
 
 	proxyHandler := httpproxy.NewHandler(httpproxy.Options{
@@ -103,6 +121,19 @@ func main() {
 		InternalSharedSecret: cfg.InternalSharedSecret,
 		CustomDomains:        customResolver,
 		Logger:               logger,
+		Limits: httpproxy.Limits{
+			MaxBodyAnon:           cfg.MaxBodyAnon,
+			MaxBodyUser:           cfg.MaxBodyUser,
+			MaxInflightPerTunnel:  cfg.MaxInflightPerTunnel,
+			InflightWait:          cfg.InflightWait,
+			MaxInflightTotal:      cfg.MaxInflightTotal,
+			MaxWSPerTunnel:        cfg.MaxWSPerTunnel,
+			MaxWSPerIP:            cfg.MaxWSPerIP,
+			BandwidthAnon:         cfg.BandwidthAnon,
+			BandwidthUser:         cfg.BandwidthUser,
+			ResponseHeaderTimeout: cfg.ResponseHeaderTimeout,
+			TunnelGuard:           tunnelGuard,
+		},
 	})
 
 	// Wrap the proxy with request capture when Redis is available
@@ -186,20 +217,40 @@ func main() {
 	// Apply rate limiting as the outermost middleware — after capture/Redis
 	// wiring so it wraps whichever capture handler was selected above.
 	if cfg.RateLimitEnabled {
-		rlCfg := httpproxy.DefaultRateLimitConfig()
+		rlCfg := httpproxy.RateLimitConfig{
+			SubdomainRate:  cfg.RateLimitTunnelRate,
+			SubdomainBurst: cfg.RateLimitTunnelBurst,
+			IPRate:         cfg.RateLimitIPRate,
+			IPBurst:        cfg.RateLimitIPBurst,
+			IPGuard:        ipGuard,
+			TunnelGuard:    tunnelGuard,
+			OnPenalty: func(kind, key string, level int, d time.Duration) {
+				logger.Warn("abuse penalty applied", "kind", kind, "key", key, "level", level, "duration", d.String())
+				if kind != "tunnel" {
+					return
+				}
+				if t, ok := reg.Lookup(key); ok && t.Conn != nil {
+					t.Conn.WriteTerminalLog(fmt.Sprintf(
+						"  \033[1;33m⚠  Too many requests: this tunnel's bandwidth is reduced to 1/%d for %s.\033[0m",
+						1<<min(level, 4), d.Round(time.Second)))
+				}
+			},
+		}
 		finalHandler = httpproxy.RateLimitMiddleware(finalHandler, rlCfg, subdomainExtractor)
-		logger.Info("http rate limiting enabled", "subdomain_rate", rlCfg.SubdomainRate, "ip_rate", rlCfg.IPRate)
+		logger.Info("http rate limiting enabled", "subdomain_rate", rlCfg.SubdomainRate, "ip_rate", rlCfg.IPRate, "bans", cfg.BansEnabled)
 	}
 
 	healthHandler := health.NewHandler(reg)
 
 	httpSrv := &http.Server{
-		Addr:           cfg.HTTPListenAddr,
-		Handler:        finalHandler,
-		ReadTimeout:    15 * time.Second,
-		WriteTimeout:   30 * time.Second,
-		IdleTimeout:    60 * time.Second,
-		MaxHeaderBytes: 1 << 20, // 1MB limit for header size
+		Addr:    cfg.HTTPListenAddr,
+		Handler: finalHandler,
+		// No ReadTimeout/WriteTimeout: they would cut off long uploads,
+		// downloads, SSE and WebSockets. nginx enforces per-read client
+		// timeouts in front of us; ReadHeaderTimeout stops slowloris.
+		ReadHeaderTimeout: 15 * time.Second,
+		IdleTimeout:       120 * time.Second,
+		MaxHeaderBytes:    64 << 10,
 	}
 	var httpsSrv *http.Server
 	healthSrv := &http.Server{
@@ -226,12 +277,11 @@ func main() {
 
 	if cfg.TLSCertPath != "" && cfg.TLSKeyPath != "" {
 		httpsSrv = &http.Server{
-			Addr:           cfg.HTTPSListenAddr,
-			Handler:        finalHandler,
-			ReadTimeout:    15 * time.Second,
-			WriteTimeout:   30 * time.Second,
-			IdleTimeout:    60 * time.Second,
-			MaxHeaderBytes: 1 << 20,
+			Addr:              cfg.HTTPSListenAddr,
+			Handler:           finalHandler,
+			ReadHeaderTimeout: 15 * time.Second,
+			IdleTimeout:       120 * time.Second,
+			MaxHeaderBytes:    64 << 10,
 		}
 		go func() {
 			logger.Info("https proxy listening", "addr", cfg.HTTPSListenAddr)

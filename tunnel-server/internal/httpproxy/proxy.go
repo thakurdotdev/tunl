@@ -5,7 +5,9 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/hex"
+	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"net/http"
@@ -14,10 +16,37 @@ import (
 	"time"
 
 	"github.com/thakurdotdev/tunl/tunnel-server/internal/customdomains"
+	"github.com/thakurdotdev/tunl/tunnel-server/internal/limits"
 	"github.com/thakurdotdev/tunl/tunnel-server/internal/registry"
 )
 
-const maxRequestBodySize = 5 * 1024 * 1024 // 5 MB
+// defaultMaxBodySize applies when Limits leaves the body caps unset.
+const defaultMaxBodySize = 5 * 1024 * 1024 // 5 MB
+
+// Limits bounds what one tunnel or visitor can cost the server. Zero
+// values disable that limit (except body size, which falls back to 5 MB).
+type Limits struct {
+	MaxBodyAnon int64 // request body cap for anonymous tunnels
+	MaxBodyUser int64 // request body cap for signed-in users' tunnels
+
+	MaxInflightPerTunnel int           // concurrent proxied HTTP requests per tunnel
+	InflightWait         time.Duration // how long a request may queue for a slot
+	MaxInflightTotal     int           // concurrent proxied HTTP requests server-wide
+
+	MaxWSPerTunnel int // concurrent WebSockets per tunnel
+	MaxWSPerIP     int // concurrent WebSockets per visitor IP
+
+	BandwidthAnon int64 // bytes/sec per anonymous tunnel, both directions combined
+	BandwidthUser int64 // bytes/sec per signed-in user's tunnel
+
+	// ResponseHeaderTimeout bounds how long we wait for the local app to
+	// start responding, so hung apps don't pin goroutines forever.
+	ResponseHeaderTimeout time.Duration
+
+	// TunnelGuard's penalty level slows a tunnel's bandwidth: level n
+	// divides it by 2^n while the penalty lasts.
+	TunnelGuard *limits.Guard
+}
 
 type ctxKey string
 
@@ -31,6 +60,13 @@ type Handler struct {
 	customDomains        *customdomains.Resolver
 	log                  *slog.Logger
 	proxy                *httputil.ReverseProxy
+
+	limits        Limits
+	inflight      *limits.Slots
+	inflightTotal *limits.Slots
+	wsPerTunnel   *limits.Slots
+	wsPerIP       *limits.Slots
+	buckets       *limits.BucketStore
 }
 
 type Options struct {
@@ -40,6 +76,7 @@ type Options struct {
 	InternalSharedSecret string
 	CustomDomains        *customdomains.Resolver
 	Logger               *slog.Logger
+	Limits               Limits
 }
 
 func NewHandler(opts Options) http.Handler {
@@ -50,6 +87,15 @@ func NewHandler(opts Options) http.Handler {
 		internalSharedSecret: opts.InternalSharedSecret,
 		customDomains:        opts.CustomDomains,
 		log:                  opts.Logger,
+		limits:               opts.Limits,
+		inflight:             limits.NewSlots(opts.Limits.MaxInflightPerTunnel),
+		inflightTotal:        limits.NewSlots(opts.Limits.MaxInflightTotal),
+		wsPerTunnel:          limits.NewSlots(opts.Limits.MaxWSPerTunnel),
+		wsPerIP:              limits.NewSlots(opts.Limits.MaxWSPerIP),
+		buckets:              limits.NewBucketStore(),
+	}
+	if h.log == nil {
+		h.log = slog.Default()
 	}
 	h.proxy = &httputil.ReverseProxy{
 		Director: func(req *http.Request) {
@@ -58,12 +104,18 @@ func NewHandler(opts Options) http.Handler {
 			req.Header.Del("X-Tunl-Internal-Secret")
 		},
 		Transport: &http.Transport{
-			DialContext:       h.dialTunnel,
-			DisableKeepAlives: true,
+			DialContext:           h.dialTunnel,
+			DisableKeepAlives:     true,
+			ResponseHeaderTimeout: opts.Limits.ResponseHeaderTimeout,
 		},
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
-			h.log.Warn("proxy error", "error", err)
 			subdomain, _ := h.resolveHost(r.Host)
+			var tooBig *http.MaxBytesError
+			if errors.As(err, &tooBig) {
+				renderPayloadTooLarge(w, r, subdomain, tooBig.Limit)
+				return
+			}
+			h.log.Warn("proxy error", "error", err)
 			renderProxyError(w, r, http.StatusServiceUnavailable,
 				"Service Unavailable",
 				"service unavailable",
@@ -82,11 +134,68 @@ func (h *Handler) dialTunnel(ctx context.Context, _, _ string) (net.Conn, error)
 	tunnel := ctx.Value(tunnelCtxKey).(*registry.Tunnel)
 	dialCtx, cancel := context.WithTimeout(ctx, h.dialTimeout)
 	defer cancel()
-	rwc, err := tunnel.Conn.Dial(dialCtx, tunnel.BindAddr, tunnel.BindPort)
+	rwc, err := h.dialThrottled(dialCtx, tunnel)
 	if err != nil {
 		return nil, err
 	}
 	return wrapAsConn(rwc), nil
+}
+
+// dialThrottled opens a channel to the tunnel's local app and makes its
+// bytes draw from the tunnel's shared bandwidth bucket.
+func (h *Handler) dialThrottled(ctx context.Context, tunnel *registry.Tunnel) (io.ReadWriteCloser, error) {
+	rwc, err := tunnel.Conn.Dial(ctx, tunnel.BindAddr, tunnel.BindPort)
+	if err != nil {
+		return nil, err
+	}
+	rate := h.limits.BandwidthAnon
+	if tunnel.UserID != "" {
+		rate = h.limits.BandwidthUser
+	}
+	sub, guard := tunnel.Subdomain, h.limits.TunnelGuard
+	bucket := h.buckets.Get(sub+"|"+tunnel.UserID, rate, func() float64 {
+		if _, level, ok := guard.Penalized(sub); ok {
+			return float64(int(1) << min(level, 4))
+		}
+		return 1
+	})
+	return limits.Throttle(rwc, bucket), nil
+}
+
+func (h *Handler) bodyLimit(tunnel *registry.Tunnel) int64 {
+	limit := h.limits.MaxBodyAnon
+	if tunnel.UserID != "" {
+		limit = h.limits.MaxBodyUser
+	}
+	if limit <= 0 {
+		limit = defaultMaxBodySize
+	}
+	return limit
+}
+
+func renderPayloadTooLarge(w http.ResponseWriter, r *http.Request, subdomain string, limit int64) {
+	renderProxyError(w, r, http.StatusRequestEntityTooLarge,
+		"Payload Too Large",
+		"payload too large",
+		fmt.Sprintf("This tunnel accepts request bodies up to %d MB.", limit/(1024*1024)),
+		"Send a smaller request, or sign in to tunl for a higher upload limit.",
+		subdomain,
+		"https://tunl.online/dashboard",
+		"Open Dashboard →",
+	)
+}
+
+func renderTunnelBusy(w http.ResponseWriter, r *http.Request, subdomain, detail string) {
+	w.Header().Set("Retry-After", "5")
+	renderProxyError(w, r, http.StatusServiceUnavailable,
+		"Tunnel Busy",
+		"tunnel busy",
+		detail,
+		"Wait a few seconds and try again.",
+		subdomain,
+		"https://tunl.online/dashboard",
+		"Open Dashboard →",
+	)
 }
 
 type statusWriter struct {
@@ -98,6 +207,9 @@ func (s *statusWriter) WriteHeader(code int) {
 	s.statusCode = code
 	s.ResponseWriter.WriteHeader(code)
 }
+
+// Unwrap lets http.ResponseController reach Flush/Hijack on the real writer.
+func (s *statusWriter) Unwrap() http.ResponseWriter { return s.ResponseWriter }
 
 func formatTerminalLog(now time.Time, method, path string, statusCode int, duration time.Duration) string {
 	var methodColor, statusColor string
@@ -140,11 +252,6 @@ func formatTerminalLog(now time.Time, method, path string, statusCode int, durat
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// Enforce request body size limit to prevent memory exhaustion attacks.
-	if r.Body != nil {
-		r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodySize)
-	}
-
 	// Read internal secret header if provided (e.g. from control-plane replay),
 	// then immediately delete it from request headers so it is never leaked downstream.
 	internalSecret := r.Header.Get("X-Tunl-Internal-Secret")
@@ -238,10 +345,49 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if IsWebSocketUpgrade(r) {
-		HandleWebSocket(w, r, tunnel, h.dialTimeout)
+	// Enforce the request body cap for this tunnel's tier.
+	limit := h.bodyLimit(tunnel)
+	if r.ContentLength > limit {
+		renderPayloadTooLarge(w, r, subdomain, limit)
 		return
 	}
+	if r.Body != nil {
+		r.Body = http.MaxBytesReader(w, r.Body, limit)
+	}
+
+	if IsWebSocketUpgrade(r) {
+		releaseTunnel, ok := h.wsPerTunnel.TryAcquire(subdomain)
+		if !ok {
+			renderTunnelBusy(w, r, subdomain, "This tunnel has too many open WebSocket connections.")
+			return
+		}
+		defer releaseTunnel()
+		releaseIP, ok := h.wsPerIP.TryAcquire(limits.IPKey(getClientIP(r)))
+		if !ok {
+			w.Header().Set("Retry-After", "10")
+			http.Error(w, "too many open websocket connections from your IP", http.StatusTooManyRequests)
+			return
+		}
+		defer releaseIP()
+		h.registry.UpdateActivity(subdomain)
+		HandleWebSocket(w, r, func(ctx context.Context) (io.ReadWriteCloser, error) {
+			return h.dialThrottled(ctx, tunnel)
+		}, h.dialTimeout)
+		return
+	}
+
+	releaseTotal, ok := h.inflightTotal.TryAcquire("")
+	if !ok {
+		renderTunnelBusy(w, r, subdomain, "The tunnel server is handling too many requests right now.")
+		return
+	}
+	defer releaseTotal()
+	releaseSlot, ok := h.inflight.Acquire(r.Context(), subdomain, h.limits.InflightWait)
+	if !ok {
+		renderTunnelBusy(w, r, subdomain, "This tunnel has too many requests in progress.")
+		return
+	}
+	defer releaseSlot()
 
 	h.registry.UpdateActivity(subdomain)
 
@@ -282,36 +428,6 @@ func (h *Handler) resolveHost(host string) (subdomain, customHost string) {
 		return sub, customdomains.NormalizeHost(bare)
 	}
 	return "", ""
-}
-
-// getClientIP extracts the real client IP from trusted proxy headers.
-// Header priority: CF-Connecting-IP → X-Real-IP → X-Forwarded-For → RemoteAddr.
-// Each header value is validated as a parseable IP to reject garbage/injection.
-func getClientIP(r *http.Request) string {
-	if cfIP := strings.TrimSpace(r.Header.Get("CF-Connecting-IP")); cfIP != "" {
-		if net.ParseIP(cfIP) != nil {
-			return cfIP
-		}
-	}
-	if xri := strings.TrimSpace(r.Header.Get("X-Real-IP")); xri != "" {
-		if net.ParseIP(xri) != nil {
-			return xri
-		}
-	}
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		parts := strings.Split(xff, ",")
-		if len(parts) > 0 {
-			ip := strings.TrimSpace(parts[0])
-			if ip != "" && net.ParseIP(ip) != nil {
-				return ip
-			}
-		}
-	}
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return r.RemoteAddr
-	}
-	return host
 }
 
 func isIPAllowed(clientIPStr string, allowedIPs []string) bool {

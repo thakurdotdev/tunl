@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/thakurdotdev/tunl/tunnel-server/internal/limits"
 	"github.com/thakurdotdev/tunl/tunnel-server/internal/logging"
 	"github.com/thakurdotdev/tunl/tunnel-server/internal/registry"
 	"golang.org/x/crypto/ssh"
@@ -25,6 +26,17 @@ const (
 	handshakeTimeout     = 10 * time.Second
 	acceptErrorBackoff   = 100 * time.Millisecond
 	sessionReadBufSize   = 128
+
+	// defaultMaxConnsPerUser applies to accounts whose plan has no tunnel
+	// cap; capped plans get maxActiveTunnels + userConnHeadroom (room for
+	// reconnects overlapping the old connection's teardown).
+	defaultMaxConnsPerUser = 20
+	userConnHeadroom       = 3
+	// defaultForwardTimeout closes connections that never ask for a tunnel.
+	defaultForwardTimeout = 60 * time.Second
+	// maxAuthTries is generous so clients with many agent keys still fall
+	// through to the anonymous keyboard-interactive path.
+	maxAuthTries = 20
 )
 
 type connLimiter struct {
@@ -68,12 +80,16 @@ func newConnLimiter(max int) *connLimiter {
 }
 
 func (l *connLimiter) acquire(ip string) bool {
+	return l.acquireMax(ip, l.max)
+}
+
+func (l *connLimiter) acquireMax(key string, max int) bool {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	if l.counts[ip] >= l.max {
+	if l.counts[key] >= max {
 		return false
 	}
-	l.counts[ip]++
+	l.counts[key]++
 	return true
 }
 
@@ -111,6 +127,10 @@ type Server struct {
 	anonMaxDuration    time.Duration
 	sshConfig          *ssh.ServerConfig
 	limiter            *connLimiter
+	userLimiter        *connLimiter
+	maxConnsPerUser    int
+	forwardTimeout     time.Duration
+	ipGuard            *limits.Guard
 	deviceFingerprints *deviceFingerprintStore
 	log                *slog.Logger
 
@@ -132,6 +152,16 @@ type Options struct {
 	MaxConnsPerIP    int
 	AnonMaxDuration  time.Duration
 	Logger           *slog.Logger
+
+	// MaxConnsPerUser caps SSH connections per account for plans without a
+	// tunnel limit (0 = default 20). Capped plans get their limit + 3.
+	MaxConnsPerUser int
+	// ForwardTimeout closes connections that haven't opened a tunnel in
+	// time (0 = 60s). Live tunnels are never timed out.
+	ForwardTimeout time.Duration
+	// IPGuard bans IPs that keep failing handshakes or hitting the per-IP
+	// connection cap. nil disables bans.
+	IPGuard *limits.Guard
 }
 
 func New(opts Options) *Server {
@@ -149,6 +179,7 @@ func New(opts Options) *Server {
 
 	cfg := &ssh.ServerConfig{
 		NoClientAuth:                false,
+		MaxAuthTries:                maxAuthTries,
 		PublicKeyCallback:           buildPublicKeyCallback(kv, fps, log),
 		KeyboardInteractiveCallback: buildKeyboardInteractiveCallback(),
 	}
@@ -176,6 +207,10 @@ func New(opts Options) *Server {
 		anonMaxDuration:    opts.AnonMaxDuration,
 		sshConfig:          cfg,
 		limiter:            newConnLimiter(maxPerIP),
+		userLimiter:        newConnLimiter(0),
+		maxConnsPerUser:    opts.MaxConnsPerUser,
+		forwardTimeout:     opts.ForwardTimeout,
+		ipGuard:            opts.IPGuard,
 		deviceFingerprints: fps,
 		log:                log,
 		sessions:           make(map[string]*sshSession),
@@ -300,8 +335,14 @@ func (s *Server) handleConn(ctx context.Context, conn net.Conn) {
 	defer s.connWg.Done()
 
 	remoteIP := extractIP(conn.RemoteAddr())
+	ipKey := limits.IPKey(remoteIP)
+	if _, _, banned := s.ipGuard.Penalized(ipKey); banned {
+		conn.Close()
+		return
+	}
 	if !s.limiter.acquire(remoteIP) {
 		s.log.Warn("per-ip connection limit reached", logging.FieldRemoteIP, remoteIP)
+		s.strike(ipKey)
 		conn.Close()
 		return
 	}
@@ -321,6 +362,7 @@ func (s *Server) handleConn(ctx context.Context, conn net.Conn) {
 	sshConn, chans, reqs, err := ssh.NewServerConn(conn, s.sshConfig)
 	if err != nil {
 		s.log.Warn("ssh handshake failed", "remote", conn.RemoteAddr(), "error", err)
+		s.strike(ipKey)
 		conn.Close()
 		return
 	}
@@ -340,7 +382,42 @@ func (s *Server) handleConn(ctx context.Context, conn net.Conn) {
 	if userID != "" {
 		s.limiter.release(remoteIP)
 		limiterReleased = true
+
+		userMax := s.maxConnsPerUser
+		if userMax <= 0 {
+			userMax = defaultMaxConnsPerUser
+		}
+		if maxActiveTunnels > 0 {
+			userMax = maxActiveTunnels + userConnHeadroom
+		}
+		if s.userLimiter.acquireMax(userID, userMax) {
+			defer s.userLimiter.release(userID)
+		} else {
+			s.log.Warn("per-user ssh connection limit reached", logging.FieldUserID, userID, "max", userMax)
+			sess.setRegisterError(fmt.Sprintf("Too many open SSH connections for your account (max %d). Close some and try again.", userMax))
+			closeGracefully(sess)
+		}
 	}
+
+	// A connection that never asks for a tunnel only costs us memory.
+	// Once a tunnel is up it may stay connected for as long as it likes.
+	forwardTimeout := s.forwardTimeout
+	if forwardTimeout <= 0 {
+		forwardTimeout = defaultForwardTimeout
+	}
+	go func() {
+		timer := time.NewTimer(forwardTimeout)
+		defer timer.Stop()
+		select {
+		case <-sess.tunnelReady():
+		case <-sess.errorReady():
+		case <-sess.Done():
+		case <-timer.C:
+			s.log.Info("closing ssh connection that never opened a tunnel", logging.FieldRemoteIP, remoteIP)
+			sess.setRegisterError("No tunnel was requested. Connect with: ssh -R 80:localhost:<port> " + s.baseDomain)
+			closeGracefully(sess)
+		}
+	}()
 
 	s.trackSession(sess)
 
@@ -479,6 +556,26 @@ func extractPermissions(perms *ssh.Permissions) (userID, email, allowedSubdomain
 	return perms.Extensions["user_id"], perms.Extensions["email"], perms.Extensions["allowed_subdomain"], res, perms.Extensions["plan"], max, ips, passwords, domains
 }
 
+// strike records an SSH-level violation for an IP and logs new bans.
+func (s *Server) strike(ipKey string) {
+	if level, escalated := s.ipGuard.Violation(ipKey); escalated {
+		rem, _, _ := s.ipGuard.Penalized(ipKey)
+		s.log.Warn("ip temporarily banned", logging.FieldRemoteIP, ipKey, "level", level, "duration", rem.String(), "source", "ssh")
+	}
+}
+
+// lockedChannel serializes writes to an SSH session channel.
+type lockedChannel struct {
+	ssh.Channel
+	mu sync.Mutex
+}
+
+func (c *lockedChannel) Write(p []byte) (int, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.Channel.Write(p)
+}
+
 func extractIP(addr net.Addr) string {
 	if tcpAddr, ok := addr.(*net.TCPAddr); ok {
 		return tcpAddr.IP.String()
@@ -531,11 +628,15 @@ func (s *Server) handleChannels(chans <-chan ssh.NewChannel, sess *sshSession, s
 }
 
 func (s *Server) handleSessionChannel(newCh ssh.NewChannel, sess *sshSession, log *slog.Logger) {
-	ch, reqs, err := newCh.Accept()
+	rawCh, reqs, err := newCh.Accept()
 	if err != nil {
 		log.Warn("session channel accept failed", "error", err)
 		return
 	}
+	// Request log lines, banners and prompts are written from different
+	// goroutines; unsynchronized channel writes corrupt the SSH stream and
+	// make the client drop the whole connection.
+	ch := &lockedChannel{Channel: rawCh}
 	defer ch.Close()
 
 	fmt.Fprintf(ch, "  \033[90m⚡ Connecting & resolving subdomains...\033[0m\r")

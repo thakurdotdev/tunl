@@ -25,6 +25,10 @@ func (r *responseCapture) WriteHeader(code int) {
 	r.ResponseWriter.WriteHeader(code)
 }
 
+// Unwrap lets http.ResponseController reach Flush/Hijack on the real
+// writer; without it streaming responses buffer and WebSocket upgrades fail.
+func (r *responseCapture) Unwrap() http.ResponseWriter { return r.ResponseWriter }
+
 func (r *responseCapture) Write(b []byte) (int, error) {
 	n, err := r.ResponseWriter.Write(b)
 	if remaining := r.maxBody - r.body.Len(); remaining > 0 && n > 0 {

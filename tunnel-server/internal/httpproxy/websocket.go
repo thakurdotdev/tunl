@@ -7,34 +7,25 @@ import (
 	"net"
 	"net/http"
 	"strings"
-	"sync"
 	"time"
-
-	"github.com/thakurdotdev/tunl/tunnel-server/internal/registry"
 )
 
-const (
-	wsIdleTimeout  = 15 * time.Minute
-	wsBytesPerTick = 50 * 1024 * 1024 // 50 MB/sec bandwidth cap per direction
-	wsTickInterval = 1 * time.Second
-)
+// wsIdleTimeout closes a WebSocket after this long with no traffic in
+// either direction. Bandwidth is capped per tunnel by the dial function.
+const wsIdleTimeout = 15 * time.Minute
 
 func IsWebSocketUpgrade(r *http.Request) bool {
 	return strings.EqualFold(r.Header.Get("Upgrade"), "websocket") &&
 		strings.Contains(strings.ToLower(r.Header.Get("Connection")), "upgrade")
 }
 
-func HandleWebSocket(w http.ResponseWriter, r *http.Request, tunnel *registry.Tunnel, dialTimeout time.Duration) {
-	hijacker, ok := w.(http.Hijacker)
-	if !ok {
-		http.Error(w, "websocket not supported", http.StatusInternalServerError)
-		return
-	}
-
+// HandleWebSocket relays an upgrade request to the tunnel and splices the
+// two connections. dial opens the (throttled) channel to the local app.
+func HandleWebSocket(w http.ResponseWriter, r *http.Request, dial func(context.Context) (io.ReadWriteCloser, error), dialTimeout time.Duration) {
 	ctx, cancel := context.WithTimeout(r.Context(), dialTimeout)
 	defer cancel()
 
-	backend, err := tunnel.Conn.Dial(ctx, tunnel.BindAddr, tunnel.BindPort)
+	backend, err := dial(ctx)
 	if err != nil {
 		http.Error(w, "bad gateway", http.StatusBadGateway)
 		return
@@ -54,8 +45,11 @@ func HandleWebSocket(w http.ResponseWriter, r *http.Request, tunnel *registry.Tu
 	}
 	defer resp.Body.Close()
 
-	clientConn, _, err := hijacker.Hijack()
+	// ResponseController walks Unwrap chains, so the capture and status
+	// wrappers don't hide the server's Hijacker.
+	clientConn, _, err := http.NewResponseController(w).Hijack()
 	if err != nil {
+		http.Error(w, "websocket not supported", http.StatusInternalServerError)
 		return
 	}
 	defer clientConn.Close()
@@ -96,50 +90,14 @@ func splice(client net.Conn, backend io.ReadWriteCloser, idleTimeout time.Durati
 
 	done := make(chan struct{}, 2)
 	go func() {
-		io.Copy(&activityWriter{w: &throttledWriter{w: backend}, onWrite: resetDeadline}, client)
+		io.Copy(&activityWriter{w: backend, onWrite: resetDeadline}, client)
 		done <- struct{}{}
 	}()
 	go func() {
-		io.Copy(&activityWriter{w: &throttledWriter{w: client}, onWrite: resetDeadline}, backend)
+		io.Copy(&activityWriter{w: client, onWrite: resetDeadline}, backend)
 		done <- struct{}{}
 	}()
 	<-done
 	client.Close()
 	backend.Close()
-}
-
-// throttledWriter limits the write throughput to wsBytesPerTick per
-// wsTickInterval. This prevents a single WebSocket connection from
-// monopolizing the server's bandwidth and SSH channel capacity.
-type throttledWriter struct {
-	w       io.Writer
-	mu      sync.Mutex
-	written int64
-	last    time.Time
-}
-
-func (t *throttledWriter) Write(p []byte) (int, error) {
-	t.mu.Lock()
-	now := time.Now()
-	if now.Sub(t.last) >= wsTickInterval {
-		t.written = 0
-		t.last = now
-	}
-
-	// If we've exceeded the budget for this tick, sleep until the next one.
-	if t.written >= wsBytesPerTick {
-		sleepDur := wsTickInterval - now.Sub(t.last)
-		t.mu.Unlock()
-		if sleepDur > 0 {
-			time.Sleep(sleepDur)
-		}
-		t.mu.Lock()
-		t.written = 0
-		t.last = time.Now()
-	}
-
-	t.written += int64(len(p))
-	t.mu.Unlock()
-
-	return t.w.Write(p)
 }
