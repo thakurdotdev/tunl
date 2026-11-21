@@ -6,6 +6,7 @@ import (
 	"io"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/thakurdotdev/tunl/tunnel-server/internal/registry"
@@ -51,7 +52,15 @@ type sshSession struct {
 	termWriterReady chan struct{}
 	termWriterOnce  sync.Once
 	inputChan       chan []byte
+
+	// Request log lines queue here and a single goroutine writes them, so
+	// a flood of requests (or a terminal that stops reading) never blocks
+	// proxying. Lines are dropped when the queue is full.
+	logQueue    chan string
+	droppedLogs atomic.Int64
 }
+
+const terminalLogQueueSize = 256
 
 func newSSHSession(id, userID, email, allowedSubdomain string, reservedSubdomains []string, plan, remoteIP, deviceID string, maxActiveTunnels int, allowedIPs []string, tunnelPasswords map[string]string, customDomains map[string]string, conn *ssh.ServerConn) *sshSession {
 	var perms *ssh.Permissions
@@ -78,6 +87,7 @@ func newSSHSession(id, userID, email, allowedSubdomain string, reservedSubdomain
 		errReady:           make(chan struct{}),
 		termWriterReady:    make(chan struct{}),
 		inputChan:          make(chan []byte, 16),
+		logQueue:           make(chan string, terminalLogQueueSize),
 	}
 }
 
@@ -171,7 +181,25 @@ func (s *sshSession) setTerminalWriter(w io.Writer) {
 	s.mu.Unlock()
 	s.termWriterOnce.Do(func() {
 		close(s.termWriterReady)
+		go s.drainTerminalLogs()
 	})
+}
+
+func (s *sshSession) drainTerminalLogs() {
+	for {
+		select {
+		case <-s.done:
+			return
+		case line := <-s.logQueue:
+			s.mu.Lock()
+			w := s.termWriter
+			s.mu.Unlock()
+			if n := s.droppedLogs.Swap(0); n > 0 {
+				fmt.Fprintf(w, "  \033[90m… %d request log lines skipped (too many requests)\033[0m\r\n", n)
+			}
+			fmt.Fprintf(w, "%s\r\n", line)
+		}
+	}
 }
 
 func (s *sshSession) waitForTerminalWriter(timeout time.Duration) io.Writer {
@@ -214,8 +242,13 @@ func (s *sshSession) WriteTerminalLog(line string) {
 	s.mu.Lock()
 	w := s.termWriter
 	s.mu.Unlock()
-	if w != nil {
-		fmt.Fprintf(w, "%s\r\n", line)
+	if w == nil {
+		return
+	}
+	select {
+	case s.logQueue <- line:
+	default:
+		s.droppedLogs.Add(1)
 	}
 }
 

@@ -6,6 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/thakurdotdev/tunl/tunnel-server/internal/limits"
 )
 
 func TestRateLimitMiddleware_SubdomainLimit(t *testing.T) {
@@ -134,5 +136,57 @@ func TestRateLimitStore_Cleanup(t *testing.T) {
 
 	if _, ok := store.buckets.Load("key1"); ok {
 		t.Fatal("expected key1 to be cleaned up")
+	}
+}
+
+func TestRateLimitMiddleware_SpoofedHeadersShareOneBucket(t *testing.T) {
+	cfg := RateLimitConfig{SubdomainRate: 1000, SubdomainBurst: 1000, IPRate: 1, IPBurst: 2}
+	handler := RateLimitMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}), cfg, SubdomainExtractor("tunl.dev"))
+
+	codes := map[int]int{}
+	for i := range 10 {
+		req := httptest.NewRequest("GET", "http://app.tunl.dev/", nil)
+		req.RemoteAddr = "203.0.113.9:1000"
+		req.Header.Set("CF-Connecting-IP", fmt.Sprintf("10.0.%d.1", i))
+		req.Header.Set("X-Real-IP", fmt.Sprintf("10.1.%d.1", i))
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, req)
+		codes[rr.Code]++
+	}
+	if codes[http.StatusOK] != 2 || codes[http.StatusTooManyRequests] != 8 {
+		t.Fatalf("rotating headers must not reset the bucket: %v", codes)
+	}
+}
+
+func TestRateLimitMiddleware_BansPersistentFlooder(t *testing.T) {
+	guard := limits.NewGuard(limits.GuardConfig{
+		Window: time.Minute, Threshold: 1, Penalties: []time.Duration{time.Minute}, ResetAfter: time.Hour, MaxEntries: 100,
+	})
+	var penalized []string
+	cfg := RateLimitConfig{
+		SubdomainRate: 1000, SubdomainBurst: 1000, IPRate: 0.001, IPBurst: 1,
+		IPGuard:   guard,
+		OnPenalty: func(kind, key string, level int, d time.Duration) { penalized = append(penalized, kind+":"+key) },
+	}
+	handler := RateLimitMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}), cfg, SubdomainExtractor("tunl.dev"))
+	do := func(ip string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest("GET", "http://app.tunl.dev/", nil)
+		req.RemoteAddr = ip + ":1000"
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, req)
+		return rr
+	}
+
+	do("198.51.100.1")       // uses the burst
+	rr := do("198.51.100.1") // over limit → strike → ban (threshold 1)
+	if rr.Code != http.StatusTooManyRequests || len(penalized) != 1 || penalized[0] != "ip:198.51.100.1" {
+		t.Fatalf("expected ban on first strike, code %d penalized %v", rr.Code, penalized)
+	}
+	rr = do("198.51.100.1")
+	if rr.Code != http.StatusTooManyRequests || rr.Header().Get("Retry-After") != "60" {
+		t.Fatalf("banned IP should get Retry-After 60, got %d %q", rr.Code, rr.Header().Get("Retry-After"))
+	}
+	if rr := do("198.51.100.2"); rr.Code != http.StatusOK {
+		t.Fatalf("other IPs must be unaffected, got %d", rr.Code)
 	}
 }

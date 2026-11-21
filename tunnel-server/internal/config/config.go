@@ -30,6 +30,26 @@ type Config struct {
 	ReservedSubdomains    map[string]struct{}
 	RateLimitEnabled      bool
 
+	// Abuse protection. Sizes are bytes, rates are per second.
+	TrustedProxies        []string
+	RateLimitIPRate       float64
+	RateLimitIPBurst      int
+	RateLimitTunnelRate   float64
+	RateLimitTunnelBurst  int
+	BansEnabled           bool
+	MaxBodyAnon           int64
+	MaxBodyUser           int64
+	MaxInflightPerTunnel  int
+	InflightWait          time.Duration
+	MaxInflightTotal      int
+	MaxWSPerTunnel        int
+	MaxWSPerIP            int
+	BandwidthAnon         int64
+	BandwidthUser         int64
+	ResponseHeaderTimeout time.Duration
+	MaxSSHConnsPerUser    int
+	SSHForwardTimeout     time.Duration
+
 	RedisURL              string
 	RequestLogEnabled     bool
 	RequestLogMaxBodySize int
@@ -61,6 +81,26 @@ func Load() (*Config, error) {
 	cfg.AnonTunnelMaxDuration = time.Duration(anonMinutes) * time.Minute
 
 	cfg.ReservedSubdomains = parseReservedSubdomains(getEnv("RESERVED_SUBDOMAINS", ""))
+
+	const mb = 1024 * 1024
+	cfg.TrustedProxies = strings.Split(getEnv("TRUSTED_PROXIES", "127.0.0.0/8,::1/128"), ",")
+	cfg.RateLimitIPRate = float64(getEnvInt("RATE_LIMIT_IP_RPS", 100))
+	cfg.RateLimitIPBurst = getEnvInt("RATE_LIMIT_IP_BURST", 400)
+	cfg.RateLimitTunnelRate = float64(getEnvInt("RATE_LIMIT_TUNNEL_RPS", 300))
+	cfg.RateLimitTunnelBurst = getEnvInt("RATE_LIMIT_TUNNEL_BURST", 800)
+	cfg.BansEnabled = getEnv("BANS_ENABLED", "true") == "true"
+	cfg.MaxBodyAnon = int64(getEnvInt("MAX_BODY_ANON_MB", 10)) * mb
+	cfg.MaxBodyUser = int64(getEnvInt("MAX_BODY_USER_MB", 100)) * mb
+	cfg.MaxInflightPerTunnel = getEnvInt("MAX_INFLIGHT_PER_TUNNEL", 200)
+	cfg.InflightWait = time.Duration(getEnvInt("INFLIGHT_WAIT_SECONDS", 10)) * time.Second
+	cfg.MaxInflightTotal = getEnvInt("MAX_INFLIGHT_TOTAL", 4000)
+	cfg.MaxWSPerTunnel = getEnvInt("MAX_WS_PER_TUNNEL", 200)
+	cfg.MaxWSPerIP = getEnvInt("MAX_WS_PER_IP", 30)
+	cfg.BandwidthAnon = int64(getEnvInt("BANDWIDTH_ANON_MB_PER_SEC", 10)) * mb
+	cfg.BandwidthUser = int64(getEnvInt("BANDWIDTH_USER_MB_PER_SEC", 30)) * mb
+	cfg.ResponseHeaderTimeout = time.Duration(getEnvInt("RESPONSE_HEADER_TIMEOUT_SECONDS", 120)) * time.Second
+	cfg.MaxSSHConnsPerUser = getEnvInt("MAX_SSH_CONNS_PER_USER", 20)
+	cfg.SSHForwardTimeout = time.Duration(getEnvInt("SSH_FORWARD_TIMEOUT_SECONDS", 60)) * time.Second
 
 	cfg.RedisURL = getEnv("REDIS_URL", "")
 	cfg.RequestLogEnabled = getEnv("REQUEST_LOG_ENABLED", "true") == "true"

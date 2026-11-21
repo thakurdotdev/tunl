@@ -53,6 +53,11 @@ func registerAnonymous(reg registry.TunnelRegistry, sess *sshSession, bindAddr s
 }
 
 func (s *Server) handleForwardRequest(_ context.Context, req *ssh.Request, sess *sshSession) {
+	if sess.RegisterError() != "" {
+		// The connection was already refused (e.g. account connection cap).
+		req.Reply(false, nil)
+		return
+	}
 	if !sess.markForwarded() {
 		s.log.Warn("duplicate tcpip-forward rejected", "session_id", sess.ID())
 		sess.setRegisterError("Only one port forwarding request is allowed per SSH session.")

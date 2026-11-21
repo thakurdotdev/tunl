@@ -214,6 +214,49 @@ REQUEST_LOG_ENABLED=true
 LOG_LEVEL=info
 ```
 
+**Abuse limits** (all optional; defaults shown). Long-lived tunnels are never
+timed out; these only bound what one visitor or tunnel can cost the server.
+
+```env
+# Only these peers may set the visitor IP via X-Real-IP (nginx on loopback).
+TRUSTED_PROXIES=127.0.0.0/8,::1/128
+# Requests/sec and burst per visitor IP and per tunnel. Over-limit gets 429.
+RATE_LIMIT_IP_RPS=100
+RATE_LIMIT_IP_BURST=400
+RATE_LIMIT_TUNNEL_RPS=300
+RATE_LIMIT_TUNNEL_BURST=800
+# Escalating penalties: 10 over-limit seconds within 5 min bans an IP for
+# 1m → 10m → 1h → 24h, and halves a tunnel's bandwidth (then 1/4, 1/8…).
+BANS_ENABLED=true
+# Request body caps.
+MAX_BODY_ANON_MB=10
+MAX_BODY_USER_MB=100
+# Concurrency: in-flight HTTP per tunnel (queues up to the wait, then 503),
+# server-wide, and open WebSockets per tunnel / per visitor IP.
+MAX_INFLIGHT_PER_TUNNEL=200
+INFLIGHT_WAIT_SECONDS=10
+MAX_INFLIGHT_TOTAL=4000
+MAX_WS_PER_TUNNEL=200
+MAX_WS_PER_IP=30
+# Bandwidth per tunnel, both directions combined (MB/s).
+BANDWIDTH_ANON_MB_PER_SEC=10
+BANDWIDTH_USER_MB_PER_SEC=30
+# Give up on a local app that hasn't started responding.
+RESPONSE_HEADER_TIMEOUT_SECONDS=120
+# SSH: anonymous connections per IP, connections per account (plans with a
+# tunnel cap get cap + 3), and how long a connection may sit without a tunnel.
+MAX_CONNS_PER_IP=10
+MAX_SSH_CONNS_PER_USER=20
+SSH_FORWARD_TIMEOUT_SECONDS=60
+```
+
+In production, nginx must sit in front with `deploy/nginx/tunl-*.conf`
+installed: it restores the visitor IP from Cloudflare, drops tunnel-host
+traffic that didn't come through Cloudflare, and adds coarse per-IP limits.
+Install nginx changes **before** a tunneld that trusts `X-Real-IP`, and run
+`deploy/nginx/update-cloudflare-ips.sh` to install or refresh Cloudflare's
+ranges.
+
 **`dashboard/.env`**:
 
 ```env
