@@ -1,6 +1,6 @@
 "use client";
 
-import { PageHeader, StatPill } from "@/components/portal/page-header";
+import { PageHeader } from "@/components/portal/page-header";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,19 +23,9 @@ import {
 } from "@/hooks/use-ssh-keys";
 import { ApiClientError } from "@/lib/api-client";
 import type { SSHKey } from "@/lib/types";
-import { cn } from "@/lib/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
-import {
-  AlertCircle,
-  Check,
-  ChevronDown,
-  Copy,
-  KeyRound,
-  Laptop,
-  Plus,
-  Trash2,
-} from "lucide-react";
+import { Check, ChevronDown, Copy, KeyRound, Laptop, Plus, Trash2 } from "lucide-react";
 import { useState, useSyncExternalStore } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -53,21 +43,18 @@ const sshKeySchema = z.object({
 type SshKeyFormValues = z.infer<typeof sshKeySchema>;
 type Os = "mac" | "linux" | "windows";
 
-const OS_COMMANDS: Record<Os, { generate: string; copy: string; copyHint: string }> = {
+const OS_COMMANDS: Record<Os, { generate: string; copy: string }> = {
   mac: {
     generate: 'ssh-keygen -t ed25519 -C "your_email@example.com"',
     copy: "pbcopy < ~/.ssh/id_ed25519.pub",
-    copyHint: "Copies the public key to your clipboard.",
   },
   linux: {
     generate: 'ssh-keygen -t ed25519 -C "your_email@example.com"',
     copy: "cat ~/.ssh/id_ed25519.pub",
-    copyHint: "Prints the public key. Select and copy the whole line.",
   },
   windows: {
     generate: 'ssh-keygen -t ed25519 -C "your_email@example.com"',
     copy: "Get-Content ~/.ssh/id_ed25519.pub | Set-Clipboard",
-    copyHint: "Run in PowerShell. Copies the public key to your clipboard.",
   },
 };
 
@@ -186,34 +173,17 @@ export default function SshKeysPage() {
 
   const keyList = (
     <section className="surface-card bg-card overflow-hidden rounded-xl border">
-      <div className="flex items-center justify-between gap-3 border-b border-[var(--hairline)] px-4 py-3 sm:px-5">
-        <h2 className="text-foreground text-sm font-semibold">Authorized devices</h2>
-        {hasKeys && !showAdd && (
-          <Button variant="outline" onClick={() => setAddOpen(true)}>
-            <Plus /> Add a device
-          </Button>
-        )}
-      </div>
       {isLoading ? (
         <div className="space-y-2 p-5">
           <div className="bg-muted h-12 animate-pulse rounded-lg" />
           <div className="bg-muted/70 h-12 animate-pulse rounded-lg" />
         </div>
-      ) : !hasKeys ? (
-        <div className="text-muted-foreground px-5 py-8 text-center text-sm">
-          No devices yet. Follow the steps above to add your first key.
-        </div>
       ) : (
         <ul className="divide-y divide-[var(--hairline)]">
           {keys.map((key) => (
-            <li
-              key={key.id}
-              className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:gap-4 sm:px-5"
-            >
+            <li key={key.id} className="flex items-center gap-3 py-2.5 pr-2 pl-4 sm:pl-5">
               <div className="flex min-w-0 flex-1 items-center gap-3">
-                <span className="bg-muted text-muted-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-lg">
-                  <Laptop className="h-4 w-4" />
-                </span>
+                <Laptop className="text-muted-foreground h-4 w-4 shrink-0" />
                 <div className="min-w-0 flex-1">
                   <p className="text-foreground truncate text-sm font-medium">
                     {key.label || "Untitled device"}
@@ -233,19 +203,19 @@ export default function SshKeysPage() {
                   </button>
                 </div>
               </div>
-              <div className="flex items-center justify-between gap-3 sm:justify-end">
-                <span className="text-muted-foreground text-xs whitespace-nowrap">
-                  Added {format(new Date(key.createdAt), "MMM d, yyyy")}
-                </span>
-                <Button
-                  variant="ghost"
-                  className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                  onClick={() => setRevokeKey(key)}
-                  aria-label={`Revoke ${key.label || "SSH key"}`}
-                >
-                  <Trash2 /> Revoke
-                </Button>
-              </div>
+              <span className="text-muted-foreground hidden text-xs whitespace-nowrap sm:inline">
+                {format(new Date(key.createdAt), "MMM d, yyyy")}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                onClick={() => setRevokeKey(key)}
+                aria-label={`Revoke ${key.label || "SSH key"}`}
+                title="Revoke"
+              >
+                <Trash2 />
+              </Button>
             </li>
           ))}
         </ul>
@@ -261,7 +231,7 @@ export default function SshKeysPage() {
             {hasKeys ? "Add another device" : "Add your first device"}
           </h2>
           <p className="text-muted-foreground mt-0.5 text-xs">
-            Three steps, about a minute. Already have a key? Skip to step 3.
+            Already have a key? Skip to step 3.
           </p>
         </div>
         {hasKeys && (
@@ -302,13 +272,6 @@ export default function SshKeysPage() {
                 copied={copied === "gen"}
                 onCopy={() => copy(OS_COMMANDS[os].generate, "gen", "Copied command")}
               />
-              <p className="flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-300/90">
-                <AlertCircle className="mt-px h-3.5 w-3.5 shrink-0" />
-                <span>
-                  Skip this if <code className="font-mono">~/.ssh/id_ed25519.pub</code> already
-                  exists, so you don’t overwrite a key you use.
-                </span>
-              </p>
             </div>
           </div>
 
@@ -321,7 +284,6 @@ export default function SshKeysPage() {
                 copied={copied === "copy"}
                 onCopy={() => copy(OS_COMMANDS[os].copy, "copy", "Copied command")}
               />
-              <p className="text-muted-foreground text-xs">{OS_COMMANDS[os].copyHint}</p>
             </div>
           </div>
         </div>
@@ -330,11 +292,10 @@ export default function SshKeysPage() {
         <form onSubmit={handleSubmit(onSubmit)} className="flex gap-3 p-4 sm:p-5">
           <StepBadge n={3} />
           <div className="flex min-w-0 flex-1 flex-col gap-3">
-            <p className="text-foreground text-[13px] font-medium">Paste it here</p>
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="publicKey" className="text-xs">
-                  Public key
+                <Label htmlFor="publicKey" className="text-[13px] font-medium">
+                  Paste the public key
                 </Label>
                 {detectedType && (
                   <span className="text-primary font-mono text-[11px]">{detectedType}</span>
@@ -386,22 +347,25 @@ export default function SshKeysPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="SSH keys"
-        description="Each computer that opens tunnels signs in with its SSH key. Revoking a key disconnects its tunnels right away."
-        actions={<StatPill icon={KeyRound} label="Devices" value={keys.length} />}
+        description="Every device that opens tunnels needs its key here."
+        actions={
+          hasKeys && !showAdd ? (
+            <Button onClick={() => setAddOpen(true)}>
+              <Plus /> Add device
+            </Button>
+          ) : undefined
+        }
       />
 
-      <div className={cn("flex gap-6", hasKeys || isLoading ? "flex-col" : "flex-col-reverse")}>
-        {keyList}
-        {addDevice}
-      </div>
+      {addDevice}
+      {(isLoading || hasKeys) && keyList}
 
       <AlertDialog open={!!revokeKey}>
         <AlertDialogContent className="font-sans">
           <AlertDialogHeader>
             <AlertDialogTitle>Revoke “{revokeKey?.label || "this key"}”?</AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground text-xs">
-              This device can no longer open tunnels, and any tunnels it has open now are
-              disconnected immediately.
+              This device can’t open tunnels anymore, and its open tunnels disconnect now.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

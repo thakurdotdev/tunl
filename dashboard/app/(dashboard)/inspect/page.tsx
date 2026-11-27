@@ -1,25 +1,13 @@
 "use client";
 
-import { PageHeader, StatPill } from "@/components/portal/page-header";
+import { PageHeader } from "@/components/portal/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTunnelSessionsQuery, useTunnelsQuery } from "@/hooks/use-tunnels";
 import { inspectAnalyticsHref, inspectRequestsHref } from "@/lib/inspect-routes";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
-import {
-  Activity,
-  BarChart3,
-  Check,
-  Clock,
-  Copy,
-  Eye,
-  Globe,
-  Radio,
-  RotateCcw,
-  Search,
-  WifiOff,
-} from "lucide-react";
+import { BarChart3, Check, Copy, Eye, Globe, Search, WifiOff } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
@@ -90,46 +78,8 @@ export default function InspectLandingPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Inspect"
-        description="See every request hitting your tunnels as it happens, replay it against your local server, and track traffic over time."
-        actions={
-          <>
-            <StatPill icon={Radio} label="Live" value={liveCount} tone="live" />
-            <StatPill icon={Clock} label="Retention" value="30 min" />
-          </>
-        }
+        description="Watch, replay and chart requests. Kept for 30 minutes."
       />
-
-      {/* What you can do here */}
-      <div className="grid gap-3 sm:grid-cols-3">
-        {[
-          {
-            icon: Activity,
-            title: "Live request stream",
-            text: "Headers, bodies, status and timing for each request.",
-          },
-          {
-            icon: RotateCcw,
-            title: "One-click replay",
-            text: "Re-send any captured request to debug a webhook.",
-          },
-          {
-            icon: BarChart3,
-            title: "Traffic analytics",
-            text: "Requests, bandwidth, latency and errors over 30 days.",
-          },
-        ].map(({ icon: Icon, title, text }) => (
-          <div
-            key={title}
-            className="flex items-start gap-3 rounded-xl border border-[var(--hairline)] bg-[color-mix(in_oklab,var(--foreground)_2%,transparent)] p-3.5"
-          >
-            <Icon className="text-primary mt-0.5 h-4 w-4 shrink-0" />
-            <div>
-              <p className="text-foreground text-[13px] font-medium">{title}</p>
-              <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">{text}</p>
-            </div>
-          </div>
-        ))}
-      </div>
 
       {loading ? (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -143,9 +93,6 @@ export default function InspectLandingPage() {
             <WifiOff className="text-muted-foreground/70 h-6 w-6" />
           </div>
           <h2 className="text-base font-semibold">Nothing to inspect yet</h2>
-          <p className="text-muted-foreground mt-1 max-w-md text-sm">
-            Reserve a subdomain or connect a tunnel. Its requests show up here while it’s running.
-          </p>
           <Button nativeButton={false} render={<Link href="/dashboard" />} className="mt-5">
             <Globe /> Go to tunnels
           </Button>
@@ -213,25 +160,10 @@ export default function InspectLandingPage() {
                 <li
                   key={endpoint.subdomain}
                   className={cn(
-                    "surface-card bg-card flex flex-col gap-4 rounded-xl border p-4 transition-colors",
-                    endpoint.isLive && "border-emerald-500/25",
+                    "surface-card bg-card flex flex-col gap-3 rounded-xl border p-4 transition-colors",
                   )}
                 >
-                  <div className="flex items-start gap-3">
-                    <span
-                      className={cn(
-                        "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
-                        endpoint.isLive
-                          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                          : "bg-muted text-muted-foreground",
-                      )}
-                    >
-                      {endpoint.isLive ? (
-                        <Radio className="h-4 w-4" />
-                      ) : (
-                        <Globe className="h-4 w-4" />
-                      )}
-                    </span>
+                  <div className="flex items-start gap-2">
                     <div className="min-w-0 flex-1">
                       <a
                         href={`https://${endpoint.subdomain}.tunl.online`}
@@ -282,7 +214,7 @@ export default function InspectLandingPage() {
                     <Button
                       nativeButton={false}
                       render={<Link href={inspectRequestsHref(endpoint.subdomain)} />}
-                      variant={endpoint.isLive ? "default" : "outline"}
+                      variant="outline"
                       className="h-8"
                     >
                       <Eye /> Requests

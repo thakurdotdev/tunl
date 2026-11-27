@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { User } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Calendar, Check, Loader2, Save, ShieldCheck, User as UserIcon } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 
 interface ProfileInfoCardProps {
   profile: User | undefined;
@@ -39,117 +39,60 @@ export function ProfileInfoCard({ profile, onUpdateName, isPending }: ProfileInf
   const isUnchanged = name.trim() === (profile?.name ?? "");
   const userInitial = getInitial(profile?.name, profile?.email);
 
+  const since = profile?.createdAt
+    ? new Date(profile.createdAt).toLocaleDateString(undefined, { month: "short", year: "numeric" })
+    : null;
+
   return (
-    <div className="surface-card bg-card flex flex-col overflow-hidden rounded-xl border font-sans">
-      <div className="border-border/60 bg-muted/40 flex items-center justify-between border-b px-4 py-2.5 font-sans text-xs">
-        <div className="text-foreground flex items-center gap-2 font-medium">
-          <UserIcon className="text-primary h-4 w-4" />
-          <span className="text-xs font-semibold">Personal Profile Details</span>
+    <form
+      onSubmit={handleSubmit}
+      className="surface-card bg-card flex flex-col gap-5 rounded-xl border p-5 font-sans"
+    >
+      <div className="flex items-center gap-4">
+        {profile?.image ? (
+          <img
+            src={profile.image}
+            alt=""
+            className="h-12 w-12 shrink-0 rounded-full border border-[var(--hairline)] object-cover"
+          />
+        ) : (
+          <div className="bg-secondary text-foreground flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-[var(--hairline)] text-sm font-bold">
+            {userInitial}
+          </div>
+        )}
+        <div className="min-w-0">
+          <p className="text-foreground truncate text-sm font-semibold">{profile?.email}</p>
+          <p className="text-muted-foreground mt-0.5 text-xs capitalize">
+            {profile?.plan?.name ?? "Free"} plan
+            {profile?.role === "admin" ? " · admin" : ""}
+            {since ? ` · since ${since}` : ""}
+          </p>
         </div>
-        <span className="text-muted-foreground text-[11px] font-medium tracking-wider uppercase">
-          Identity
-        </span>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-5 p-5 text-xs">
-        {/* Avatar & Header Info */}
-        <div className="flex items-center gap-4">
-          {profile?.image ? (
-            <img
-              src={profile.image}
-              alt={profile?.name || profile?.email || "Avatar"}
-              className="border-border/60 h-14 w-14 shrink-0 rounded-full border object-cover shadow-xs"
-            />
-          ) : (
-            <div className="bg-secondary text-foreground border-border/60 flex h-14 w-14 shrink-0 items-center justify-center rounded-full border text-base font-bold">
-              {userInitial}
-            </div>
-          )}
-          <div className="flex flex-col">
-            <h2 className="text-foreground text-sm font-bold tracking-tight">
-              {profile?.name || profile?.email || "User Profile"}
-            </h2>
-            <p className="text-muted-foreground text-xs">{profile?.email}</p>
-          </div>
-        </div>
-
-        <div className="grid gap-5 sm:grid-cols-2">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-foreground text-xs font-medium">Display Name</label>
-            <Input
-              type="text"
-              placeholder="Your name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="border-border/60 bg-background h-9 rounded-md font-sans text-xs"
-            />
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label className="text-foreground text-xs font-medium">Email Address</label>
-            <Input
-              type="email"
-              value={profile?.email ?? ""}
-              disabled
-              className="border-border/60 bg-muted/40 text-muted-foreground h-9 rounded-md font-sans text-xs"
-            />
-          </div>
-        </div>
-
-        <div className="grid gap-3 pt-1 text-xs sm:grid-cols-3">
-          <div className="border-border/60 bg-muted/20 rounded-md border p-3">
-            <span className="text-muted-foreground block text-[11px] font-medium tracking-wider uppercase">
-              Account Role
-            </span>
-            <span className="text-foreground mt-1 inline-flex items-center gap-1.5 font-semibold">
-              <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
-              {profile?.role?.toUpperCase() ?? "USER"}
-            </span>
-          </div>
-
-          <div className="border-border/60 bg-muted/20 rounded-md border p-3">
-            <span className="text-muted-foreground block text-[11px] font-medium tracking-wider uppercase">
-              Active Tier Plan
-            </span>
-            <span className="mt-1 block font-semibold text-emerald-400">
-              {profile?.plan?.name?.toUpperCase() ?? "DEFAULT"}
-            </span>
-          </div>
-
-          <div className="border-border/60 bg-muted/20 rounded-md border p-3">
-            <span className="text-muted-foreground block text-[11px] font-medium tracking-wider uppercase">
-              Member Since
-            </span>
-            <span className="text-foreground mt-1 inline-flex items-center gap-1.5 font-medium">
-              <Calendar className="text-muted-foreground h-3.5 w-3.5" />
-              {profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString() : "-"}
-            </span>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-end pt-1">
-          <Button
-            type="submit"
-            disabled={isPending || isUnchanged}
-            size="sm"
-            className="h-8 text-xs font-semibold"
-          >
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="display-name" className="text-foreground text-xs font-medium">
+          Display name
+        </label>
+        <div className="flex gap-2">
+          <Input
+            id="display-name"
+            type="text"
+            placeholder="Your name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="h-9 max-w-sm min-w-0 flex-1 text-sm"
+          />
+          <Button type="submit" disabled={isPending || isUnchanged} className="h-9">
             {isPending ? (
-              <>
-                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Saving...
-              </>
+              <Loader2 className="animate-spin" />
             ) : saved ? (
-              <>
-                <Check className="mr-1.5 h-3.5 w-3.5 text-emerald-400" /> Profile Updated
-              </>
-            ) : (
-              <>
-                <Save className="mr-1.5 h-3.5 w-3.5" /> Save Changes
-              </>
-            )}
+              <Check className="text-emerald-400" />
+            ) : null}
+            {saved ? "Saved" : "Save"}
           </Button>
         </div>
-      </form>
-    </div>
+      </div>
+    </form>
   );
 }

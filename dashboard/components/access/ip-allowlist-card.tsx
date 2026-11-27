@@ -4,19 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { useMyIpQuery, type UserProfile } from "@/hooks/use-profile";
-import { cn } from "@/lib/utils";
-import {
-  AlertCircle,
-  AlertTriangle,
-  Check,
-  Globe,
-  Loader2,
-  MapPin,
-  Network,
-  Plus,
-  ShieldCheck,
-  X,
-} from "lucide-react";
+import { AlertCircle, AlertTriangle, Loader2, MapPin, Plus, ShieldCheck, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
 /* ---------------------------- IP helpers (client) --------------------------- */
@@ -137,59 +125,46 @@ export function IpAllowlistCard({ profile, onSave, isPending }: IpAllowlistCardP
   return (
     <section className="surface-card bg-card overflow-hidden rounded-xl border">
       {/* Header + master switch */}
-      <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex min-w-0 gap-3">
-          <div
-            className={cn(
-              "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border",
-              enforcing
-                ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                : "text-muted-foreground bg-muted/50 border-[var(--hairline-strong)]",
+      <div className="flex items-start justify-between gap-4 p-5">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-foreground text-[15px] font-semibold">IP allowlist</h2>
+            {enforcing ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                <ShieldCheck className="h-3 w-3" /> On
+              </span>
+            ) : (
+              <span className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-[11px] font-medium">
+                Off
+              </span>
             )}
-          >
-            <Network className="h-5 w-5" />
           </div>
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-foreground text-[15px] font-semibold">IP allowlist</h2>
-              {enforcing ? (
-                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-                  <ShieldCheck className="h-3 w-3" /> Enforcing
-                </span>
-              ) : (
-                <span className="bg-muted text-muted-foreground rounded-full border border-[var(--hairline)] px-2 py-0.5 text-[11px] font-medium">
-                  Off · anyone can visit
-                </span>
-              )}
-            </div>
-            <p className="text-muted-foreground mt-1 max-w-xl text-[13px] leading-relaxed">
-              Only visitors from these addresses can open your tunnel URLs. Everyone else gets a 403
-              before the request reaches your machine. Applies to every tunnel on your account.
-            </p>
-          </div>
+          <p className="text-muted-foreground mt-1 text-[13px]">
+            Only these IPs can open your tunnels.
+          </p>
         </div>
-        <label
-          htmlFor="allowlist-enabled"
-          className="flex shrink-0 cursor-pointer items-center gap-2.5 self-start rounded-lg border border-[var(--hairline-strong)] px-3 py-2 text-xs font-medium"
-        >
-          <span>{enabled ? "Enabled" : "Disabled"}</span>
-          <Switch id="allowlist-enabled" checked={enabled} onCheckedChange={setEnabled} />
-        </label>
+        <Switch
+          id="allowlist-enabled"
+          aria-label="Enforce IP allowlist"
+          checked={enabled}
+          onCheckedChange={setEnabled}
+          className="mt-1"
+        />
       </div>
 
-      <div className="flex flex-col gap-4 border-t border-[var(--hairline)] p-5">
+      <div className="flex flex-col gap-3 border-t border-[var(--hairline)] p-5">
         {/* Add a rule */}
         <form
           onSubmit={(e) => {
             e.preventDefault();
             addRule(draft);
           }}
-          className="flex flex-col gap-2"
+          className="flex flex-col gap-1.5"
         >
-          <label htmlFor="allowlist-input" className="text-foreground text-xs font-medium">
-            Add an address or range
+          <label htmlFor="allowlist-input" className="sr-only">
+            IP address or CIDR range
           </label>
-          <div className="flex flex-col gap-2 sm:flex-row">
+          <div className="flex gap-2">
             <Input
               id="allowlist-input"
               value={draft}
@@ -197,92 +172,73 @@ export function IpAllowlistCard({ profile, onSave, isPending }: IpAllowlistCardP
                 setDraft(e.target.value);
                 if (inputError) setInputError(null);
               }}
-              placeholder="203.0.113.7 or 10.0.0.0/8"
+              placeholder="IP or range, e.g. 10.0.0.0/8"
               autoComplete="off"
               spellCheck={false}
               aria-invalid={!!inputError}
               aria-describedby={inputError ? "allowlist-input-error" : undefined}
               className="h-9 min-w-0 flex-1 font-mono text-sm"
             />
-            <div className="flex justify-end gap-2">
-              <Button type="submit" variant="outline" className="h-9 flex-1 sm:flex-none">
-                <Plus /> Add
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className="h-9 flex-1 sm:flex-none"
-                disabled={!myIp || ips.includes(myIp)}
-                onClick={() => myIp && addRule(myIp)}
-                title={myIp ? `Add ${myIp}` : undefined}
-              >
-                {myIpLoading ? <Loader2 className="animate-spin" /> : <MapPin />}
-                {myIp && ips.includes(myIp) ? "My IP added" : "Add my IP"}
-              </Button>
-            </div>
+            <Button type="submit" variant="outline" className="h-9" aria-label="Add address">
+              <Plus /> <span className="max-sm:hidden">Add</span>
+            </Button>
           </div>
-          {inputError ? (
+          {inputError && (
             <p id="allowlist-input-error" className="text-destructive text-xs">
               {inputError}
-            </p>
-          ) : (
-            <p className="text-muted-foreground text-xs">
-              {myIp ? (
-                <>
-                  You’re connecting from{" "}
-                  <span className="text-foreground font-mono font-medium">{myIp}</span>.{" "}
-                </>
-              ) : null}
-              CIDR ranges like <span className="font-mono">192.168.0.0/16</span> cover a whole
-              network.
             </p>
           )}
         </form>
 
+        {myIp && !ips.includes(myIp) && (
+          <button
+            type="button"
+            onClick={() => addRule(myIp)}
+            className="text-primary inline-flex items-center gap-1.5 self-start text-xs font-medium hover:underline"
+          >
+            <MapPin className="h-3.5 w-3.5" />
+            Add my IP <span className="text-muted-foreground font-mono">{myIp}</span>
+          </button>
+        )}
+        {myIpLoading && (
+          <span className="text-muted-foreground inline-flex items-center gap-1.5 text-xs">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Finding your IP…
+          </span>
+        )}
+
         {/* Rule list */}
-        {ips.length === 0 ? (
-          <div className="flex flex-col items-center gap-1 rounded-lg border border-dashed border-[var(--hairline-strong)] px-4 py-8 text-center">
-            <Globe className="text-muted-foreground/50 mb-1 h-6 w-6" />
-            <p className="text-foreground text-sm font-medium">No addresses yet</p>
-            <p className="text-muted-foreground max-w-sm text-xs">
-              Add your office, home or VPN address. Start with “Add my IP” if you’re not sure.
-            </p>
-          </div>
-        ) : (
+        {ips.length > 0 && (
           <ul className="divide-y divide-[var(--hairline)] overflow-hidden rounded-lg border border-[var(--hairline-strong)]">
             {ips.map((rule) => {
               const info = describeRule(rule);
               const isMine = myIp ? ruleCovers(rule, myIp) : false;
               const unsaved = !savedIps.includes(rule);
               return (
-                <li
-                  key={rule}
-                  className="hover:bg-muted/30 flex items-center gap-3 px-3.5 py-2.5 transition-colors"
-                >
-                  <span className="bg-muted text-muted-foreground w-12 shrink-0 rounded-md py-0.5 text-center font-mono text-[10px] font-semibold">
-                    {info.kind}
+                <li key={rule} className="flex items-center gap-2 py-1.5 pr-1.5 pl-3.5">
+                  <span className="text-foreground min-w-0 truncate font-mono text-[13px] font-medium">
+                    {rule}
                   </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-foreground truncate font-mono text-[13px] font-semibold">
-                      {rule}
-                    </p>
-                    <p className="text-muted-foreground text-[11px]">
+                  {info.kind === "Range" && (
+                    <span className="text-muted-foreground hidden text-[11px] sm:inline">
                       {info.detail}
-                      {isMine && <span className="text-primary font-medium"> · includes you</span>}
-                      {unsaved && (
-                        <span className="font-medium text-amber-600 dark:text-amber-400">
-                          {" "}
-                          · not saved
-                        </span>
-                      )}
-                    </p>
-                  </div>
+                    </span>
+                  )}
+                  {isMine && (
+                    <span className="bg-primary/10 text-primary rounded-full px-1.5 py-px text-[10px] font-semibold">
+                      you
+                    </span>
+                  )}
+                  {unsaved && (
+                    <span className="rounded-full bg-amber-500/10 px-1.5 py-px text-[10px] font-semibold text-amber-700 dark:text-amber-300">
+                      new
+                    </span>
+                  )}
                   <Button
                     variant="ghost"
                     size="icon-sm"
                     aria-label={`Remove ${rule}`}
                     onClick={() => setIps((prev) => prev.filter((r) => r !== rule))}
-                    className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                    className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 ml-auto"
                   >
                     <X />
                   </Button>
@@ -294,65 +250,42 @@ export function IpAllowlistCard({ profile, onSave, isPending }: IpAllowlistCardP
 
         {/* Warnings */}
         {blockedEmpty && (
-          <div className="flex items-start gap-2 rounded-lg border border-amber-500/25 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300">
-            <AlertTriangle className="mt-px h-4 w-4 shrink-0" />
-            Add at least one address before turning the allowlist on.
-          </div>
+          <p className="flex items-center gap-2 text-xs text-amber-700 dark:text-amber-300">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+            Add an address before turning this on.
+          </p>
         )}
         {enabled && ips.length > 0 && myIp && !myIpCovered && (
-          <div className="flex flex-col gap-2 rounded-lg border border-amber-500/25 bg-amber-500/10 p-3 text-xs text-amber-700 sm:flex-row sm:items-center sm:justify-between dark:text-amber-300">
-            <span className="flex items-start gap-2">
-              <AlertTriangle className="mt-px h-4 w-4 shrink-0" />
-              Your current IP ({myIp}) isn’t on the list, so you won’t be able to open your own
-              tunnels from this network.
-            </span>
-            <Button
-              size="xs"
-              variant="outline"
-              onClick={() => addRule(myIp)}
-              className="self-start"
-            >
-              <Plus /> Add it
-            </Button>
-          </div>
+          <p className="flex items-center gap-2 text-xs text-amber-700 dark:text-amber-300">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+            Your IP isn’t listed, so you’ll be locked out of your own tunnels.
+          </p>
         )}
         {saveError && (
-          <div className="border-destructive/30 bg-destructive/10 text-destructive flex items-start gap-2 rounded-lg border p-3 text-xs">
-            <AlertCircle className="mt-px h-4 w-4 shrink-0" />
+          <p className="text-destructive flex items-center gap-2 text-xs">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
             {saveError}
-          </div>
+          </p>
         )}
       </div>
 
-      {/* Save bar */}
-      <div
-        className={cn(
-          "flex flex-col gap-3 border-t border-[var(--hairline)] px-5 py-3 sm:flex-row sm:items-center sm:justify-between",
-          dirty ? "bg-amber-500/[0.06]" : "bg-muted/30",
-        )}
-      >
-        <p className="text-muted-foreground text-xs" aria-live="polite">
-          {dirty ? (
-            <span className="font-medium text-amber-700 dark:text-amber-300">
-              You have unsaved changes
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1.5">
-              <Check className="h-3.5 w-3.5 text-emerald-500" />
-              {savedIps.length} {savedIps.length === 1 ? "address" : "addresses"} saved
-            </span>
-          )}
-        </p>
-        <div className="flex justify-end gap-2">
-          <Button variant="ghost" onClick={discard} disabled={!dirty || isPending}>
-            Discard
-          </Button>
-          <Button onClick={save} disabled={!dirty || isPending || blockedEmpty}>
-            {isPending ? <Loader2 className="animate-spin" /> : null}
-            {isPending ? "Saving…" : "Save changes"}
-          </Button>
+      {/* Save bar: only while there is something to save */}
+      {dirty && (
+        <div className="flex items-center justify-between gap-3 border-t border-[var(--hairline)] bg-amber-500/[0.06] px-5 py-3">
+          <p className="text-xs font-medium text-amber-700 dark:text-amber-300" aria-live="polite">
+            Unsaved changes
+          </p>
+          <div className="flex gap-2">
+            <Button variant="ghost" size="sm" onClick={discard} disabled={isPending}>
+              Discard
+            </Button>
+            <Button size="sm" onClick={save} disabled={isPending || blockedEmpty}>
+              {isPending ? <Loader2 className="animate-spin" /> : null}
+              {isPending ? "Saving…" : "Save"}
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
     </section>
   );
 }

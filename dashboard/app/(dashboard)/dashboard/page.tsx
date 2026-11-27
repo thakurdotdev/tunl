@@ -1,7 +1,7 @@
 "use client";
 
 import { GettingStarted } from "@/components/portal/getting-started";
-import { PageHeader, StatPill } from "@/components/portal/page-header";
+import { PageHeader } from "@/components/portal/page-header";
 import { TunnelPasswordDialog, tunnelHasPassword } from "@/components/tunnel-password-dialog";
 import {
   AlertDialog,
@@ -38,22 +38,17 @@ import { cn } from "@/lib/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { formatDistanceToNow } from "date-fns";
 import {
-  ArrowRight,
   BarChart3,
   Check,
   Copy,
   ExternalLink,
   Eye,
   Globe,
-  Link2,
   Lock,
   MoreHorizontal,
-  Network,
   Plus,
   Terminal,
   Trash2,
-  Unlock,
-  Wifi,
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -126,21 +121,24 @@ function CommandLine({
 function SideCard({
   title,
   icon: Icon,
+  meta,
   children,
   id,
 }: {
   title: string;
   icon: React.ComponentType<{ className?: string }>;
+  meta?: React.ReactNode;
   children: React.ReactNode;
   id?: string;
 }) {
   return (
-    <section id={id} className="surface-card bg-card scroll-mt-20 rounded-xl border">
-      <div className="flex items-center gap-2 px-4 pt-4">
+    <section id={id} className="surface-card bg-card scroll-mt-20 rounded-xl border p-4">
+      <div className="mb-3 flex items-center gap-2">
         <Icon className="text-primary h-4 w-4" />
-        <h2 className="text-foreground text-sm font-semibold">{title}</h2>
+        <h2 className="text-foreground flex-1 text-sm font-semibold">{title}</h2>
+        {meta && <span className="text-muted-foreground text-xs">{meta}</span>}
       </div>
-      <div className="p-4">{children}</div>
+      {children}
     </section>
   );
 }
@@ -154,13 +152,12 @@ function connectionSummary(
     const oldest = sessions.reduce((a, b) =>
       new Date(a.connectedAt).getTime() <= new Date(b.connectedAt).getTime() ? a : b,
     );
-    const since = formatDistanceToNow(new Date(oldest.connectedAt), { addSuffix: true });
-    const count = sessions.length > 1 ? `${sessions.length} sessions · ` : "";
-    return `${count}Connected ${since}${oldest.remoteIp ? ` from ${oldest.remoteIp}` : ""}`;
+    const since = formatDistanceToNow(new Date(oldest.connectedAt));
+    return sessions.length > 1 ? `Live · ${sessions.length} sessions` : `Live for ${since}`;
   }
-  if (sessionsLoading) return "Checking connection…";
+  if (sessionsLoading) return "Checking…";
   if (tunnel.lastConnectedAt) {
-    return `Last connected ${formatDistanceToNow(new Date(tunnel.lastConnectedAt), { addSuffix: true })}`;
+    return `Offline · seen ${formatDistanceToNow(new Date(tunnel.lastConnectedAt), { addSuffix: true })}`;
   }
   return "Never connected";
 }
@@ -170,7 +167,6 @@ function TunnelRow({
   sessions,
   sessionsLoading,
   linkedDomain,
-  allowlistOn,
   port,
   copiedId,
   onCopy,
@@ -181,7 +177,6 @@ function TunnelRow({
   sessions: TunnelSession[];
   sessionsLoading: boolean;
   linkedDomain?: CustomDomain;
-  allowlistOn: boolean;
   port: string;
   copiedId: string | null;
   onCopy: (text: string, id: string, message?: string) => void;
@@ -192,106 +187,81 @@ function TunnelRow({
   const url = `https://${host}`;
   const isLive = sessions.length > 0;
   const isProtected = tunnelHasPassword(tunnel);
-  const command = `ssh -R 80:localhost:${port || "3000"} -p 2222 ${tunnel.subdomain}@tunl.online`;
+  const localPort = port || "3000";
+  const command = `ssh -R 80:localhost:${localPort} -p 2222 ${tunnel.subdomain}@tunl.online`;
+  const copied = copiedId === tunnel.id;
 
   return (
-    <li className="flex flex-col gap-3 px-4 py-4 sm:px-5">
-      <div className="flex items-start gap-3">
+    <li className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:gap-4 sm:px-5">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
         <span
+          aria-hidden
           className={cn(
-            "relative mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border",
+            "h-2 w-2 shrink-0 rounded-full",
             isLive
-              ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-              : "text-muted-foreground bg-muted/50 border-[var(--hairline-strong)]",
+              ? "bg-emerald-500 shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-emerald-500)_20%,transparent)]"
+              : "bg-muted-foreground/40",
           )}
-        >
-          <Globe className="h-4 w-4" />
-          {isLive && (
-            <span className="ring-card absolute -top-0.5 -right-0.5 h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-500 ring-2" />
-          )}
-        </span>
-
+        />
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <div className="flex min-w-0 items-center gap-1.5">
             <a
               href={url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-foreground hover:text-primary inline-flex min-w-0 items-center gap-1.5 font-mono text-sm font-semibold break-all"
+              className="text-foreground hover:text-primary truncate font-mono text-sm font-semibold"
+              title={`Open ${host}`}
             >
-              {host}
-              <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-60" />
+              {tunnel.subdomain}
+              <span className="text-muted-foreground font-normal">.tunl.online</span>
             </a>
-            <span
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium",
-                isLive
-                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                  : "bg-muted text-muted-foreground",
-              )}
-            >
-              <span
-                className={cn(
-                  "h-1.5 w-1.5 rounded-full",
-                  isLive ? "bg-emerald-500" : "bg-muted-foreground/50",
-                )}
+            {isProtected && (
+              <Lock
+                className="h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400"
+                aria-label="Password protected"
               />
-              {isLive ? "Live" : "Offline"}
-            </span>
+            )}
           </div>
           <p
             className={cn(
-              "mt-1 text-xs",
-              isLive ? "text-emerald-700 dark:text-emerald-400/90" : "text-muted-foreground",
+              "mt-0.5 truncate text-xs",
+              isLive ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground",
             )}
           >
             {connectionSummary(tunnel, sessions, sessionsLoading)}
-          </p>
-
-          <div className="mt-2.5 flex flex-wrap items-center gap-1.5 text-[11px] font-medium">
-            <button
-              type="button"
-              onClick={onPassword}
-              className={cn(
-                "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 transition-colors",
-                isProtected
-                  ? "border-amber-500/25 bg-amber-500/10 text-amber-700 hover:bg-amber-500/15 dark:text-amber-300"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/60 border-[var(--hairline-strong)]",
-              )}
-              title="Manage password protection"
-            >
-              {isProtected ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
-              {isProtected ? "Password" : "No password"}
-            </button>
-            <Link
-              href="/access"
-              className={cn(
-                "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 transition-colors",
-                allowlistOn
-                  ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/15 dark:text-emerald-400"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/60 border-[var(--hairline-strong)]",
-              )}
-              title="Manage the IP allowlist"
-            >
-              <Network className="h-3 w-3" />
-              {allowlistOn ? "IP allowlist" : "Any IP"}
-            </Link>
             {linkedDomain && (
-              <Link
-                href="/domains"
-                className="text-muted-foreground hover:text-foreground hover:bg-muted/60 inline-flex max-w-full items-center gap-1 rounded-md border border-[var(--hairline-strong)] px-2 py-0.5 font-mono transition-colors"
-                title={`Custom domain · ${linkedDomain.status}`}
-              >
-                <Link2 className="h-3 w-3 shrink-0" />
-                <span className="truncate">{linkedDomain.domain}</span>
-                {linkedDomain.status !== "verified" && (
-                  <span className="font-sans text-amber-600 dark:text-amber-400">· pending</span>
-                )}
-              </Link>
+              <span className="text-muted-foreground">
+                {" · "}
+                {linkedDomain.domain}
+                {linkedDomain.status !== "verified" && " (pending)"}
+              </span>
             )}
-          </div>
+          </p>
         </div>
+      </div>
 
+      <div className="flex shrink-0 items-center gap-1.5 max-sm:pl-5">
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8"
+          title={command}
+          onClick={() =>
+            onCopy(command, tunnel.id, `Copied. Run it to forward localhost:${localPort}`)
+          }
+        >
+          {copied ? <Check className="text-primary" /> : <Terminal />}
+          Copy command
+        </Button>
+        <Button
+          nativeButton={false}
+          render={<Link href={inspectRequestsHref(tunnel.subdomain)} />}
+          variant="outline"
+          size="sm"
+          className="h-8"
+        >
+          <Eye /> Requests
+        </Button>
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
@@ -306,6 +276,9 @@ function TunnelRow({
             }
           />
           <DropdownMenuContent align="end" className="w-52">
+            <DropdownMenuItem render={<Link href={inspectAnalyticsHref(tunnel.subdomain)} />}>
+              <BarChart3 /> Analytics
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onCopy(url, `url-${tunnel.id}`, "Copied public URL")}>
               <Copy /> Copy public URL
             </DropdownMenuItem>
@@ -321,34 +294,6 @@ function TunnelRow({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      </div>
-
-      <div className="flex flex-col gap-2 sm:pl-12 md:flex-row md:items-center">
-        <div className="min-w-0 flex-1">
-          <CommandLine
-            command={command}
-            copied={copiedId === tunnel.id}
-            onCopy={() => onCopy(command, tunnel.id, "Copied SSH command")}
-          />
-        </div>
-        <div className="grid shrink-0 grid-cols-2 gap-2">
-          <Button
-            nativeButton={false}
-            render={<Link href={inspectRequestsHref(tunnel.subdomain)} />}
-            variant={isLive ? "default" : "outline"}
-            className="h-8"
-          >
-            <Eye /> Requests
-          </Button>
-          <Button
-            nativeButton={false}
-            render={<Link href={inspectAnalyticsHref(tunnel.subdomain)} />}
-            variant="outline"
-            className="h-8"
-          >
-            <BarChart3 /> Analytics
-          </Button>
-        </div>
       </div>
     </li>
   );
@@ -404,7 +349,6 @@ export default function TunnelsPage() {
     });
   };
 
-  const allowlistOn = Boolean(user?.ipWhitelistEnabled && user?.allowedIps?.length);
   const maxTunnels = user?.plan?.maxReservedSubdomains ?? 1;
   const limitReached = tunnels.length >= maxTunnels;
   const liveCount = new Set(activeSessions.map((s) => s.subdomain)).size;
@@ -424,12 +368,10 @@ export default function TunnelsPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Tunnels"
-        description="Reserve a subdomain, run one SSH command, and your local port is live on HTTPS."
-        actions={
-          <>
-            <StatPill icon={Globe} label="Reserved" value={`${tunnels.length} / ${maxTunnels}`} />
-            <StatPill icon={Wifi} label="Live" value={liveCount} tone="live" />
-          </>
+        description={
+          liveCount > 0
+            ? `${liveCount} live now · ${tunnels.length} reserved`
+            : "Put a local port on a public HTTPS URL."
         }
       />
 
@@ -437,7 +379,12 @@ export default function TunnelsPage() {
 
       <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         {/* ----------------------------- Tunnel list ----------------------------- */}
-        <section className="surface-card bg-card min-w-0 overflow-hidden rounded-xl border">
+        <section
+          className={cn(
+            "surface-card bg-card min-w-0 overflow-hidden rounded-xl border",
+            !isLoading && tunnels.length === 0 && "max-lg:hidden",
+          )}
+        >
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--hairline)] px-4 py-3 sm:px-5">
             <div className="flex items-center gap-2">
               <h2 className="text-foreground text-sm font-semibold">Your subdomains</h2>
@@ -445,20 +392,15 @@ export default function TunnelsPage() {
                 {tunnels.length}
               </span>
             </div>
-            <p className="text-muted-foreground text-xs">
-              Commands use local port{" "}
-              <span className="text-foreground font-mono font-medium">{port || "3000"}</span>
-            </p>
           </div>
 
           {isLoading ? (
             <div className="space-y-3 p-5">
               {[0, 1].map((i) => (
                 <div key={i} className="flex gap-3">
-                  <div className="bg-muted h-9 w-9 animate-pulse rounded-lg" />
                   <div className="flex-1 space-y-2">
                     <div className="bg-muted h-4 w-1/2 animate-pulse rounded" />
-                    <div className="bg-muted/70 h-8 animate-pulse rounded-lg" />
+                    <div className="bg-muted/70 h-3 w-1/4 animate-pulse rounded" />
                   </div>
                 </div>
               ))}
@@ -468,13 +410,7 @@ export default function TunnelsPage() {
               <div className="bg-muted/60 flex h-12 w-12 items-center justify-center rounded-xl border border-[var(--hairline)]">
                 <Globe className="text-muted-foreground/70 h-6 w-6" />
               </div>
-              <div>
-                <h3 className="text-foreground text-sm font-semibold">No subdomains yet</h3>
-                <p className="text-muted-foreground mt-1 max-w-sm text-xs leading-relaxed">
-                  Reserve a name to get a stable URL, or run the quick-connect command for a random
-                  one.
-                </p>
-              </div>
+              <h3 className="text-foreground text-sm font-semibold">No subdomains yet</h3>
               <Button
                 variant="outline"
                 onClick={() => document.getElementById("subdomain")?.focus()}
@@ -491,7 +427,6 @@ export default function TunnelsPage() {
                   sessions={activeSessions.filter((s) => s.subdomain === tunnel.subdomain)}
                   sessionsLoading={isSessionsLoading}
                   linkedDomain={customDomains.find((d) => d.tunnelId === tunnel.id)}
-                  allowlistOn={allowlistOn}
                   port={port}
                   copiedId={copiedId}
                   onCopy={copy}
@@ -510,16 +445,15 @@ export default function TunnelsPage() {
             tunnels.length === 0 && "max-lg:order-first",
           )}
         >
-          <SideCard title="Reserve a subdomain" icon={Plus}>
+          <SideCard
+            title="Reserve a subdomain"
+            icon={Plus}
+            meta={limitReached ? undefined : `${maxTunnels - tunnels.length} left`}
+          >
             {limitReached ? (
-              <div className="text-xs">
-                <p className="text-foreground font-medium">
-                  You’re using all {maxTunnels} reserved subdomain{maxTunnels === 1 ? "" : "s"}.
-                </p>
-                <p className="text-muted-foreground mt-1 leading-relaxed">
-                  Revoke one from the ⋯ menu to free a slot.
-                </p>
-              </div>
+              <p className="text-muted-foreground text-xs">
+                All {maxTunnels} used. Revoke one to free a slot.
+              </p>
             ) : (
               <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-2.5">
                 <Label htmlFor="subdomain" className="sr-only">
@@ -535,24 +469,23 @@ export default function TunnelsPage() {
                     className="h-9 scroll-mt-24 pr-24 font-mono text-sm"
                     {...register("subdomain")}
                     aria-invalid={!!errors.subdomain}
-                    aria-describedby="subdomain-help"
+                    aria-describedby={errors.subdomain || typed ? "subdomain-help" : undefined}
                   />
                   <span className="text-muted-foreground pointer-events-none absolute right-3 font-mono text-xs select-none">
                     .tunl.online
                   </span>
                 </div>
-                <p
-                  id="subdomain-help"
-                  className={cn(
-                    "text-xs",
-                    errors.subdomain ? "text-destructive" : "text-muted-foreground",
-                  )}
-                >
-                  {errors.subdomain?.message ??
-                    (typed
-                      ? `You’ll get https://${typed}.tunl.online`
-                      : `Lowercase letters, numbers and hyphens · ${maxTunnels - tunnels.length} left`)}
-                </p>
+                {(errors.subdomain || typed) && (
+                  <p
+                    id="subdomain-help"
+                    className={cn(
+                      "truncate text-xs",
+                      errors.subdomain ? "text-destructive" : "text-muted-foreground",
+                    )}
+                  >
+                    {errors.subdomain?.message ?? `https://${typed}.tunl.online`}
+                  </p>
+                )}
                 <Button type="submit" disabled={createMutation.isPending} className="h-9">
                   {createMutation.isPending ? "Reserving…" : "Reserve"}
                 </Button>
@@ -560,11 +493,11 @@ export default function TunnelsPage() {
             )}
           </SideCard>
 
-          <SideCard title="Quick connect" icon={Terminal} id="quick-connect">
+          <SideCard title="Quick connect" icon={Terminal} id="quick-connect" meta="random URL">
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between gap-3">
                 <Label htmlFor="quickPort" className="text-muted-foreground text-xs font-normal">
-                  Local port of your app
+                  Local port
                 </Label>
                 <Input
                   id="quickPort"
@@ -581,27 +514,8 @@ export default function TunnelsPage() {
                 copied={copiedId === "quick"}
                 onCopy={() => copy(quickCommand, "quick", "Copied SSH command")}
               />
-              <p className="text-muted-foreground text-xs leading-relaxed">
-                No reservation needed: you get a random URL for as long as the command runs.
-              </p>
             </div>
           </SideCard>
-
-          <Link
-            href="/domains"
-            className="group surface-card bg-card flex items-center gap-3 rounded-xl border p-4 transition-colors hover:border-[var(--hairline-strong)]"
-          >
-            <Link2 className="text-primary h-4 w-4 shrink-0" />
-            <div className="min-w-0 flex-1">
-              <p className="text-foreground text-sm font-medium">Custom domains</p>
-              <p className="text-muted-foreground text-xs">
-                {customDomains.length
-                  ? `${customDomains.length} connected`
-                  : "Serve a tunnel from your own hostname"}
-              </p>
-            </div>
-            <ArrowRight className="text-muted-foreground group-hover:text-foreground h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
-          </Link>
         </aside>
       </div>
 
@@ -610,8 +524,7 @@ export default function TunnelsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Revoke {revokeTunnel?.subdomain}.tunl.online?</AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground text-xs">
-              The name goes back to the pool and anyone could claim it. Active connections on this
-              subdomain are dropped immediately.
+              Anyone can claim the name after this, and active connections drop now.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

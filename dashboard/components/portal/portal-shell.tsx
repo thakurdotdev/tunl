@@ -82,8 +82,8 @@ function useNavGroups(user: User | null): NavGroup[] {
       label: "Tunnels",
       items: [
         { href: "/dashboard", label: "Tunnels", icon: Globe },
-        { href: "/domains", label: "Custom domains", icon: Link2 },
         { href: "/inspect", label: "Inspect", icon: Eye },
+        { href: "/domains", label: "Custom domains", icon: Link2 },
       ],
     },
     {
@@ -93,25 +93,13 @@ function useNavGroups(user: User | null): NavGroup[] {
           href: "/access",
           label: "Access control",
           icon: ShieldCheck,
-          hint: (
-            <span
-              className={cn(
-                "rounded-full px-1.5 py-px text-[10px] font-semibold",
-                allowlistOn
-                  ? "bg-emerald-500/12 text-emerald-600 dark:text-emerald-400"
-                  : "bg-muted text-muted-foreground",
-              )}
-            >
-              {allowlistOn ? "IP on" : "IP off"}
-            </span>
-          ),
+          hint: allowlistOn ? (
+            <span title="IP allowlist is on" className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+          ) : undefined,
         },
         { href: "/keys", label: "SSH keys", icon: KeyRound },
+        { href: "/profile", label: "Settings", icon: UserCog },
       ],
-    },
-    {
-      label: "Account",
-      items: [{ href: "/profile", label: "Account settings", icon: UserCog }],
     },
   ];
   if (user?.role === "admin") {
@@ -126,12 +114,17 @@ function useNavGroups(user: User | null): NavGroup[] {
 function NavLinks({ groups, onNavigate }: { groups: NavGroup[]; onNavigate?: () => void }) {
   const pathname = usePathname();
   return (
-    <nav aria-label="Main" className="flex flex-col gap-5">
-      {groups.map((group) => (
-        <div key={group.label} className="flex flex-col gap-0.5">
-          <p className="text-muted-foreground/80 px-2.5 pb-1.5 text-[10.5px] font-semibold tracking-[0.08em] uppercase">
-            {group.label}
-          </p>
+    <nav aria-label="Main" className="flex flex-col">
+      {groups.map((group, i) => (
+        <div
+          key={group.label}
+          role="group"
+          aria-label={group.label}
+          className={cn(
+            "flex flex-col gap-0.5",
+            i > 0 && "mt-3 border-t border-[var(--hairline)] pt-3",
+          )}
+        >
           {group.items.map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
             const Icon = item.icon;
@@ -174,17 +167,20 @@ function PlanUsage() {
   const used = tunnels?.length ?? 0;
   const pct = Math.min(100, Math.round((used / Math.max(max, 1)) * 100));
   return (
-    <div className="rounded-xl border border-[var(--hairline)] bg-[color-mix(in_oklab,var(--foreground)_2.5%,transparent)] p-3">
+    <div className="px-1 pb-1">
       <div className="flex items-center justify-between text-[11px]">
-        <span className="text-foreground font-semibold capitalize">
-          {user?.plan?.name ?? "Free"} plan
+        <span className="text-muted-foreground">
+          <span className="text-foreground font-medium capitalize">
+            {user?.plan?.name ?? "Free"}
+          </span>{" "}
+          · subdomains
         </span>
         <span className="text-muted-foreground tabular-nums">
-          {tunnels ? used : "–"} / {max}
+          {tunnels ? used : "–"}/{max}
         </span>
       </div>
       <div
-        className="bg-muted mt-2 h-1.5 overflow-hidden rounded-full"
+        className="bg-muted mt-1.5 h-1 overflow-hidden rounded-full"
         role="progressbar"
         aria-label="Reserved subdomains used"
         aria-valuemin={0}
@@ -199,7 +195,6 @@ function PlanUsage() {
           style={{ width: `${pct}%` }}
         />
       </div>
-      <p className="text-muted-foreground mt-1.5 text-[11px]">Reserved subdomains</p>
     </div>
   );
 }
@@ -266,7 +261,7 @@ function UserMenu({ compact = false }: { compact?: boolean }) {
           render={
             <Link href="/profile" className="flex w-full items-center gap-2 text-xs font-medium">
               <UserCog className="text-muted-foreground h-3.5 w-3.5" />
-              Account settings
+              Settings
             </Link>
           }
         />
@@ -310,7 +305,7 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
         <div className="flex-1 overflow-y-auto px-3 pt-3 pb-4">
           <NavLinks groups={groups} />
         </div>
-        <div className="flex flex-col gap-2 border-t border-[var(--hairline)] p-3">
+        <div className="flex flex-col gap-3 border-t border-[var(--hairline)] p-3">
           <PlanUsage />
           <UserMenu />
         </div>

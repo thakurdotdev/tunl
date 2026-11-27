@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
-import { Fingerprint, Loader2, Trash2 } from "lucide-react";
+import { Fingerprint, Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 type Passkey = {
@@ -70,49 +70,57 @@ export function PasskeysCard() {
   };
   return (
     <section className="surface-card bg-card overflow-hidden rounded-xl border font-sans">
-      <header className="border-border/60 bg-muted/40 flex items-center gap-2 border-b px-4 py-3 text-xs font-semibold">
-        <Fingerprint className="h-4 w-4 text-emerald-400" />
-        Passkeys
-      </header>
-      <div className="space-y-3 p-5 text-xs">
-        <p className="text-muted-foreground">
-          Use your device biometrics, PIN, or a security key to sign in securely.
-        </p>
-        {loading ? (
-          <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
-        ) : items.length === 0 ? (
-          <p className="text-muted-foreground">No passkeys registered yet.</p>
-        ) : (
-          items.map((item) => (
-            <div
-              key={item.id}
-              className="border-border/60 flex items-center justify-between rounded-md border p-3"
-            >
-              <div>
-                <p className="text-foreground font-medium">{item.name || "Passkey"}</p>
-                <p className="text-muted-foreground mt-1">
-                  {item.deviceType || "Authenticator"}
-                  {item.createdAt
-                    ? ` · Added ${new Date(item.createdAt).toLocaleDateString()}`
-                    : ""}
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={busy}
-                aria-label={`Remove ${item.name || "passkey"}`}
-                onClick={() => void remove(item)}
-              >
-                <Trash2 className="text-destructive h-4 w-4" />
-              </Button>
-            </div>
-          ))
-        )}
-        <Button size="sm" disabled={busy || loading} onClick={() => void add()}>
-          {busy && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}Add a passkey
+      <div className="flex items-center justify-between gap-4 p-5">
+        <div className="min-w-0">
+          <h3 className="text-foreground text-sm font-semibold">Passkeys</h3>
+          <p className="text-muted-foreground mt-1 text-xs">
+            Sign in with Face ID, Touch ID or a security key.
+          </p>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={busy || loading}
+          onClick={() => void add()}
+          className="shrink-0"
+        >
+          {busy ? <Loader2 className="animate-spin" /> : <Plus />}
+          Add
         </Button>
       </div>
+      {loading ? (
+        <div className="border-t border-[var(--hairline)] px-5 py-3">
+          <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
+        </div>
+      ) : (
+        items.length > 0 && (
+          <ul className="divide-y divide-[var(--hairline)] border-t border-[var(--hairline)]">
+            {items.map((item) => (
+              <li key={item.id} className="flex items-center gap-3 py-2 pr-2 pl-5 text-xs">
+                <Fingerprint className="text-muted-foreground h-4 w-4 shrink-0" />
+                <span className="text-foreground min-w-0 flex-1 truncate font-medium">
+                  {item.name || "Passkey"}
+                </span>
+                {item.createdAt && (
+                  <span className="text-muted-foreground hidden sm:inline">
+                    {new Date(item.createdAt).toLocaleDateString()}
+                  </span>
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  disabled={busy}
+                  aria-label={`Remove ${item.name || "passkey"}`}
+                  className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  onClick={() => void remove(item)}
+                >
+                  <Trash2 />
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )
+      )}
     </section>
   );
 }
