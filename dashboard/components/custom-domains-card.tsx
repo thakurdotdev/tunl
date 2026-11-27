@@ -445,41 +445,23 @@ export default function CustomDomainsCard() {
     <>
       <Card className="border-border/60 gap-0 overflow-hidden rounded-xl p-0">
         {/* ------------------------------ Header ------------------------------ */}
-        <div className="border-border/60 flex flex-wrap items-center justify-between gap-3 border-b px-4 py-4 sm:px-5">
-          <div className="flex items-center gap-3">
-            <div className="border-border/60 bg-muted/40 text-primary flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border">
-              <Globe className="h-4 w-4" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-foreground text-sm font-semibold">Custom domains</h2>
-                <span className="bg-secondary text-secondary-foreground min-w-5 rounded-full px-1.5 py-0.5 text-center text-[11px] font-semibold tabular-nums">
-                  {customDomains.length}
-                </span>
-              </div>
-              <p className="text-muted-foreground mt-0.5 text-xs">
-                One domain per tunnel. Verify ownership with CNAME + TXT, then traffic routes
-                automatically.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2.5">
-            <div className="text-muted-foreground hidden items-center gap-1.5 text-xs lg:flex">
-              <ShieldCheck className="text-primary h-3.5 w-3.5" />
-              <span>TLS via Cloudflare proxied CNAME</span>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setShowIntroDialog(true)}
-              className="text-foreground hover:bg-muted/60 h-8 gap-1.5 text-xs font-medium"
-            >
-              <Sparkles className="text-primary h-3.5 w-3.5" />
-              <span>How it works</span>
-            </Button>
-          </div>
+        <div className="border-border/60 flex items-center justify-between gap-3 border-b px-4 py-2.5 sm:px-5">
+          <h2 className="text-foreground text-sm font-semibold">
+            Your domains{" "}
+            <span className="text-muted-foreground font-normal tabular-nums">
+              {customDomains.length}
+            </span>
+          </h2>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowIntroDialog(true)}
+            className="text-muted-foreground hover:text-foreground h-8 gap-1.5 text-xs font-medium"
+          >
+            <Sparkles className="text-primary h-3.5 w-3.5" />
+            How it works
+          </Button>
         </div>
 
         {/* ---------------------------- Add domain form ---------------------------- */}
@@ -576,7 +558,7 @@ export default function CustomDomainsCard() {
         {tunnels.length === 0 && (
           <div className="mx-4 mt-4 flex items-start gap-2 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2.5 text-xs text-amber-300 sm:mx-5">
             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            Reserve a tunnel subdomain first. Custom domains map 1:1 to your existing tunnels.
+            Reserve a subdomain first.
           </div>
         )}
 
@@ -595,13 +577,7 @@ export default function CustomDomainsCard() {
             <div className="border-border/60 bg-muted/30 text-muted-foreground flex h-11 w-11 items-center justify-center rounded-full border">
               <Globe className="h-5 w-5" />
             </div>
-            <div className="flex flex-col gap-1">
-              <h3 className="text-foreground text-sm font-semibold">No custom domains yet</h3>
-              <p className="text-muted-foreground max-w-md text-xs leading-relaxed">
-                Connect a domain you own (e.g. <code className="font-mono">api.example.com</code>)
-                to send traffic straight to your tunnel with automatic SSL.
-              </p>
-            </div>
+            <h3 className="text-foreground text-sm font-semibold">No custom domains yet</h3>
             <Button
               type="button"
               variant="outline"
@@ -662,15 +638,13 @@ export default function CustomDomainsCard() {
                             {d.subdomain}.tunl.online
                           </span>
                         </span>
-                        <span className="inline-flex items-center gap-1.5">
-                          <span
-                            className={`h-1.5 w-1.5 rounded-full ${
-                              tunnelOnline ? "bg-emerald-400" : "bg-muted-foreground/40"
-                            }`}
-                          />
-                          {tunnelOnline ? "Tunnel online" : "Tunnel offline"}
-                        </span>
-                        {d.lastCheckedAt && (
+                        {!tunnelOnline && (
+                          <span className="inline-flex items-center gap-1.5">
+                            <span className="bg-muted-foreground/40 h-1.5 w-1.5 rounded-full" />
+                            Tunnel offline
+                          </span>
+                        )}
+                        {d.status !== "verified" && d.lastCheckedAt && (
                           <span>
                             Checked{" "}
                             {formatDistanceToNow(new Date(d.lastCheckedAt), {

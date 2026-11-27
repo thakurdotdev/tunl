@@ -3,7 +3,7 @@ import type { Setup2FAResponse, UserProfile } from "@/hooks/use-profile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
-import { AlertCircle, CheckCircle2, Copy, KeyRound, Loader2, X } from "lucide-react";
+import { AlertCircle, CheckCircle2, Copy, Loader2, X } from "lucide-react";
 
 interface TwoFactorCardProps {
   profile: UserProfile | undefined;
@@ -73,53 +73,43 @@ export function TwoFactorCard({
   return (
     <>
       <div className="surface-card bg-card flex flex-col overflow-hidden rounded-xl border font-sans">
-        <div className="border-border/60 bg-muted/40 flex items-center justify-between border-b px-4 py-2.5 text-xs">
-          <div className="text-foreground flex items-center gap-2 font-medium">
-            <KeyRound className="h-4 w-4 text-emerald-400" />
-            <span className="text-xs font-semibold">Two-Factor Authentication</span>
-          </div>
-          {profile?.twoFactorEnabled ? (
-            <span className="flex items-center gap-1.5 rounded-md border border-emerald-500/20 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
-              <CheckCircle2 className="h-3 w-3" /> Enabled
-            </span>
-          ) : (
-            <span className="border-border/60 bg-muted text-muted-foreground rounded-md border px-2 py-0.5 text-[10px] font-medium">
-              Disabled
-            </span>
-          )}
-        </div>
-
-        <div className="flex flex-col gap-4 p-5 text-xs sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-col gap-0.5">
-            <span className="text-foreground text-xs font-medium">TOTP Authenticator App</span>
-            <p className="text-muted-foreground text-xs">
-              Require a 6-digit TOTP code from your authenticator app when signing in.
+        <div className="flex items-center justify-between gap-4 p-5">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h3 className="text-foreground text-sm font-semibold">Two-factor authentication</h3>
+              {profile?.twoFactorEnabled ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                  <CheckCircle2 className="h-3 w-3" /> On
+                </span>
+              ) : (
+                <span className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-[11px] font-medium">
+                  Off
+                </span>
+              )}
+            </div>
+            <p className="text-muted-foreground mt-1 text-xs">
+              A code from your authenticator app at sign-in.
             </p>
           </div>
 
-          <div>
+          <div className="shrink-0">
             {profile?.twoFactorEnabled ? (
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 onClick={() => setIsDisableModalOpen(true)}
-                className="border-destructive/40 text-destructive hover:bg-destructive/10 h-8 text-xs font-semibold"
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
               >
-                Disable 2FA
+                Turn off
               </Button>
             ) : (
-              <Button
-                size="sm"
-                onClick={handleStartSetup}
-                disabled={isSetupPending}
-                className="h-8 text-xs font-semibold"
-              >
+              <Button size="sm" onClick={handleStartSetup} disabled={isSetupPending}>
                 {isSetupPending ? (
                   <>
-                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Generating...
+                    <Loader2 className="animate-spin" /> Setting up…
                   </>
                 ) : (
-                  "Enable 2FA"
+                  "Turn on"
                 )}
               </Button>
             )}

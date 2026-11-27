@@ -11,16 +11,11 @@ import {
   useVerify2FA,
 } from "@/hooks/use-profile";
 import { useAuth } from "@/lib/auth-context";
-import { AlertCircle, ArrowRight, Loader2, Network } from "lucide-react";
+import { AlertCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
 
-function SectionHeading({ title, description }: { title: string; description: string }) {
-  return (
-    <div className="flex flex-col gap-0.5">
-      <h2 className="text-foreground text-sm font-semibold">{title}</h2>
-      <p className="text-muted-foreground text-xs">{description}</p>
-    </div>
-  );
+function SectionHeading({ title }: { title: string }) {
+  return <h2 className="text-muted-foreground text-xs font-semibold">{title}</h2>;
 }
 
 export default function ProfilePage() {
@@ -51,14 +46,11 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="flex flex-col gap-8">
-      <PageHeader
-        title="Account settings"
-        description="Your profile and how you sign in to tunl."
-      />
+    <div className="flex flex-col gap-6">
+      <PageHeader title="Settings" description="Your profile and sign-in options." />
 
-      <section className="flex flex-col gap-3">
-        <SectionHeading title="Profile" description="How you appear across tunl." />
+      <section className="flex flex-col gap-2">
+        <SectionHeading title="Profile" />
         <ProfileInfoCard
           key={profile.name ?? "profile-name"}
           profile={profile}
@@ -67,11 +59,8 @@ export default function ProfilePage() {
         />
       </section>
 
-      <section className="flex flex-col gap-3">
-        <SectionHeading
-          title="Sign-in security"
-          description="Extra checks when you log in to this dashboard."
-        />
+      <section className="flex flex-col gap-2">
+        <SectionHeading title="Sign-in security" />
         <TwoFactorCard
           profile={profile}
           onSetup2FA={() => setup2FA.mutateAsync()}
@@ -84,23 +73,13 @@ export default function ProfilePage() {
         <PasskeysCard />
       </section>
 
-      <Link
-        href="/access"
-        className="group surface-card bg-card flex items-center justify-between gap-3 rounded-xl border p-4 transition-colors hover:border-[var(--hairline-strong)]"
-      >
-        <div className="flex items-center gap-3">
-          <div className="bg-primary/10 text-primary flex h-9 w-9 shrink-0 items-center justify-center rounded-lg">
-            <Network className="h-4 w-4" />
-          </div>
-          <div>
-            <p className="text-foreground text-sm font-medium">Looking for the IP allowlist?</p>
-            <p className="text-muted-foreground text-xs">
-              It moved to Access control, next to tunnel passwords.
-            </p>
-          </div>
-        </div>
-        <ArrowRight className="text-muted-foreground group-hover:text-foreground h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
-      </Link>
+      <p className="text-muted-foreground text-xs">
+        IP allowlist and tunnel passwords are in{" "}
+        <Link href="/access" className="text-primary font-medium hover:underline">
+          Access control
+        </Link>
+        .
+      </p>
     </div>
   );
 }

@@ -6,10 +6,7 @@ import { PageHeader } from "@/components/portal/page-header";
 export default function CustomDomainsPage() {
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Custom domains"
-        description="Serve a tunnel from your own hostname, like app.example.com. Add the domain, create two DNS records, then verify."
-      />
+      <PageHeader title="Custom domains" description="Serve a tunnel from a hostname you own." />
       <CustomDomainsCard />
     </div>
   );

@@ -22,10 +22,8 @@ function readDismissed() {
 
 type Step = {
   title: string;
-  description: string;
   done: boolean;
   href: string;
-  cta: string;
 };
 
 /** Setup checklist on the Tunnels page; hides itself once every step is done. */
@@ -44,33 +42,25 @@ export function GettingStarted() {
   const steps: Step[] = [
     {
       title: "Add an SSH key",
-      description: "Your key is how tunl knows the tunnel is yours.",
       done: keys.data.length > 0,
       href: "/keys",
-      cta: "Add key",
     },
     {
       title: "Reserve a subdomain",
-      description: "Claim a stable name like my-app.tunl.online.",
       done: tunnelList.length > 0,
       href: "#subdomain",
-      cta: "Reserve",
     },
     {
-      title: "Connect your first tunnel",
-      description: "Run the quick-connect command on the machine running your app.",
+      title: "Connect a tunnel",
       done: sessions.data.length > 0 || tunnelList.some((t) => t.lastConnectedAt),
       href: "#quick-connect",
-      cta: "Get command",
     },
     {
-      title: "Decide who can visit",
-      description: "Allow only your IPs, or put a password on a tunnel.",
+      title: "Restrict access",
       done:
         Boolean(user?.ipWhitelistEnabled && user?.allowedIps?.length) ||
         tunnelList.some((t) => t.hasPassword || t.password),
       href: "/access",
-      cta: "Set up access",
     },
   ];
 
@@ -88,85 +78,83 @@ export function GettingStarted() {
   return (
     <section
       aria-labelledby="getting-started-title"
-      className="surface-card bg-card relative overflow-hidden rounded-xl border"
+      className="surface-card bg-card flex flex-col gap-3 rounded-xl border p-3 sm:flex-row sm:items-center sm:gap-4 sm:pl-4"
     >
-      <div className="flex items-start justify-between gap-3 px-5 pt-4 pb-3">
-        <div>
-          <h2 id="getting-started-title" className="text-foreground text-sm font-semibold">
-            Get set up
-          </h2>
-          <p className="text-muted-foreground mt-0.5 text-xs">
-            {completed} of {steps.length} done
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="bg-muted hidden h-1.5 w-28 overflow-hidden rounded-full sm:block">
-            <div
-              className="bg-primary h-full rounded-full transition-[width] duration-500"
-              style={{ width: `${(completed / steps.length) * 100}%` }}
-            />
-          </div>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label="Hide setup checklist"
-            onClick={dismiss}
-          >
-            <X />
-          </Button>
-        </div>
+      <div className="flex items-center justify-between gap-3 sm:block">
+        <h2
+          id="getting-started-title"
+          className="text-foreground text-sm font-semibold whitespace-nowrap"
+        >
+          Get set up{" "}
+          <span className="text-muted-foreground font-normal tabular-nums">
+            {completed}/{steps.length}
+          </span>
+        </h2>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Hide setup checklist"
+          onClick={dismiss}
+          className="sm:hidden"
+        >
+          <X />
+        </Button>
       </div>
-      <ol className="grid border-t border-[var(--hairline)] sm:grid-cols-2 xl:grid-cols-4">
+      <ol className="flex min-w-0 flex-1 flex-wrap gap-2">
         {steps.map((step, i) => {
           const isNext = i === nextIndex;
-          return (
-            <li
-              key={step.title}
-              className={cn(
-                "flex gap-3 border-[var(--hairline)] p-4 max-sm:not-last:border-b sm:max-xl:odd:border-r xl:not-last:border-r sm:max-xl:[&:nth-child(-n+2)]:border-b",
-                isNext && "bg-primary/[0.04]",
-              )}
-            >
+          const content = (
+            <>
               <span
                 className={cn(
-                  "mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-semibold",
+                  "flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-semibold",
                   step.done
-                    ? "border-primary bg-primary text-primary-foreground"
+                    ? "bg-primary text-primary-foreground"
                     : isNext
-                      ? "border-primary text-primary"
-                      : "text-muted-foreground border-[var(--hairline-strong)]",
+                      ? "border-primary text-primary border"
+                      : "text-muted-foreground border border-[var(--hairline-strong)]",
                 )}
               >
-                {step.done ? <Check className="h-3 w-3" strokeWidth={3} /> : i + 1}
+                {step.done ? <Check className="h-2.5 w-2.5" strokeWidth={3} /> : i + 1}
               </span>
-              <div className="min-w-0 flex-1">
-                <p
+              <span className={cn(step.done && "line-through")}>{step.title}</span>
+              {isNext && <ArrowRight className="h-3 w-3" />}
+            </>
+          );
+          const base =
+            "flex h-8 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium transition-colors";
+          return (
+            <li key={step.title}>
+              {step.done ? (
+                <span className={cn(base, "text-muted-foreground border-transparent")}>
+                  {content}
+                </span>
+              ) : (
+                <Link
+                  href={step.href}
                   className={cn(
-                    "text-[13px] font-medium",
-                    step.done ? "text-muted-foreground line-through" : "text-foreground",
+                    base,
+                    isNext
+                      ? "border-primary/40 bg-primary/[0.06] text-primary hover:bg-primary/10"
+                      : "text-muted-foreground hover:text-foreground border-[var(--hairline)] hover:border-[var(--hairline-strong)]",
                   )}
                 >
-                  {step.title}
-                </p>
-                <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
-                  {step.description}
-                </p>
-                {!step.done && (
-                  <Link
-                    href={step.href}
-                    className={cn(
-                      "mt-2 inline-flex items-center gap-1 text-xs font-medium",
-                      isNext ? "text-primary" : "text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    {step.cta} <ArrowRight className="h-3 w-3" />
-                  </Link>
-                )}
-              </div>
+                  {content}
+                </Link>
+              )}
             </li>
           );
         })}
       </ol>
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        aria-label="Hide setup checklist"
+        onClick={dismiss}
+        className="hidden shrink-0 sm:inline-flex"
+      >
+        <X />
+      </Button>
     </section>
   );
 }
