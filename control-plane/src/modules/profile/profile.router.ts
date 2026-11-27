@@ -75,6 +75,15 @@ export function createProfileRouter(db: Database, redis: RedisClient, jwtSecret:
     }),
   );
 
+  // The caller's public IP as seen through Cloudflare + nginx (trust proxy = 2),
+  // so the dashboard can offer "add my current IP" to the allowlist.
+  router.get("/my-ip", (req: Request, res: Response) => {
+    const raw = req.ip ?? "";
+    const ip = raw.startsWith("::ffff:") ? raw.slice(7) : raw;
+    res.set("Cache-Control", "no-store");
+    res.json({ ip: ip || null });
+  });
+
   router.patch(
     "/ip-whitelist",
     asyncRoute(async (req: Request, res: Response) => {

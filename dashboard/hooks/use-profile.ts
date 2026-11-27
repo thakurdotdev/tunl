@@ -1,4 +1,4 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { client } from "@/lib/api-client";
 import { authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
@@ -107,5 +107,18 @@ export function useUpdateIpWhitelist() {
       const msg = err?.response?.data?.message || err?.message || "Failed to update IP whitelist";
       toast.error(msg);
     },
+  });
+}
+
+/** The browser's public IP as the control plane sees it (for "add my IP"). */
+export function useMyIpQuery() {
+  return useQuery({
+    queryKey: ["my-ip"],
+    queryFn: async () => {
+      const { data } = await client.get<{ ip: string | null }>("/v1/profile/my-ip");
+      return data.ip;
+    },
+    staleTime: 5 * 60_000,
+    retry: false,
   });
 }

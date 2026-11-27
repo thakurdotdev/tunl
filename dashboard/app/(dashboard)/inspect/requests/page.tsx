@@ -200,7 +200,7 @@ function InspectRequests({ subdomain }: { subdomain: string }) {
   // Proper Loading State / Skeleton
   if (isRequestsLoading) {
     return (
-      <div className="flex h-[calc(100vh-56px-64px)] flex-col gap-0 font-sans">
+      <div className="flex h-[calc(100dvh-120px)] flex-col gap-0 font-sans lg:h-[calc(100dvh-80px)]">
         {/* Top Bar Skeleton */}
         <div className="border-border/60 bg-card flex flex-wrap items-center justify-between gap-2.5 border-b px-3 py-2.5 sm:px-4 sm:py-3">
           <div className="flex items-center gap-3">
@@ -268,7 +268,7 @@ function InspectRequests({ subdomain }: { subdomain: string }) {
   }
 
   return (
-    <div className="flex h-[calc(100vh-56px-64px)] flex-col gap-0 font-sans">
+    <div className="flex h-[calc(100dvh-120px)] flex-col gap-0 font-sans lg:h-[calc(100dvh-80px)]">
       {/* Top Bar */}
       <div className="border-border/60 bg-card flex flex-wrap items-center justify-between gap-2.5 border-b px-3 py-2.5 sm:px-4 sm:py-3">
         {/* Left Section: Subdomain & Status */}
@@ -383,7 +383,7 @@ function InspectRequests({ subdomain }: { subdomain: string }) {
             <span className="w-14 shrink-0 sm:w-16">Method</span>
             <span className="flex-1 truncate">Path</span>
             <span className="w-12 shrink-0 text-right sm:w-14">Status</span>
-            <span className="w-16 shrink-0 text-right sm:w-20">Time</span>
+            <span className="w-16 shrink-0 text-right max-sm:hidden sm:w-20">Time</span>
             <span className="w-20 shrink-0 text-right sm:w-24">When</span>
           </div>
 
@@ -443,7 +443,7 @@ function InspectRequests({ subdomain }: { subdomain: string }) {
                       {req.statusCode}
                     </span>
                   </span>
-                  <span className="text-muted-foreground w-16 shrink-0 text-right font-mono text-[11px] sm:w-20">
+                  <span className="text-muted-foreground w-16 shrink-0 text-right font-mono text-[11px] max-sm:hidden sm:w-20">
                     {req.durationMs}ms
                   </span>
                   <span className="text-muted-foreground w-20 shrink-0 text-right font-sans text-[11px] whitespace-nowrap sm:w-24">
