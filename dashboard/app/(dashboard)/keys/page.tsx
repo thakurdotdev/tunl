@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader, StatPill } from "@/components/portal/page-header";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,29 +12,31 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
 import {
   useCreateSshKeyMutation,
   useDeleteSshKeyMutation,
   useSshKeysQuery,
 } from "@/hooks/use-ssh-keys";
 import { ApiClientError } from "@/lib/api-client";
+import type { SSHKey } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
-import { AlertCircle, Calendar, Copy, Key, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import {
+  AlertCircle,
+  Check,
+  ChevronDown,
+  Copy,
+  KeyRound,
+  Laptop,
+  Plus,
+  Trash2,
+} from "lucide-react";
+import { useState, useSyncExternalStore } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import * as z from "zod";
@@ -48,319 +51,363 @@ const sshKeySchema = z.object({
 });
 
 type SshKeyFormValues = z.infer<typeof sshKeySchema>;
+type Os = "mac" | "linux" | "windows";
+
+const OS_COMMANDS: Record<Os, { generate: string; copy: string; copyHint: string }> = {
+  mac: {
+    generate: 'ssh-keygen -t ed25519 -C "your_email@example.com"',
+    copy: "pbcopy < ~/.ssh/id_ed25519.pub",
+    copyHint: "Copies the public key to your clipboard.",
+  },
+  linux: {
+    generate: 'ssh-keygen -t ed25519 -C "your_email@example.com"',
+    copy: "cat ~/.ssh/id_ed25519.pub",
+    copyHint: "Prints the public key. Select and copy the whole line.",
+  },
+  windows: {
+    generate: 'ssh-keygen -t ed25519 -C "your_email@example.com"',
+    copy: "Get-Content ~/.ssh/id_ed25519.pub | Set-Clipboard",
+    copyHint: "Run in PowerShell. Copies the public key to your clipboard.",
+  },
+};
+
+const noopSubscribe = () => () => {};
+function detectOs(): Os {
+  const ua = navigator.userAgent.toLowerCase();
+  const platform =
+    (
+      navigator as unknown as { userAgentData?: { platform?: string } }
+    ).userAgentData?.platform?.toLowerCase() ?? "";
+  if (ua.includes("win") || platform.includes("win")) return "windows";
+  if (ua.includes("linux") || ua.includes("x11") || platform.includes("linux")) return "linux";
+  return "mac";
+}
+
+function keyTypeFromInput(value: string) {
+  const match = value.trim().match(/^(ssh-ed25519|ssh-rsa|ecdsa-sha2-\S+|sk-\S+)\s/);
+  return match?.[1] ?? null;
+}
+
+function StepCommand({
+  command,
+  copied,
+  onCopy,
+}: {
+  command: string;
+  copied: boolean;
+  onCopy: () => void;
+}) {
+  return (
+    <div className="surface-input bg-background flex min-w-0 items-center gap-2 rounded-lg border py-1.5 pr-1.5 pl-3 font-mono text-xs">
+      <span className="text-muted-foreground/70 select-none">$</span>
+      <code className="text-primary min-w-0 flex-1 truncate select-all" title={command}>
+        {command}
+      </code>
+      <Button variant="ghost" size="icon-sm" aria-label="Copy command" onClick={onCopy}>
+        {copied ? <Check className="text-primary" /> : <Copy />}
+      </Button>
+    </div>
+  );
+}
+
+function StepBadge({ n }: { n: number }) {
+  return (
+    <span className="border-primary/40 text-primary flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-semibold">
+      {n}
+    </span>
+  );
+}
 
 export default function SshKeysPage() {
   const { data: keys = [], isLoading } = useSshKeysQuery();
   const createMutation = useCreateSshKeyMutation();
   const deleteMutation = useDeleteSshKeyMutation();
 
-  const [deleteKeyId, setDeleteKeyId] = useState<string | null>(null);
+  const detectedOs = useSyncExternalStore(noopSubscribe, detectOs, () => "mac" as Os);
+  const [chosenOs, setChosenOs] = useState<Os | null>(null);
+  const os = chosenOs ?? detectedOs;
+
+  const [revokeKey, setRevokeKey] = useState<SSHKey | null>(null);
+  const [addOpen, setAddOpen] = useState<boolean | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
+
+  const hasKeys = keys.length > 0;
+  // Expanded by default until the first key exists; then it folds behind a button.
+  const showAdd = addOpen ?? (!isLoading && !hasKeys);
 
   const {
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors },
   } = useForm<SshKeyFormValues>({
     resolver: zodResolver(sshKeySchema),
-    defaultValues: {
-      label: "",
-      publicKey: "",
-    },
+    defaultValues: { label: "", publicKey: "" },
   });
+  const detectedType = keyTypeFromInput(watch("publicKey") ?? "");
+
+  const copy = (text: string, id: string, message: string) => {
+    navigator.clipboard.writeText(text).catch(() => {});
+    toast.success(message);
+    setCopied(id);
+    setTimeout(() => setCopied((c) => (c === id ? null : c)), 1800);
+  };
 
   const onSubmit = (values: SshKeyFormValues) => {
     createMutation.mutate(
-      { publicKey: values.publicKey, label: values.label },
+      { publicKey: values.publicKey.trim(), label: values.label.trim() },
       {
         onSuccess: () => {
-          toast.success("SSH Key added successfully!");
+          toast.success("Key added. This device can open tunnels now.");
           reset();
+          setAddOpen(false);
         },
         onError: (err) => {
-          if (err instanceof ApiClientError) {
-            toast.error(err.message);
-          } else {
-            toast.error("Failed to add SSH key. Please verify the format.");
-          }
+          toast.error(
+            err instanceof ApiClientError
+              ? err.message
+              : "Failed to add SSH key. Check that you pasted the .pub file.",
+          );
         },
       },
     );
   };
 
-  const handleDeleteConfirm = () => {
-    if (!deleteKeyId) return;
-    deleteMutation.mutate(deleteKeyId, {
-      onSuccess: () => {
-        toast.success("SSH Key deleted successfully!");
-        setDeleteKeyId(null);
-      },
-      onError: (err) => {
-        if (err instanceof ApiClientError) {
-          toast.error(err.message);
-        } else {
-          toast.error("Failed to delete SSH key.");
-        }
-        setDeleteKeyId(null);
-      },
+  const confirmRevoke = () => {
+    if (!revokeKey) return;
+    deleteMutation.mutate(revokeKey.id, {
+      onSuccess: () => toast.success(`Revoked ${revokeKey.label || "key"}`),
+      onError: (err) =>
+        toast.error(err instanceof ApiClientError ? err.message : "Failed to revoke SSH key."),
+      onSettled: () => setRevokeKey(null),
     });
   };
 
-  const [activeOs, setActiveOs] = useState<"mac" | "linux" | "windows">("mac");
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const ua = navigator.userAgent.toLowerCase();
-    const platform =
-      (
-        navigator as unknown as { userAgentData?: { platform?: string } }
-      ).userAgentData?.platform?.toLowerCase() || "";
-
-    if (ua.includes("win") || platform.includes("win")) {
-      setActiveOs("windows");
-    } else if (ua.includes("linux") || ua.includes("x11") || platform.includes("linux")) {
-      setActiveOs("linux");
-    } else if (ua.includes("mac") || ua.includes("darwin") || platform.includes("mac")) {
-      setActiveOs("mac");
-    }
-  }, []);
-
-  const osCommands = {
-    mac: {
-      generate: 'ssh-keygen -t ed25519 -C "your_email@example.com"',
-      copy: "pbcopy < ~/.ssh/id_ed25519.pub",
-    },
-    linux: {
-      generate: 'ssh-keygen -t ed25519 -C "your_email@example.com"',
-      copy: "cat ~/.ssh/id_ed25519.pub",
-    },
-    windows: {
-      generate: 'ssh-keygen -t ed25519 -C "your_email@example.com"',
-      copy: "Get-Content ~/.ssh/id_ed25519.pub | Set-Clipboard",
-    },
-  };
-
-  const copyCommand = (text: string, label: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success(`Copied ${label} command!`);
-  };
-
-  return (
-    <div className="space-y-6 font-sans">
-      <div className="border-b border-[var(--hairline)] pb-5">
-        <h1 className="page-title">SSH public keys</h1>
+  const keyList = (
+    <section className="surface-card bg-card overflow-hidden rounded-xl border">
+      <div className="flex items-center justify-between gap-3 border-b border-[var(--hairline)] px-4 py-3 sm:px-5">
+        <h2 className="text-foreground text-sm font-semibold">Authorized devices</h2>
+        {hasKeys && !showAdd && (
+          <Button variant="outline" onClick={() => setAddOpen(true)}>
+            <Plus /> Add a device
+          </Button>
+        )}
       </div>
-
-      <div className="grid items-stretch gap-5 lg:grid-cols-2">
-        <Card className="flex h-full flex-col gap-0 p-0">
-          <CardHeader className="border-border/60 flex min-h-[74px] flex-row flex-wrap items-center justify-between gap-3 border-b px-5 py-4">
-            <div className="min-w-0">
-              <CardTitle className="text-sm">Generate or copy a key</CardTitle>
-            </div>
-            <Tabs
-              value={activeOs}
-              onValueChange={(value) => {
-                if (value) setActiveOs(value as typeof activeOs);
-              }}
+      {isLoading ? (
+        <div className="space-y-2 p-5">
+          <div className="bg-muted h-12 animate-pulse rounded-lg" />
+          <div className="bg-muted/70 h-12 animate-pulse rounded-lg" />
+        </div>
+      ) : !hasKeys ? (
+        <div className="text-muted-foreground px-5 py-8 text-center text-sm">
+          No devices yet. Follow the steps above to add your first key.
+        </div>
+      ) : (
+        <ul className="divide-y divide-[var(--hairline)]">
+          {keys.map((key) => (
+            <li
+              key={key.id}
+              className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:gap-4 sm:px-5"
             >
-              <TabsList aria-label="Select operating system" className="h-8 rounded-md p-0.5">
-                <TabsTrigger value="mac" className="rounded-sm px-2 text-[11px]">
-                  macOS
-                </TabsTrigger>
-                <TabsTrigger value="linux" className="rounded-sm px-2 text-[11px]">
-                  Linux
-                </TabsTrigger>
-                <TabsTrigger value="windows" className="rounded-sm px-2 text-[11px]">
-                  Windows
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </CardHeader>
-          <CardContent className="flex-1 space-y-4 p-5">
-            <div className="flex gap-2.5 border-l-2 border-amber-500/60 py-1 pl-3">
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
-              <p className="text-muted-foreground text-xs leading-relaxed">
-                If <code className="text-foreground font-mono">~/.ssh/id_ed25519.pub</code> exists,
-                skip generation to avoid overwriting a key you already use.
-              </p>
-            </div>
-            <div className="space-y-2">
-              <p className="text-muted-foreground text-xs font-medium">Generate an Ed25519 key</p>
-              <div className="border-border/60 bg-background flex min-w-0 items-center gap-2 rounded-lg border p-2.5">
-                <code className="text-primary min-w-0 flex-1 truncate font-mono text-xs">
-                  $ {osCommands[activeOs].generate}
-                </code>
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <span className="bg-muted text-muted-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-lg">
+                  <Laptop className="h-4 w-4" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-foreground truncate text-sm font-medium">
+                    {key.label || "Untitled device"}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => copy(key.fingerprint, key.id, "Copied fingerprint")}
+                    className="text-muted-foreground hover:text-foreground group mt-0.5 flex max-w-full items-center gap-1.5 text-left font-mono text-[11px]"
+                    title="Copy fingerprint"
+                  >
+                    <span className="truncate">{key.fingerprint}</span>
+                    {copied === key.id ? (
+                      <Check className="text-primary h-3 w-3 shrink-0" />
+                    ) : (
+                      <Copy className="h-3 w-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-100 max-sm:opacity-60" />
+                    )}
+                  </button>
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-3 sm:justify-end">
+                <span className="text-muted-foreground text-xs whitespace-nowrap">
+                  Added {format(new Date(key.createdAt), "MMM d, yyyy")}
+                </span>
                 <Button
-                  variant="outline"
-                  size="icon-sm"
-                  aria-label="Copy key generation command"
-                  onClick={() => copyCommand(osCommands[activeOs].generate, "Generate")}
+                  variant="ghost"
+                  className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  onClick={() => setRevokeKey(key)}
+                  aria-label={`Revoke ${key.label || "SSH key"}`}
                 >
-                  <Copy />
+                  <Trash2 /> Revoke
                 </Button>
               </div>
-            </div>
-            <div className="space-y-2">
-              <p className="text-muted-foreground text-xs font-medium">
-                Print and copy the public key
-              </p>
-              <div className="border-border/60 bg-background flex min-w-0 items-center gap-2 rounded-lg border p-2.5">
-                <code className="text-primary min-w-0 flex-1 truncate font-mono text-xs">
-                  $ {osCommands[activeOs].copy}
-                </code>
-                <Button
-                  variant="outline"
-                  size="icon-sm"
-                  aria-label="Copy public key command"
-                  onClick={() => copyCommand(osCommands[activeOs].copy, "Copy")}
-                >
-                  <Copy />
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
 
-        <Card className="flex h-full flex-col gap-0 p-0">
-          <CardHeader className="border-border/60 flex min-h-[74px] flex-row items-center border-b px-5 py-4">
-            <CardTitle className="text-sm">Add a public key</CardTitle>
-          </CardHeader>
-          <CardContent className="flex-1 p-5">
-            <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="label">Key label</Label>
-                <Input
-                  id="label"
-                  placeholder="e.g. work-laptop"
-                  disabled={createMutation.isPending}
-                  {...register("label")}
-                  aria-invalid={!!errors.label}
-                />
-                {errors.label && <p className="text-destructive text-xs">{errors.label.message}</p>}
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="publicKey">Public key</Label>
-                <Textarea
-                  id="publicKey"
-                  rows={4}
-                  placeholder="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... user@machine"
-                  disabled={createMutation.isPending}
-                  className="resize-y font-mono text-xs"
-                  {...register("publicKey")}
-                  aria-invalid={!!errors.publicKey}
-                />
-                {errors.publicKey && (
-                  <p className="text-destructive text-xs">{errors.publicKey.message}</p>
-                )}
-              </div>
-              <Button type="submit" disabled={createMutation.isPending} className="self-start">
-                <Key className="h-4 w-4" />
-                {createMutation.isPending ? "Registering key..." : "Authorize key"}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+  const addDevice = showAdd && (
+    <section className="surface-card bg-card overflow-hidden rounded-xl border">
+      <div className="flex items-start justify-between gap-3 border-b border-[var(--hairline)] px-4 py-3 sm:px-5">
+        <div>
+          <h2 className="text-foreground text-sm font-semibold">
+            {hasKeys ? "Add another device" : "Add your first device"}
+          </h2>
+          <p className="text-muted-foreground mt-0.5 text-xs">
+            Three steps, about a minute. Already have a key? Skip to step 3.
+          </p>
+        </div>
+        {hasKeys && (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Close"
+            onClick={() => setAddOpen(false)}
+          >
+            <ChevronDown className="rotate-180" />
+          </Button>
+        )}
       </div>
 
-      <Card className="gap-0 p-0">
-        <div className="border-border/60 flex flex-col justify-between gap-2 border-b px-5 py-4 sm:flex-row sm:items-center">
-          <div>
-            <h2 className="text-sm font-semibold">Authorized devices</h2>
+      <div className="grid lg:grid-cols-2">
+        {/* Steps 1–2 */}
+        <div className="flex flex-col gap-5 border-[var(--hairline)] p-4 max-lg:border-b sm:p-5 lg:border-r">
+          <Tabs value={os} onValueChange={(v) => v && setChosenOs(v as Os)}>
+            <TabsList aria-label="Your operating system" className="h-8 rounded-lg p-0.5">
+              <TabsTrigger value="mac" className="rounded-md px-2.5 text-xs">
+                macOS
+              </TabsTrigger>
+              <TabsTrigger value="linux" className="rounded-md px-2.5 text-xs">
+                Linux
+              </TabsTrigger>
+              <TabsTrigger value="windows" className="rounded-md px-2.5 text-xs">
+                Windows
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          <div className="flex gap-3">
+            <StepBadge n={1} />
+            <div className="min-w-0 flex-1 space-y-2">
+              <p className="text-foreground text-[13px] font-medium">Generate a key</p>
+              <StepCommand
+                command={OS_COMMANDS[os].generate}
+                copied={copied === "gen"}
+                onCopy={() => copy(OS_COMMANDS[os].generate, "gen", "Copied command")}
+              />
+              <p className="flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-300/90">
+                <AlertCircle className="mt-px h-3.5 w-3.5 shrink-0" />
+                <span>
+                  Skip this if <code className="font-mono">~/.ssh/id_ed25519.pub</code> already
+                  exists, so you don’t overwrite a key you use.
+                </span>
+              </p>
+            </div>
           </div>
-          <span className="border-border/60 bg-muted/50 text-muted-foreground rounded-md border px-2.5 py-1 text-xs font-medium">
-            {keys.length} {keys.length === 1 ? "key" : "keys"}
-          </span>
+
+          <div className="flex gap-3">
+            <StepBadge n={2} />
+            <div className="min-w-0 flex-1 space-y-2">
+              <p className="text-foreground text-[13px] font-medium">Copy the public key</p>
+              <StepCommand
+                command={OS_COMMANDS[os].copy}
+                copied={copied === "copy"}
+                onCopy={() => copy(OS_COMMANDS[os].copy, "copy", "Copied command")}
+              />
+              <p className="text-muted-foreground text-xs">{OS_COMMANDS[os].copyHint}</p>
+            </div>
+          </div>
         </div>
 
-        {isLoading ? (
-          <CardContent className="space-y-3 p-5">
-            <div className="bg-muted h-8 animate-pulse rounded" />
-            <div className="bg-muted/70 h-10 animate-pulse rounded" />
-          </CardContent>
-        ) : keys.length === 0 ? (
-          <CardContent className="px-5 py-7">
-            <h3 className="text-sm font-medium">No keys registered</h3>
-            <p className="text-muted-foreground mt-1 text-xs">
-              Add a public key above to authorize a device.
-            </p>
-          </CardContent>
-        ) : (
-          <Table className="min-w-[580px] text-left text-xs">
-            <TableHeader className="bg-muted/30 text-muted-foreground text-[11px] tracking-wider uppercase">
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="w-[190px] px-5">Device</TableHead>
-                <TableHead>SHA256 fingerprint</TableHead>
-                <TableHead className="w-[160px]">Added</TableHead>
-                <TableHead className="w-[76px] text-right">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {keys.map((key) => (
-                <TableRow key={key.id}>
-                  <TableCell className="px-5 font-medium">
-                    <div className="flex items-center gap-2">
-                      <span className="border-border/60 bg-secondary text-muted-foreground rounded border px-1.5 py-0.5 font-mono text-[10px]">
-                        ED25519
-                      </span>
-                      <span className="max-w-[130px] truncate">
-                        {key.label || "Untitled device"}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex max-w-md items-center gap-2">
-                      <code className="border-border/60 bg-muted/50 text-muted-foreground min-w-0 flex-1 truncate rounded border px-2 py-1 font-mono text-[11px]">
-                        {key.fingerprint}
-                      </code>
-                      <Button
-                        variant="outline"
-                        size="icon-xs"
-                        aria-label="Copy fingerprint"
-                        onClick={() => copyCommand(key.fingerprint, "Fingerprint")}
-                      >
-                        <Copy />
-                      </Button>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground whitespace-nowrap">
-                    <span className="flex items-center gap-1.5">
-                      <Calendar className="h-3.5 w-3.5" />
-                      {format(new Date(key.createdAt), "MMM d, yyyy")}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="destructive"
-                      size="icon-xs"
-                      aria-label={`Revoke ${key.label || "SSH key"}`}
-                      onClick={() => setDeleteKeyId(key.id)}
-                    >
-                      <Trash2 />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </Card>
+        {/* Step 3 */}
+        <form onSubmit={handleSubmit(onSubmit)} className="flex gap-3 p-4 sm:p-5">
+          <StepBadge n={3} />
+          <div className="flex min-w-0 flex-1 flex-col gap-3">
+            <p className="text-foreground text-[13px] font-medium">Paste it here</p>
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="publicKey" className="text-xs">
+                  Public key
+                </Label>
+                {detectedType && (
+                  <span className="text-primary font-mono text-[11px]">{detectedType}</span>
+                )}
+              </div>
+              <Textarea
+                id="publicKey"
+                rows={4}
+                placeholder="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI… you@laptop"
+                disabled={createMutation.isPending}
+                spellCheck={false}
+                className="resize-y font-mono text-xs break-all"
+                {...register("publicKey")}
+                aria-invalid={!!errors.publicKey}
+              />
+              {errors.publicKey && (
+                <p className="text-destructive text-xs">{errors.publicKey.message}</p>
+              )}
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="label" className="text-xs">
+                Device name <span className="text-muted-foreground font-normal">(optional)</span>
+              </Label>
+              <Input
+                id="label"
+                placeholder="work-laptop"
+                disabled={createMutation.isPending}
+                className="h-9"
+                {...register("label")}
+                aria-invalid={!!errors.label}
+              />
+              {errors.label && <p className="text-destructive text-xs">{errors.label.message}</p>}
+            </div>
+            <Button
+              type="submit"
+              disabled={createMutation.isPending}
+              className="h-9 self-stretch sm:self-start"
+            >
+              <KeyRound />
+              {createMutation.isPending ? "Adding…" : "Add key"}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </section>
+  );
 
-      {/* Delete Modal */}
-      <AlertDialog open={!!deleteKeyId}>
+  return (
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="SSH keys"
+        description="Each computer that opens tunnels signs in with its SSH key. Revoking a key disconnects its tunnels right away."
+        actions={<StatPill icon={KeyRound} label="Devices" value={keys.length} />}
+      />
+
+      <div className={cn("flex gap-6", hasKeys || isLoading ? "flex-col" : "flex-col-reverse")}>
+        {keyList}
+        {addDevice}
+      </div>
+
+      <AlertDialog open={!!revokeKey}>
         <AlertDialogContent className="font-sans">
           <AlertDialogHeader>
-            <AlertDialogTitle>Revoke SSH Key?</AlertDialogTitle>
+            <AlertDialogTitle>Revoke “{revokeKey?.label || "this key"}”?</AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground text-xs">
-              This will remove the authorized key. Active tunnels established with this key will be
+              This device can no longer open tunnels, and any tunnels it has open now are
               disconnected immediately.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDeleteKeyId(null)} className="text-xs">
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteConfirm} variant="danger" className="text-xs">
-              Revoke Key
+            <AlertDialogCancel onClick={() => setRevokeKey(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmRevoke} variant="danger">
+              Revoke key
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
