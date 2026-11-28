@@ -1,6 +1,7 @@
 export const reservedSubdomains = [
   // Existing
   "app",
+  "myip",
   "tunnel",
   "demo",
   "tunl",
