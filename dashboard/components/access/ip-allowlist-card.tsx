@@ -31,18 +31,62 @@ function ipv4ToInt(ip: string) {
   return ip.split(".").reduce((acc, part) => (acc << 8) + Number(part), 0) >>> 0;
 }
 
-/** True when `ip` is covered by `rule` (exact match, or IPv4 CIDR containment). */
+/** Expands an IPv6 address to its 8 hextets, or null when it isn't one. */
+function ipv6Hextets(ip: string): number[] | null {
+  let addr = ip.toLowerCase().split("%")[0];
+  // Trailing embedded IPv4 (e.g. ::ffff:1.2.3.4) becomes two hextets.
+  const v4 = addr.match(/(\d+\.\d+\.\d+\.\d+)$/);
+  if (v4) {
+    if (!IPV4.test(v4[1])) return null;
+    const n = ipv4ToInt(v4[1]);
+    addr = `${addr.slice(0, -v4[1].length)}${(n >>> 16).toString(16)}:${(n & 0xffff).toString(16)}`;
+  }
+  const halves = addr.split("::");
+  if (halves.length > 2) return null;
+  const head = halves[0] ? halves[0].split(":") : [];
+  const tail = halves.length === 2 && halves[1] ? halves[1].split(":") : [];
+  const missing = 8 - head.length - tail.length;
+  if (halves.length === 1 ? missing !== 0 : missing < 1) return null;
+  const parts = [...head, ...Array<string>(halves.length === 2 ? missing : 0).fill("0"), ...tail];
+  if (parts.some((p) => !/^[0-9a-f]{1,4}$/.test(p))) return null;
+  return parts.map((p) => parseInt(p, 16));
+}
+
+function ipv6ToBigInt(ip: string): bigint | null {
+  const h = ipv6Hextets(ip);
+  return h ? h.reduce((acc, part) => (acc << BigInt(16)) + BigInt(part), BigInt(0)) : null;
+}
+
+/** True when `ip` is covered by `rule` (exact match, or IPv4/IPv6 CIDR containment). */
 function ruleCovers(rule: string, ip: string) {
   if (rule === ip) return true;
   const [base, maskStr] = rule.split("/");
-  if (maskStr === undefined) return false;
   if (IPV4.test(base) && IPV4.test(ip)) {
+    if (maskStr === undefined) return false;
     const mask = Number(maskStr);
     if (mask === 0) return true;
     const bits = (~0 << (32 - mask)) >>> 0;
     return (ipv4ToInt(base) & bits) === (ipv4ToInt(ip) & bits);
   }
-  return false;
+  const a = ipv6ToBigInt(base);
+  const b = ipv6ToBigInt(ip);
+  if (a === null || b === null) return false;
+  const mask = maskStr === undefined ? 128 : Number(maskStr);
+  const shift = BigInt(128 - mask);
+  return a >> shift === b >> shift;
+}
+
+/** The rule to suggest for an IP: IPv4 as-is, IPv6 as its /64 network. */
+function suggestedRule(ip: string): { rule: string; isV6Network: boolean } {
+  const h = ipv6Hextets(ip);
+  if (!h) return { rule: ip, isV6Network: false };
+  return {
+    rule: `${h
+      .slice(0, 4)
+      .map((x) => x.toString(16))
+      .join(":")}::/64`,
+    isV6Network: true,
+  };
 }
 
 function describeRule(rule: string) {
@@ -77,7 +121,17 @@ export function IpAllowlistCard({ profile, onSave, isPending }: IpAllowlistCardP
   const [inputError, setInputError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const { data: myIp, isLoading: myIpLoading } = useMyIpQuery();
+  const { data: ipInfo, isLoading: myIpLoading } = useMyIpQuery();
+  // What tunnels will see; the dashboard API's view is only a fallback.
+  const myIp = ipInfo?.tunnelIp ?? ipInfo?.dashboardIp ?? null;
+  const suggestion = myIp ? suggestedRule(myIp) : null;
+  const otherIp =
+    ipInfo?.tunnelIp &&
+    ipInfo.dashboardIp &&
+    ipInfo.dashboardIp !== ipInfo.tunnelIp &&
+    IPV4.test(ipInfo.dashboardIp) !== IPV4.test(ipInfo.tunnelIp)
+      ? ipInfo.dashboardIp
+      : null;
 
   const dirty = enabled !== savedEnabled || JSON.stringify(ips) !== JSON.stringify(savedIps);
   const enforcing = savedEnabled && savedIps.length > 0;
@@ -190,14 +244,32 @@ export function IpAllowlistCard({ profile, onSave, isPending }: IpAllowlistCardP
           )}
         </form>
 
-        {myIp && !ips.includes(myIp) && (
+        {suggestion && !myIpCovered && (
+          <div className="flex flex-col gap-1">
+            <button
+              type="button"
+              onClick={() => addRule(suggestion.rule)}
+              className="text-primary inline-flex items-center gap-1.5 self-start text-xs font-medium hover:underline"
+            >
+              <MapPin className="h-3.5 w-3.5 shrink-0" />
+              {suggestion.isV6Network ? "Add my network" : "Add my IP"}
+              <span className="text-muted-foreground font-mono break-all">{suggestion.rule}</span>
+            </button>
+            {suggestion.isV6Network && (
+              <p className="text-muted-foreground pl-5 text-[11px]">
+                You reach tunnels over IPv6, and the end of that address changes often.
+              </p>
+            )}
+          </div>
+        )}
+        {otherIp && !ips.some((rule) => ruleCovers(rule, otherIp)) && (
           <button
             type="button"
-            onClick={() => addRule(myIp)}
-            className="text-primary inline-flex items-center gap-1.5 self-start text-xs font-medium hover:underline"
+            onClick={() => addRule(otherIp)}
+            className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 self-start pl-5 text-[11px] hover:underline"
           >
-            <MapPin className="h-3.5 w-3.5" />
-            Add my IP <span className="text-muted-foreground font-mono">{myIp}</span>
+            <Plus className="h-3 w-3" /> Also add your IPv4{" "}
+            <span className="font-mono">{otherIp}</span>
           </button>
         )}
         {myIpLoading && (
@@ -250,15 +322,15 @@ export function IpAllowlistCard({ profile, onSave, isPending }: IpAllowlistCardP
 
         {/* Warnings */}
         {blockedEmpty && (
-          <p className="flex items-center gap-2 text-xs text-amber-700 dark:text-amber-300">
-            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+          <p className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-300">
+            <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0" />
             Add an address before turning this on.
           </p>
         )}
         {enabled && ips.length > 0 && myIp && !myIpCovered && (
-          <p className="flex items-center gap-2 text-xs text-amber-700 dark:text-amber-300">
-            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-            Your IP isn’t listed, so you’ll be locked out of your own tunnels.
+          <p className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-300">
+            <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0" />
+            Your current IP ({myIp}) isn’t covered, so you’ll be locked out of your own tunnels.
           </p>
         )}
         {saveError && (

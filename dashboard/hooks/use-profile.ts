@@ -111,12 +111,41 @@ export function useUpdateIpWhitelist() {
 }
 
 /** The browser's public IP as the control plane sees it (for "add my IP"). */
+/** Where the browser's IP is looked up through Cloudflare, the same path tunnel traffic takes. */
+const TUNNEL_EDGE_IP_URL = "https://myip.tunl.online/";
+
+async function fetchTunnelEdgeIp(): Promise<string | null> {
+  try {
+    const res = await fetch(TUNNEL_EDGE_IP_URL, {
+      cache: "no-store",
+      credentials: "omit",
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return null;
+    const body = (await res.json()) as { ip?: unknown };
+    return typeof body.ip === "string" && body.ip ? body.ip : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The visitor's IP as tunnels see it (`tunnelIp`, via Cloudflare, often IPv6)
+ * and as the dashboard API sees it (`dashboardIp`, IPv4-only host). The
+ * allowlist is checked against the first one.
+ */
 export function useMyIpQuery() {
   return useQuery({
     queryKey: ["my-ip"],
     queryFn: async () => {
-      const { data } = await client.get<{ ip: string | null }>("/v1/profile/my-ip");
-      return data.ip;
+      const [tunnelIp, dashboardIp] = await Promise.all([
+        fetchTunnelEdgeIp(),
+        client
+          .get<{ ip: string | null }>("/v1/profile/my-ip")
+          .then(({ data }) => data.ip)
+          .catch(() => null),
+      ]);
+      return { tunnelIp, dashboardIp };
     },
     staleTime: 5 * 60_000,
     retry: false,

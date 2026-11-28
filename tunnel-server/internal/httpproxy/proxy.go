@@ -294,8 +294,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				"Your IP address is not authorized to access this whitelisted tunnel.",
 				fmt.Sprintf("Tunnel owner? Add <strong>%s</strong> to this tunnel's IP allowlist from the dashboard.", clientIP),
 				subdomain,
-				"https://tunl.online/profile",
-				"Open IP Restrictions →",
+				"https://tunl.online/access",
+				"Open Access control →",
 			)
 			return
 		}
